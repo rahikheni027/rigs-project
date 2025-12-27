@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="dashboard">
+
+    <div class="top-bar">
+        <h2>Admin Dashboard – RIGS</h2>
+        <a href="/logout">Logout</a>
+    </div>
+
+    <div class="card">
+        <h3>Create Worker</h3>
+        <form action="/admin/create-worker" method="post">
+            <input type="text" name="name" placeholder="Worker Name" required />
+            <input type="email" name="email" placeholder="Worker Email" required />
+            <button type="submit">Create Worker</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3>Workers</h3>
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+
+            <tr th:each="w : ${workers}">
+                <td th:text="${w.name}"></td>
+                <td th:text="${w.email}"></td>
+                <td th:text="${w.enabled == 1 ? 'Approved' : 'Pending'}"></td>
+                <td>
+                    <form th:if="${w.enabled == 0}"
+                          action="/admin/approve-worker"
+                          method="post">
+                        <input type="hidden" name="userId" th:value="${w.id}" />
+                        <button type="submit">Approve</button>
+                    </form>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>RIGS Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="dashboard">
+
+    <div class="top-bar">
+        <h2>Remote Industrial Governance System</h2>
+        <a href="/logout">Logout</a>
+    </div>
+
+    <div class="card">
+        <p th:text="'Welcome, ' + ${name}"></p>
+        <p th:text="'Role: ' + ${role}"></p>
+    </div>
+
+    <div class="card">
+        <p>Worker dashboard loaded successfully.</p>
+    </div>
+
+</div>
+
+</body>
+</html>
