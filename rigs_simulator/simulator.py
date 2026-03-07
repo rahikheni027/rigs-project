@@ -99,6 +99,26 @@ class RigsSimulator:
 
         logger.info("All %d machines started successfully", self.num_machines)
 
+        # Start dummy HTTP server for Render free tier Web Service
+        import threading
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        
+        class DummyHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"R.I.G.S. Simulator is running")
+                
+        http_port = int(os.environ.get("PORT", "8000"))
+        http_server = HTTPServer(("0.0.0.0", http_port), DummyHandler)
+        
+        def run_server():
+            logger.info("Started dummy HTTP server on port %d for Render", http_port)
+            http_server.serve_forever()
+            
+        server_thread = threading.Thread(target=run_server, daemon=True)
+        server_thread.start()
+
         # Wait for shutdown signal
         try:
             while not self._shutdown_event:
