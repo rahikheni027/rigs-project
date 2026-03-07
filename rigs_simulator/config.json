@@ -1,0 +1,12 @@
+{
+    "broker": "802966d9c99f48a3a2436e3eacd58939.s1.eu.hivemq.cloud",
+    "port": 8883,
+    "username": "rigs_client",
+    "password": "Kanzariya2413",
+    "machines": 3,
+    "interval": 5,
+    "maintenance_threshold": 100.0,
+    "failure_overheat_probability": 0.05,
+    "failure_vibration_probability": 0.03,
+    "failure_offline_probability": 0.02
+}

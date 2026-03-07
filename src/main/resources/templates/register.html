@@ -1,30 +1,90 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+
 <head>
-    <title>Register</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <title>Register — R.I.G.S.</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
-<body>
 
-<div class="login-box">
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <img src="/images/logo.svg" alt="R.I.G.S." class="logo-image">
+                <h1 class="logo-title">R.I.G.S.</h1>
+                <p class="logo-subtitle">Remote Industrial Governance System</p>
+            </div>
+            <div class="auth-content">
+                <h2 class="auth-title">Create Account</h2>
+                <p class="auth-description">Register to get started with R.I.G.S.</p>
 
-    <h2>Register</h2>
+                <div class="error-message" th:if="${error}" th:text="${error}"></div>
 
-    <form action="/register" method="post">
-
-        <input type="text" name="name" placeholder="Full Name" required />
-        <input type="email" name="email" placeholder="Email" required />
-        <input type="password" name="password" placeholder="Password" required />
-
-        <button type="submit">Register</button>
-    </form>
-
-    <p class="error" th:text="${error}"></p>
-
-    <br>
-    <a href="/">Back to Login</a>
-
-</div>
-
+                <form action="/register" method="post" class="auth-form">
+                    <div class="form-group">
+                        <label for="name" class="form-label">Full Name</label>
+                        <input type="text" id="name" name="name" class="form-input" placeholder="Enter your full name"
+                            required autocomplete="name">
+                    </div>
+                    <div class="form-group">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" id="email" name="email" class="form-input" placeholder="you@company.com"
+                            required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" id="password" name="password" class="form-input"
+                            placeholder="Min 8 chars, uppercase, digit, special" required autocomplete="new-password"
+                            oninput="checkStrength(this.value)">
+                        <div class="password-strength">
+                            <div id="strength-bar" class="password-strength-bar"></div>
+                        </div>
+                        <div id="strength-text" class="password-strength-text" style="color: var(--text-muted);"></div>
+                    </div>
+                    <div class="form-note">
+                        <p>⚠️ Your account will require admin approval before you can access the system.</p>
+                    </div>
+                    <button type="submit" class="auth-button auth-button-primary">
+                        <span>Create Account</span>
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                            <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </button>
+                </form>
+                <div class="auth-footer">
+                    <p>Already have an account? <a href="/login" class="auth-link">Sign in</a></p>
+                    <p style="margin-top:8px;"><a href="/" class="auth-link"
+                            style="font-size:0.8rem; color:var(--text-muted);">← Back to Homepage</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function checkStrength(pw) {
+            const bar = document.getElementById('strength-bar');
+            const txt = document.getElementById('strength-text');
+            let score = 0;
+            if (pw.length >= 8) score++;
+            if (/[a-z]/.test(pw)) score++;
+            if (/[A-Z]/.test(pw)) score++;
+            if (/\d/.test(pw)) score++;
+            if (/[^A-Za-z\d]/.test(pw)) score++;
+            const levels = [
+                { cls: '', label: '', color: '' },
+                { cls: 'strength-weak', label: 'Weak', color: 'var(--danger)' },
+                { cls: 'strength-fair', label: 'Fair', color: 'var(--warning)' },
+                { cls: 'strength-good', label: 'Good', color: 'var(--accent)' },
+                { cls: 'strength-good', label: 'Strong', color: 'var(--accent)' },
+                { cls: 'strength-strong', label: 'Very Strong', color: 'var(--success)' }
+            ];
+            bar.className = 'password-strength-bar ' + levels[score].cls;
+            txt.textContent = pw ? levels[score].label : '';
+            txt.style.color = levels[score].color;
+        }
+    </script>
 </body>
+
 </html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>Audit Logs — R.I.G.S.</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <img src="/images/logo.svg" alt="R.I.G.S." class="nav-logo">
+                <div>
+                    <span class="brand-title">R.I.G.S.</span>
+                    <span class="brand-subtitle">Remote Industrial Governance System</span>
+                </div>
+            </div>
+            <div class="nav-links">
+                <a href="/admin/dashboard">Dashboard</a>
+                <a href="/admin/settings">Factory Settings</a>
+                <a href="/admin/audit-logs" class="active">Audit Logs</a>
+                <a href="/profile">Profile</a>
+            </div>
+            <div class="nav-actions">
+                <span class="user-badge">Admin</span>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container" style="max-width:1300px;">
+        <div class="section-header" style="margin-top:0;">
+            <div>
+                <h2 class="section-title">Audit Logs</h2>
+                <p class="section-subtitle">Immutable system activity trail with SHA-256 verification</p>
+            </div>
+        </div>
+
+        <!-- Filter -->
+        <div class="card" style="margin-bottom:20px;">
+            <h3 class="card-title" style="font-size:0.9rem;">Filter Logs</h3>
+            <form th:action="@{/admin/audit-logs}" method="get"
+                style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; align-items:end;">
+                <div>
+                    <label class="form-label">Machine</label>
+                    <select name="machineId">
+                        <option value="">All Machines</option>
+                        <option th:each="m : ${machines}" th:value="${m.id}" th:text="${m.name}"
+                            th:selected="${selectedMachineId != null && selectedMachineId == m.id}"></option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">User</label>
+                    <select name="userId">
+                        <option value="">All Users</option>
+                        <option th:each="u : ${users}" th:value="${u.id}" th:text="${u.name + ' (' + u.email + ')'}"
+                            th:selected="${selectedUserId != null && selectedUserId == u.id}"></option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Action</label>
+                    <select name="actionType">
+                        <option value="">All Actions</option>
+                        <option value="START" th:selected="${selectedActionType == 'START'}">START</option>
+                        <option value="STOP" th:selected="${selectedActionType == 'STOP'}">STOP</option>
+                        <option value="CONFIG_CHANGE" th:selected="${selectedActionType == 'CONFIG_CHANGE'}">CONFIG
+                            CHANGE</option>
+                        <option value="EMERGENCY" th:selected="${selectedActionType == 'EMERGENCY'}">EMERGENCY</option>
+                        <option value="LOGIN" th:selected="${selectedActionType == 'LOGIN'}">LOGIN</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">From</label>
+                    <input type="date" name="startDate" th:value="${selectedStartDate}">
+                </div>
+                <div>
+                    <label class="form-label">To</label>
+                    <input type="date" name="endDate" th:value="${selectedEndDate}">
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button type="submit" class="btn btn-primary btn-sm" style="flex:1;">Filter</button>
+                    <a href="/admin/audit-logs" class="btn btn-outline btn-sm">Clear</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Export -->
+        <div style="text-align:right; margin-bottom:12px;">
+            <a th:href="@{/admin/audit-logs/export(machineId=${selectedMachineId},userId=${selectedUserId},actionType=${selectedActionType},startDate=${selectedStartDate},endDate=${selectedEndDate})}"
+                class="btn btn-secondary btn-sm">📥 Export CSV</a>
+        </div>
+
+        <!-- Log Table -->
+        <div class="card" style="padding:0; overflow:hidden;">
+            <div style="padding:14px 20px; border-bottom:1px solid var(--border-color); font-size:0.82rem; color:var(--text-muted);"
+                th:text="'Showing ' + ${logs.size()} + ' log entries'"></div>
+
+            <div class="table-container" th:if="${!logs.isEmpty()}">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Timestamp</th>
+                            <th>Action</th>
+                            <th>User</th>
+                            <th>Machine</th>
+                            <th>Before</th>
+                            <th>After</th>
+                            <th>IP</th>
+                            <th>Hash</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="log : ${logs}">
+                            <td th:text="${log.id}"></td>
+                            <td style="white-space:nowrap;"
+                                th:text="${log.timestamp != null ? #temporals.format(log.timestamp, 'dd MMM HH:mm:ss') : ''}">
+                            </td>
+                            <td>
+                                <span class="badge"
+                                    th:classappend="${log.actionType == 'START'} ? 'badge-success' :
+                                                 (${log.actionType == 'STOP'} ? 'badge-danger' :
+                                                 (${log.actionType == 'CONFIG_CHANGE'} ? 'badge-info' :
+                                                 (${log.actionType == 'EMERGENCY'} ? 'badge-warning' : 'badge-purple')))"
+                                    th:text="${log.actionType}"></span>
+                            </td>
+                            <td th:text="${log.user != null ? log.user.email : 'SYSTEM'}"></td>
+                            <td th:text="${log.machine != null ? log.machine.name : '—'}"></td>
+                            <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:monospace; font-size:0.72rem; color:var(--text-muted); cursor:pointer;"
+                                th:text="${log.beforeState != null ? log.beforeState : '—'}"
+                                th:title="${log.beforeState}"></td>
+                            <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:monospace; font-size:0.72rem; color:var(--text-muted); cursor:pointer;"
+                                th:text="${log.afterState != null ? log.afterState : '—'}" th:title="${log.afterState}">
+                            </td>
+                            <td th:text="${log.ipAddress != null ? log.ipAddress : '—'}"></td>
+                            <td style="max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:monospace; font-size:0.68rem; color:var(--text-muted);"
+                                th:text="${log.hashSignature}" th:title="${log.hashSignature}"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div th:if="${logs.isEmpty()}" class="empty-state">
+                <p>No audit logs found matching the selected filters.</p>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,54 +1,226 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+
 <head>
-    <title>Admin Dashboard</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <title>Admin Dashboard — R.I.G.S.</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
+
 <body>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <img src="/images/logo.svg" alt="R.I.G.S." class="nav-logo">
+                <div>
+                    <span class="brand-title">R.I.G.S.</span>
+                    <span class="brand-subtitle">Remote Industrial Governance System</span>
+                </div>
+            </div>
+            <div class="nav-links">
+                <a href="/admin/dashboard" class="active">Dashboard</a>
+                <a href="/admin/settings">Factory Settings</a>
+                <a href="/admin/audit-logs">Audit Logs</a>
+                <a href="/profile">Profile</a>
+            </div>
+            <div class="nav-actions">
+                <span class="user-badge">Admin</span>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        </div>
+    </nav>
 
-<div class="dashboard">
+    <div class="dashboard-container">
+        <!-- Stats -->
+        <div class="stats-grid" id="stats-container">
+            <div class="stat-card">
+                <div class="stat-icon">🏭</div>
+                <div>
+                    <div class="stat-value" id="total-machines">-</div>
+                    <div class="stat-label">Total Machines</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background:var(--success-bg);">🟢</div>
+                <div>
+                    <div class="stat-value" id="running-machines">-</div>
+                    <div class="stat-label">Running</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background:var(--danger-bg);">🔴</div>
+                <div>
+                    <div class="stat-value" id="offline-machines">-</div>
+                    <div class="stat-label">Offline</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background:var(--warning-bg);">⚠️</div>
+                <div>
+                    <div class="stat-value" id="alerts-count">-</div>
+                    <div class="stat-label">Alerts</div>
+                </div>
+            </div>
+        </div>
 
-    <div class="top-bar">
-        <h2>Admin Dashboard – RIGS</h2>
-        <a href="/logout">Logout</a>
+        <!-- Machines -->
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">Machine Monitoring</h2>
+                <p class="section-subtitle">Real-time status and telemetry data</p>
+            </div>
+            <div class="refresh-indicator"><span class="refresh-dot"></span><span>Live</span></div>
+        </div>
+        <div id="machines-container" class="machines-grid">
+            <div class="loading-message">Loading machines...</div>
+        </div>
+
+        <!-- Worker Management -->
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">Worker Management</h2>
+                <p class="section-subtitle">Manage worker accounts and permissions</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="card-title">Create New Worker</h3>
+            <form action="/admin/create-worker" method="post"
+                style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                <div style="flex:1; min-width:180px;">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" placeholder="Worker Name" required>
+                </div>
+                <div style="flex:1; min-width:200px;">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" placeholder="worker@company.com" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="height:42px;">Create Worker</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3 class="card-title">Worker List</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="w : ${workers}">
+                            <td th:text="${w.name}"></td>
+                            <td th:text="${w.email}"></td>
+                            <td>
+                                <span th:if="${w.enabled == 1}" class="badge badge-success">Approved</span>
+                                <span th:if="${w.enabled == 0}" class="badge badge-warning">Pending</span>
+                                <span th:if="${w.accountLocked}" class="badge badge-danger"
+                                    style="margin-left:4px;">Locked</span>
+                            </td>
+                            <td style="white-space:nowrap;">
+                                <form th:if="${w.enabled == 0}" action="/admin/approve-worker" method="post"
+                                    style="display:inline;">
+                                    <input type="hidden" name="userId" th:value="${w.id}">
+                                    <button type="submit" class="btn btn-success btn-xs">Approve</button>
+                                </form>
+                                <form th:if="${w.enabled == 0}" action="/admin/reject-worker" method="post"
+                                    style="display:inline;">
+                                    <input type="hidden" name="userId" th:value="${w.id}">
+                                    <button type="submit" class="btn btn-danger btn-xs">Reject</button>
+                                </form>
+                                <form th:if="${w.enabled == 1}" action="/admin/remove-worker" method="post"
+                                    style="display:inline;">
+                                    <input type="hidden" name="userId" th:value="${w.id}">
+                                    <button type="submit" class="btn btn-secondary btn-xs">Remove</button>
+                                </form>
+                                <form th:if="${w.accountLocked}" action="/admin/unlock-account" method="post"
+                                    style="display:inline;">
+                                    <input type="hidden" name="userId" th:value="${w.id}">
+                                    <button type="submit" class="btn btn-warning btn-xs">Unlock</button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <div class="card">
-        <h3>Create Worker</h3>
-        <form action="/admin/create-worker" method="post">
-            <input type="text" name="name" placeholder="Worker Name" required />
-            <input type="email" name="email" placeholder="Worker Email" required />
-            <button type="submit">Create Worker</button>
-        </form>
-    </div>
+    <script>
+        const API_BASE_URL = '/api/machines';
+        const POLL_INTERVAL = 3000;
 
-    <div class="card">
-        <h3>Workers</h3>
-        <table>
-            <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Status</th>
-                <th>Action</th>
-            </tr>
+        function fmt(v, u) { return v == null ? 'N/A' : v.toFixed(2) + ' ' + u; }
+        function fmtTs(ts) { if (!ts) return 'N/A'; try { return new Date(ts).toLocaleTimeString(); } catch (e) { return ts; } }
+        function statusCls(s, on) { if (!on) return 'status-offline'; switch (s) { case 'RUNNING': return 'status-running'; case 'STOPPED': return 'status-stopped'; case 'ERROR': return 'status-error'; default: return 'status-offline'; } }
+        function statusIcon(s, on) { if (!on) return '🔴'; switch (s) { case 'RUNNING': return '🟢'; case 'STOPPED': return '🟡'; default: return '⚪'; } }
 
-            <tr th:each="w : ${workers}">
-                <td th:text="${w.name}"></td>
-                <td th:text="${w.email}"></td>
-                <td th:text="${w.enabled == 1 ? 'Approved' : 'Pending'}"></td>
-                <td>
-                    <form th:if="${w.enabled == 0}"
-                          action="/admin/approve-worker"
-                          method="post">
-                        <input type="hidden" name="userId" th:value="${w.id}" />
-                        <button type="submit">Approve</button>
-                    </form>
-                </td>
-            </tr>
-        </table>
-    </div>
+        function machineHtml(m) {
+            const cls = statusCls(m.status, m.isOnline);
+            const icon = statusIcon(m.status, m.isOnline);
+            const maint = m.maintenanceAlert ? '<span class="maintenance-badge">⚠️ Maintenance Due</span>' : '';
+            const startDis = m.status === 'RUNNING' ? 'disabled' : '';
+            const stopDis = m.status === 'STOPPED' || m.status === 'OFFLINE' ? 'disabled' : '';
+            return `<div class="machine-panel ${cls}">
+        <div class="machine-header">
+            <div class="machine-title"><h4>${m.machineName}</h4><span class="machine-location">📍 ${m.location}</span></div>
+            <div class="machine-status-indicator"><span>${icon}</span><span class="status-text">${m.status || 'OFFLINE'}</span></div>
+        </div>
+        ${maint}
+        <div class="telemetry-grid">
+            <div class="telemetry-item"><div class="telemetry-label">🌡️ Temperature</div><div class="telemetry-value">${fmt(m.temperature, '°C')}</div></div>
+            <div class="telemetry-item"><div class="telemetry-label">📳 Vibration</div><div class="telemetry-value">${fmt(m.vibration, 'g')}</div></div>
+            <div class="telemetry-item"><div class="telemetry-label">⚡ Current</div><div class="telemetry-value">${fmt(m.currentDraw, 'A')}</div></div>
+            <div class="telemetry-item"><div class="telemetry-label">⏱️ Runtime</div><div class="telemetry-value">${fmt(m.cumulativeRuntimeHours, 'hrs')}</div></div>
+        </div>
+        <div class="command-panel">
+            <button class="cmd-btn cmd-start" onclick="sendCmd(${m.machineId},'START')" ${startDis}>▶ START</button>
+            <button class="cmd-btn cmd-stop" onclick="sendCmd(${m.machineId},'STOP')" ${stopDis}>⏹ STOP</button>
+        </div>
+        <div class="machine-footer"><div class="last-update">${m.timestamp ? 'Updated: ' + fmtTs(m.timestamp) : 'No data'}</div></div>
+    </div>`;
+        }
 
-</div>
+        async function sendCmd(id, type) {
+            if (!confirm('Are you sure you want to ' + type + ' this machine?')) return;
+            try {
+                const res = await fetch('/api/commands', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ machineId: id, commandType: type, parameters: null }) });
+                if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Failed'); }
+                notify('Command ' + type + ' sent!', 'success');
+                setTimeout(refresh, 500);
+            } catch (e) { notify('Error: ' + e.message, 'error'); }
+        }
 
+        function notify(msg, type) {
+            const el = document.createElement('div');
+            el.className = 'notification notification-' + type;
+            el.textContent = msg;
+            document.body.appendChild(el);
+            setTimeout(() => el.classList.add('show'), 10);
+            setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 3000);
+        }
+
+        async function refresh() {
+            try {
+                const res = await fetch(API_BASE_URL);
+                if (!res.ok) return;
+                const data = await res.json();
+                const c = document.getElementById('machines-container');
+                if (!data.length) { c.innerHTML = '<div class="no-machines">No machines available.</div>'; } else { c.innerHTML = data.map(machineHtml).join(''); }
+                document.getElementById('total-machines').textContent = data.length;
+                document.getElementById('running-machines').textContent = data.filter(m => m.status === 'RUNNING' && m.isOnline).length;
+                document.getElementById('offline-machines').textContent = data.filter(m => !m.isOnline).length;
+                document.getElementById('alerts-count').textContent = data.filter(m => m.maintenanceAlert).length;
+            } catch (e) { console.error(e); }
+        }
+        refresh();
+        setInterval(refresh, POLL_INTERVAL);
+    </script>
 </body>
+
 </html>

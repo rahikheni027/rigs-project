@@ -1,0 +1,989 @@
+nohup: ignoring input
+2026-02-20 23:10:16 [INFO   ] rigs.simulator       | Loaded config from /home/krish/PROJECT1/rigs/rigs_simulator/config.json
+2026-02-20 23:10:16 [INFO   ] rigs.simulator       | ============================================================
+2026-02-20 23:10:16 [INFO   ] rigs.simulator       |   R.I.G.S. Virtual Machine Simulator
+2026-02-20 23:10:16 [INFO   ] rigs.simulator       |   Broker: localhost:1883
+2026-02-20 23:10:16 [INFO   ] rigs.simulator       |   Machines: 20
+2026-02-20 23:10:16 [INFO   ] rigs.simulator       |   Telemetry interval: 5s
+2026-02-20 23:10:16 [INFO   ] rigs.simulator       | ============================================================
+/home/krish/PROJECT1/rigs/rigs_simulator/simulator.py:57: DeprecationWarning: Callback API version 1 is deprecated, update to latest version
+  self.client = mqtt.Client(
+2026-02-20 23:10:16 [INFO   ] rigs.simulator       | Connecting to MQTT broker localhost:1883 ...
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_1 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] rigs.simulator       | ✅ Connected to MQTT broker
+2026-02-20 23:10:16 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 8.88 g
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_1 simulation started
+2026-02-20 23:10:16 [INFO   ] rigs.simulator       | Subscribed to rigs/command/machine_1
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_2 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_2 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_3 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_3 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_4 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_4 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_5 initialized (status=STOPPED)
+2026-02-20 23:10:16 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 134.0°C
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_5 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_6 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_6 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_7 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_7 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_8 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_8 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_9 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_9 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_10 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_10 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_11 initialized (status=STOPPED)
+2026-02-20 23:10:16 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 130.6°C
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_11 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_12 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_12 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_13 initialized (status=STOPPED)
+2026-02-20 23:10:16 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 125.4°C
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_13 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_14 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_14 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_15 initialized (status=STOPPED)
+2026-02-20 23:10:16 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 116.7°C
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_15 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_16 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_16 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_17 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_17 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_18 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_18 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_19 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_19 simulation started
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_20 initialized (status=STOPPED)
+2026-02-20 23:10:16 [INFO   ] machine              | Machine machine_20 simulation started
+2026-02-20 23:10:16 [INFO   ] rigs.simulator       | All 20 machines started successfully
+2026-02-20 23:10:21 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 129.6°C
+2026-02-20 23:10:21 [WARNING] machine              | 📡 Machine machine_20 going OFFLINE for 20 seconds
+2026-02-20 23:10:26 [WARNING] machine              | 📡 Machine machine_7 going OFFLINE for 20 seconds
+2026-02-20 23:10:26 [WARNING] machine              | 📳 Machine machine_14 VIBRATION SPIKE: 9.61 g
+2026-02-20 23:10:26 [WARNING] machine              | 📡 Machine machine_16 going OFFLINE for 20 seconds
+2026-02-20 23:10:31 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 125.9°C
+2026-02-20 23:10:31 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 121.2°C
+2026-02-20 23:10:31 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 8.20 g
+2026-02-20 23:10:36 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 132.7°C
+2026-02-20 23:10:36 [WARNING] machine              | 📡 Machine machine_11 going OFFLINE for 20 seconds
+2026-02-20 23:10:36 [WARNING] machine              | 📡 Machine machine_18 going OFFLINE for 20 seconds
+2026-02-20 23:10:41 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 115.3°C
+2026-02-20 23:10:46 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 11.16 g
+2026-02-20 23:10:46 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 10.08 g
+2026-02-20 23:10:51 [WARNING] machine              | 📳 Machine machine_14 VIBRATION SPIKE: 9.04 g
+2026-02-20 23:10:56 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 122.9°C
+2026-02-20 23:10:56 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 128.3°C
+2026-02-20 23:10:56 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 120.3°C
+2026-02-20 23:10:56 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 9.23 g
+2026-02-20 23:11:01 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 133.9°C
+2026-02-20 23:11:01 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 125.3°C
+2026-02-20 23:11:06 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 11.08 g
+2026-02-20 23:11:11 [WARNING] machine              | 📡 Machine machine_1 going OFFLINE for 20 seconds
+2026-02-20 23:11:11 [WARNING] machine              | 📡 Machine machine_13 going OFFLINE for 20 seconds
+2026-02-20 23:11:16 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 125.0°C
+2026-02-20 23:11:16 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 134.3°C
+2026-02-20 23:11:31 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 8.01 g
+2026-02-20 23:11:31 [WARNING] machine              | 📳 Machine machine_14 VIBRATION SPIKE: 8.97 g
+2026-02-20 23:11:36 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 138.3°C
+2026-02-20 23:11:41 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 126.9°C
+2026-02-20 23:11:41 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 121.7°C
+2026-02-20 23:11:46 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 112.4°C
+2026-02-20 23:11:46 [WARNING] machine              | 📡 Machine machine_19 going OFFLINE for 20 seconds
+2026-02-20 23:11:56 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 125.9°C
+2026-02-20 23:11:56 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 116.4°C
+2026-02-20 23:12:06 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:12:06 [WARNING] machine              | 📡 Machine machine_13 going OFFLINE for 20 seconds
+2026-02-20 23:12:06 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 132.8°C
+2026-02-20 23:12:11 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 127.0°C
+2026-02-20 23:12:16 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 11.14 g
+2026-02-20 23:12:21 [WARNING] machine              | 📡 Machine machine_14 going OFFLINE for 20 seconds
+2026-02-20 23:12:26 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 136.2°C
+2026-02-20 23:12:26 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 126.3°C
+2026-02-20 23:12:36 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 139.3°C
+2026-02-20 23:12:36 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 8.50 g
+2026-02-20 23:12:46 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 10.01 g
+2026-02-20 23:12:51 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 119.6°C
+2026-02-20 23:12:51 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 8.14 g
+2026-02-20 23:12:56 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 11.05 g
+2026-02-20 23:12:56 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 8.74 g
+2026-02-20 23:13:01 [WARNING] machine              | 📡 Machine machine_3 going OFFLINE for 20 seconds
+2026-02-20 23:13:01 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 9.14 g
+2026-02-20 23:13:01 [WARNING] machine              | 📡 Machine machine_19 going OFFLINE for 20 seconds
+2026-02-20 23:13:06 [WARNING] machine              | 📡 Machine machine_14 going OFFLINE for 20 seconds
+2026-02-20 23:13:06 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 124.7°C
+2026-02-20 23:13:06 [WARNING] machine              | 📡 Machine machine_2 going OFFLINE for 20 seconds
+2026-02-20 23:13:11 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 138.0°C
+2026-02-20 23:13:11 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 129.9°C
+2026-02-20 23:13:11 [WARNING] machine              | 📳 Machine machine_8 VIBRATION SPIKE: 10.52 g
+2026-02-20 23:13:16 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 121.9°C
+2026-02-20 23:13:16 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 8.29 g
+2026-02-20 23:13:21 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 118.9°C
+2026-02-20 23:13:21 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 10.57 g
+2026-02-20 23:13:26 [WARNING] machine              | 📳 Machine machine_16 VIBRATION SPIKE: 11.69 g
+2026-02-20 23:13:26 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:13:26 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 121.9°C
+2026-02-20 23:13:31 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 110.5°C
+2026-02-20 23:13:41 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 120.4°C
+2026-02-20 23:13:46 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 117.4°C
+2026-02-20 23:13:46 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 10.88 g
+2026-02-20 23:13:51 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 8.06 g
+2026-02-20 23:13:51 [WARNING] machine              | 📡 Machine machine_5 going OFFLINE for 20 seconds
+2026-02-20 23:13:56 [WARNING] machine              | 📡 Machine machine_10 going OFFLINE for 20 seconds
+2026-02-20 23:14:01 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 119.2°C
+2026-02-20 23:14:06 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 11.88 g
+2026-02-20 23:14:06 [WARNING] machine              | 📳 Machine machine_8 VIBRATION SPIKE: 11.46 g
+2026-02-20 23:14:11 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 126.9°C
+2026-02-20 23:14:11 [WARNING] machine              | 📡 Machine machine_11 going OFFLINE for 20 seconds
+2026-02-20 23:14:16 [WARNING] machine              | 📳 Machine machine_18 VIBRATION SPIKE: 8.74 g
+2026-02-20 23:14:16 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 10.56 g
+2026-02-20 23:14:21 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 110.2°C
+2026-02-20 23:14:26 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 110.4°C
+2026-02-20 23:14:26 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 120.7°C
+2026-02-20 23:14:36 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 111.5°C
+2026-02-20 23:14:36 [WARNING] machine              | 📳 Machine machine_19 VIBRATION SPIKE: 9.20 g
+2026-02-20 23:14:36 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 127.5°C
+2026-02-20 23:14:41 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 138.1°C
+2026-02-20 23:14:41 [WARNING] machine              | 📡 Machine machine_2 going OFFLINE for 20 seconds
+2026-02-20 23:14:41 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 121.5°C
+2026-02-20 23:14:46 [WARNING] machine              | 📡 Machine machine_15 going OFFLINE for 20 seconds
+2026-02-20 23:14:46 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 120.5°C
+2026-02-20 23:14:51 [WARNING] machine              | 📡 Machine machine_20 going OFFLINE for 20 seconds
+2026-02-20 23:14:56 [WARNING] machine              | 📡 Machine machine_7 going OFFLINE for 20 seconds
+2026-02-20 23:15:01 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 129.6°C
+2026-02-20 23:15:01 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 119.5°C
+2026-02-20 23:15:01 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 122.1°C
+2026-02-20 23:15:06 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 10.82 g
+2026-02-20 23:15:16 [WARNING] machine              | 📡 Machine machine_1 going OFFLINE for 20 seconds
+2026-02-20 23:15:16 [WARNING] machine              | 📡 Machine machine_16 going OFFLINE for 20 seconds
+2026-02-20 23:15:21 [WARNING] machine              | 📡 Machine machine_17 going OFFLINE for 20 seconds
+2026-02-20 23:15:21 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 139.6°C
+2026-02-20 23:15:26 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 139.7°C
+2026-02-20 23:15:26 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:15:31 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:15:31 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 111.6°C
+2026-02-20 23:15:31 [WARNING] machine              | 📡 Machine machine_11 going OFFLINE for 20 seconds
+2026-02-20 23:15:41 [WARNING] machine              | 📳 Machine machine_5 VIBRATION SPIKE: 11.08 g
+2026-02-20 23:15:46 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 8.48 g
+2026-02-20 23:15:51 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 128.2°C
+2026-02-20 23:15:51 [WARNING] machine              | 📡 Machine machine_17 going OFFLINE for 20 seconds
+2026-02-20 23:15:51 [WARNING] machine              | 📳 Machine machine_10 VIBRATION SPIKE: 8.26 g
+2026-02-20 23:15:56 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 8.14 g
+2026-02-20 23:15:56 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 111.1°C
+2026-02-20 23:15:56 [WARNING] machine              | 📡 Machine machine_4 going OFFLINE for 20 seconds
+2026-02-20 23:15:56 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 113.0°C
+2026-02-20 23:16:01 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 131.5°C
+2026-02-20 23:16:06 [WARNING] machine              | 📳 Machine machine_18 VIBRATION SPIKE: 9.85 g
+2026-02-20 23:16:06 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 131.0°C
+2026-02-20 23:16:06 [WARNING] machine              | 📡 Machine machine_2 going OFFLINE for 20 seconds
+2026-02-20 23:16:16 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 10.65 g
+2026-02-20 23:16:16 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 126.3°C
+2026-02-20 23:16:16 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 125.0°C
+2026-02-20 23:16:16 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 128.7°C
+2026-02-20 23:16:21 [WARNING] machine              | 📳 Machine machine_7 VIBRATION SPIKE: 10.38 g
+2026-02-20 23:16:21 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 125.2°C
+2026-02-20 23:16:26 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 9.05 g
+2026-02-20 23:16:26 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 137.6°C
+2026-02-20 23:16:31 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 118.4°C
+2026-02-20 23:16:36 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 119.4°C
+2026-02-20 23:16:36 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 139.4°C
+2026-02-20 23:16:36 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 10.61 g
+2026-02-20 23:16:36 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 135.5°C
+2026-02-20 23:16:41 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 115.9°C
+2026-02-20 23:16:41 [WARNING] machine              | 📡 Machine machine_17 going OFFLINE for 20 seconds
+2026-02-20 23:16:41 [WARNING] machine              | 📳 Machine machine_10 VIBRATION SPIKE: 10.44 g
+2026-02-20 23:16:46 [WARNING] machine              | 📡 Machine machine_3 going OFFLINE for 20 seconds
+2026-02-20 23:16:51 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 10.16 g
+2026-02-20 23:16:51 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 131.7°C
+2026-02-20 23:16:56 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 8.75 g
+2026-02-20 23:16:56 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 11.09 g
+2026-02-20 23:17:01 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 110.5°C
+2026-02-20 23:17:01 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 131.1°C
+2026-02-20 23:17:01 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 119.5°C
+2026-02-20 23:17:06 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 116.0°C
+2026-02-20 23:17:06 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 112.1°C
+2026-02-20 23:17:11 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 111.1°C
+2026-02-20 23:17:16 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 131.2°C
+2026-02-20 23:17:16 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 11.45 g
+2026-02-20 23:17:16 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 137.0°C
+2026-02-20 23:17:16 [WARNING] machine              | 📡 Machine machine_13 going OFFLINE for 20 seconds
+2026-02-20 23:17:16 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 10.50 g
+2026-02-20 23:17:21 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 11.88 g
+2026-02-20 23:17:36 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 134.1°C
+2026-02-20 23:17:36 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 8.97 g
+2026-02-20 23:17:36 [WARNING] machine              | 📡 Machine machine_10 going OFFLINE for 20 seconds
+2026-02-20 23:17:41 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 111.0°C
+2026-02-20 23:17:46 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 112.1°C
+2026-02-20 23:17:46 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 128.3°C
+2026-02-20 23:17:51 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 136.3°C
+2026-02-20 23:17:56 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 11.53 g
+2026-02-20 23:17:56 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 10.07 g
+2026-02-20 23:18:01 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 116.2°C
+2026-02-20 23:18:01 [WARNING] machine              | 📡 Machine machine_16 going OFFLINE for 20 seconds
+2026-02-20 23:18:11 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 112.4°C
+2026-02-20 23:18:16 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 120.8°C
+2026-02-20 23:18:16 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 117.0°C
+2026-02-20 23:18:21 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 120.1°C
+2026-02-20 23:18:21 [WARNING] machine              | 📡 Machine machine_2 going OFFLINE for 20 seconds
+2026-02-20 23:18:21 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 137.0°C
+2026-02-20 23:18:21 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 116.0°C
+2026-02-20 23:18:26 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 138.3°C
+2026-02-20 23:18:26 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 133.3°C
+2026-02-20 23:18:36 [WARNING] machine              | 📳 Machine machine_18 VIBRATION SPIKE: 11.77 g
+2026-02-20 23:18:36 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 137.3°C
+2026-02-20 23:18:41 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 128.3°C
+2026-02-20 23:18:41 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:18:41 [WARNING] machine              | 📳 Machine machine_16 VIBRATION SPIKE: 10.49 g
+2026-02-20 23:18:51 [WARNING] machine              | 📡 Machine machine_18 going OFFLINE for 20 seconds
+2026-02-20 23:18:51 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 134.9°C
+2026-02-20 23:18:51 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 130.4°C
+2026-02-20 23:18:56 [WARNING] machine              | 📡 Machine machine_14 going OFFLINE for 20 seconds
+2026-02-20 23:18:56 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 121.8°C
+2026-02-20 23:18:56 [WARNING] machine              | 📡 Machine machine_17 going OFFLINE for 20 seconds
+2026-02-20 23:18:56 [WARNING] machine              | 📡 Machine machine_10 going OFFLINE for 20 seconds
+2026-02-20 23:19:01 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 127.9°C
+2026-02-20 23:19:06 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 113.3°C
+2026-02-20 23:19:06 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 130.2°C
+2026-02-20 23:19:16 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 131.5°C
+2026-02-20 23:19:21 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 131.4°C
+2026-02-20 23:19:21 [WARNING] machine              | 📡 Machine machine_19 going OFFLINE for 20 seconds
+2026-02-20 23:19:26 [WARNING] machine              | 📳 Machine machine_10 VIBRATION SPIKE: 11.16 g
+2026-02-20 23:19:31 [WARNING] machine              | 📳 Machine machine_8 VIBRATION SPIKE: 8.56 g
+2026-02-20 23:19:31 [WARNING] machine              | 📡 Machine machine_7 going OFFLINE for 20 seconds
+2026-02-20 23:19:31 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 115.6°C
+2026-02-20 23:19:31 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 8.04 g
+2026-02-20 23:19:36 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:19:41 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 135.7°C
+2026-02-20 23:19:46 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 117.8°C
+2026-02-20 23:19:46 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 10.69 g
+2026-02-20 23:19:51 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 119.8°C
+2026-02-20 23:19:51 [WARNING] machine              | 📳 Machine machine_14 VIBRATION SPIKE: 9.08 g
+2026-02-20 23:19:51 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 133.5°C
+2026-02-20 23:19:56 [WARNING] machine              | 📡 Machine machine_12 going OFFLINE for 20 seconds
+2026-02-20 23:19:56 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 120.8°C
+2026-02-20 23:19:56 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 123.8°C
+2026-02-20 23:20:01 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 118.0°C
+2026-02-20 23:20:01 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 115.4°C
+2026-02-20 23:20:06 [WARNING] machine              | 📳 Machine machine_5 VIBRATION SPIKE: 10.68 g
+2026-02-20 23:20:11 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 125.8°C
+2026-02-20 23:20:11 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 132.1°C
+2026-02-20 23:20:16 [WARNING] machine              | 📡 Machine machine_12 going OFFLINE for 20 seconds
+2026-02-20 23:20:16 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 112.8°C
+2026-02-20 23:20:16 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 121.0°C
+2026-02-20 23:20:21 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 10.95 g
+2026-02-20 23:20:21 [WARNING] machine              | 📡 Machine machine_19 going OFFLINE for 20 seconds
+2026-02-20 23:20:21 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 135.4°C
+2026-02-20 23:20:21 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:20:31 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 127.0°C
+2026-02-20 23:20:36 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 135.0°C
+2026-02-20 23:20:36 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 113.4°C
+2026-02-20 23:20:36 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 112.0°C
+2026-02-20 23:20:36 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 132.8°C
+2026-02-20 23:20:41 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 110.5°C
+2026-02-20 23:20:41 [WARNING] machine              | 📳 Machine machine_9 VIBRATION SPIKE: 8.19 g
+2026-02-20 23:20:41 [WARNING] machine              | 📡 Machine machine_13 going OFFLINE for 20 seconds
+2026-02-20 23:20:46 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 117.1°C
+2026-02-20 23:20:46 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 115.4°C
+2026-02-20 23:20:56 [WARNING] machine              | 📳 Machine machine_10 VIBRATION SPIKE: 9.76 g
+2026-02-20 23:21:06 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 138.5°C
+2026-02-20 23:21:06 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 128.3°C
+2026-02-20 23:21:11 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 135.9°C
+2026-02-20 23:21:16 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 11.37 g
+2026-02-20 23:21:21 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 116.0°C
+2026-02-20 23:21:21 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 115.5°C
+2026-02-20 23:21:21 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 11.14 g
+2026-02-20 23:21:26 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 112.6°C
+2026-02-20 23:21:31 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 112.5°C
+2026-02-20 23:21:31 [WARNING] machine              | 📳 Machine machine_19 VIBRATION SPIKE: 8.60 g
+2026-02-20 23:21:36 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:21:36 [WARNING] machine              | 📡 Machine machine_7 going OFFLINE for 20 seconds
+2026-02-20 23:21:36 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 114.4°C
+2026-02-20 23:21:51 [WARNING] machine              | 📡 Machine machine_12 going OFFLINE for 20 seconds
+2026-02-20 23:21:51 [WARNING] machine              | 📡 Machine machine_20 going OFFLINE for 20 seconds
+2026-02-20 23:21:51 [WARNING] machine              | 📳 Machine machine_16 VIBRATION SPIKE: 10.38 g
+2026-02-20 23:21:56 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 126.9°C
+2026-02-20 23:22:01 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 136.1°C
+2026-02-20 23:22:01 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 113.9°C
+2026-02-20 23:22:01 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 125.0°C
+2026-02-20 23:22:11 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:22:11 [WARNING] machine              | 📳 Machine machine_16 VIBRATION SPIKE: 9.66 g
+2026-02-20 23:22:16 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 119.7°C
+2026-02-20 23:22:26 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 116.1°C
+2026-02-20 23:22:26 [WARNING] machine              | 📳 Machine machine_9 VIBRATION SPIKE: 8.38 g
+2026-02-20 23:22:26 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 120.3°C
+2026-02-20 23:22:26 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 11.59 g
+2026-02-20 23:22:31 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 114.4°C
+2026-02-20 23:22:31 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 126.6°C
+2026-02-20 23:22:36 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 9.56 g
+2026-02-20 23:22:36 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 9.92 g
+2026-02-20 23:22:36 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 139.1°C
+2026-02-20 23:22:46 [WARNING] machine              | 📳 Machine machine_19 VIBRATION SPIKE: 10.22 g
+2026-02-20 23:22:46 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 10.63 g
+2026-02-20 23:22:46 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 122.7°C
+2026-02-20 23:22:51 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 119.9°C
+2026-02-20 23:22:51 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 138.1°C
+2026-02-20 23:23:01 [WARNING] machine              | 📳 Machine machine_9 VIBRATION SPIKE: 8.86 g
+2026-02-20 23:23:01 [WARNING] machine              | 📡 Machine machine_12 going OFFLINE for 20 seconds
+2026-02-20 23:23:01 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 137.8°C
+2026-02-20 23:23:06 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 8.88 g
+2026-02-20 23:23:06 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 125.4°C
+2026-02-20 23:23:11 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 8.36 g
+2026-02-20 23:23:16 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 131.9°C
+2026-02-20 23:23:21 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 9.43 g
+2026-02-20 23:23:21 [WARNING] machine              | 📳 Machine machine_7 VIBRATION SPIKE: 8.59 g
+2026-02-20 23:23:21 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 138.9°C
+2026-02-20 23:23:21 [WARNING] machine              | 📡 Machine machine_10 going OFFLINE for 20 seconds
+2026-02-20 23:23:26 [WARNING] machine              | 📳 Machine machine_18 VIBRATION SPIKE: 11.76 g
+2026-02-20 23:23:26 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 119.6°C
+2026-02-20 23:23:26 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 135.8°C
+2026-02-20 23:23:31 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 117.0°C
+2026-02-20 23:23:31 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 11.79 g
+2026-02-20 23:23:36 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 128.5°C
+2026-02-20 23:23:36 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 123.7°C
+2026-02-20 23:23:36 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 134.4°C
+2026-02-20 23:23:41 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 113.0°C
+2026-02-20 23:23:46 [WARNING] machine              | 📡 Machine machine_16 going OFFLINE for 20 seconds
+2026-02-20 23:23:51 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 128.6°C
+2026-02-20 23:23:51 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 120.0°C
+2026-02-20 23:23:51 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 138.4°C
+2026-02-20 23:23:51 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 120.1°C
+2026-02-20 23:23:56 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 11.55 g
+2026-02-20 23:24:01 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 9.82 g
+2026-02-20 23:24:06 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 134.5°C
+2026-02-20 23:24:11 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 132.8°C
+2026-02-20 23:24:11 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 11.09 g
+2026-02-20 23:24:16 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 127.4°C
+2026-02-20 23:24:21 [WARNING] machine              | 📡 Machine machine_19 going OFFLINE for 20 seconds
+2026-02-20 23:24:21 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 10.58 g
+2026-02-20 23:24:26 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 8.86 g
+2026-02-20 23:24:26 [WARNING] machine              | 📳 Machine machine_5 VIBRATION SPIKE: 9.10 g
+2026-02-20 23:24:26 [WARNING] machine              | 📡 Machine machine_4 going OFFLINE for 20 seconds
+2026-02-20 23:24:31 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 127.9°C
+2026-02-20 23:24:31 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 113.0°C
+2026-02-20 23:24:31 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 137.8°C
+2026-02-20 23:24:41 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 115.9°C
+2026-02-20 23:24:46 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 10.56 g
+2026-02-20 23:25:01 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:25:01 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 110.4°C
+2026-02-20 23:25:06 [WARNING] machine              | 📡 Machine machine_9 going OFFLINE for 20 seconds
+2026-02-20 23:25:06 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 119.0°C
+2026-02-20 23:25:06 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 127.4°C
+2026-02-20 23:25:06 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 9.31 g
+2026-02-20 23:25:06 [WARNING] machine              | 📡 Machine machine_4 going OFFLINE for 20 seconds
+2026-02-20 23:25:11 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 114.0°C
+2026-02-20 23:25:11 [WARNING] machine              | 📡 Machine machine_13 going OFFLINE for 20 seconds
+2026-02-20 23:25:11 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 122.6°C
+2026-02-20 23:25:11 [WARNING] machine              | 📡 Machine machine_19 going OFFLINE for 20 seconds
+2026-02-20 23:25:11 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:25:16 [WARNING] machine              | 📳 Machine machine_18 VIBRATION SPIKE: 11.66 g
+2026-02-20 23:25:21 [WARNING] machine              | 📳 Machine machine_18 VIBRATION SPIKE: 10.93 g
+2026-02-20 23:25:21 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 130.4°C
+2026-02-20 23:25:21 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 132.7°C
+2026-02-20 23:25:21 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 9.39 g
+2026-02-20 23:25:26 [WARNING] machine              | 📡 Machine machine_3 going OFFLINE for 20 seconds
+2026-02-20 23:25:26 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 137.5°C
+2026-02-20 23:25:26 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 118.4°C
+2026-02-20 23:25:26 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 131.7°C
+2026-02-20 23:25:31 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 137.9°C
+2026-02-20 23:25:31 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 9.26 g
+2026-02-20 23:25:36 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 114.0°C
+2026-02-20 23:25:36 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 121.5°C
+2026-02-20 23:25:41 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 125.4°C
+2026-02-20 23:25:41 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 9.05 g
+2026-02-20 23:25:46 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 136.1°C
+2026-02-20 23:25:46 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 8.65 g
+2026-02-20 23:25:46 [WARNING] machine              | 📡 Machine machine_20 going OFFLINE for 20 seconds
+2026-02-20 23:25:51 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 116.3°C
+2026-02-20 23:25:56 [WARNING] machine              | 📡 Machine machine_3 going OFFLINE for 20 seconds
+2026-02-20 23:25:56 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 119.4°C
+2026-02-20 23:25:56 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 11.64 g
+2026-02-20 23:25:56 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 135.4°C
+2026-02-20 23:26:01 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 126.9°C
+2026-02-20 23:26:01 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 9.08 g
+2026-02-20 23:26:01 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 117.0°C
+2026-02-20 23:26:01 [WARNING] machine              | 📳 Machine machine_10 VIBRATION SPIKE: 8.95 g
+2026-02-20 23:26:06 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 10.63 g
+2026-02-20 23:26:16 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 137.9°C
+2026-02-20 23:26:16 [WARNING] machine              | 📳 Machine machine_8 VIBRATION SPIKE: 9.50 g
+2026-02-20 23:26:16 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 135.1°C
+2026-02-20 23:26:21 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 115.2°C
+2026-02-20 23:26:26 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 118.9°C
+2026-02-20 23:26:36 [WARNING] machine              | 📡 Machine machine_16 going OFFLINE for 20 seconds
+2026-02-20 23:26:36 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 127.9°C
+2026-02-20 23:26:36 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 9.29 g
+2026-02-20 23:26:41 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 115.9°C
+2026-02-20 23:26:41 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 111.4°C
+2026-02-20 23:26:46 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 114.2°C
+2026-02-20 23:26:46 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 130.3°C
+2026-02-20 23:26:51 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 137.1°C
+2026-02-20 23:26:56 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 121.7°C
+2026-02-20 23:26:56 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 120.9°C
+2026-02-20 23:26:56 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 128.1°C
+2026-02-20 23:27:01 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 113.3°C
+2026-02-20 23:27:01 [WARNING] machine              | 📳 Machine machine_10 VIBRATION SPIKE: 10.69 g
+2026-02-20 23:27:06 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 10.71 g
+2026-02-20 23:27:16 [WARNING] machine              | 📡 Machine machine_3 going OFFLINE for 20 seconds
+2026-02-20 23:27:16 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 112.4°C
+2026-02-20 23:27:16 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 10.87 g
+2026-02-20 23:27:21 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 128.3°C
+2026-02-20 23:27:26 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:27:26 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 123.9°C
+2026-02-20 23:27:31 [WARNING] machine              | 📳 Machine machine_10 VIBRATION SPIKE: 11.92 g
+2026-02-20 23:27:36 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 114.1°C
+2026-02-20 23:27:36 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 138.6°C
+2026-02-20 23:27:46 [WARNING] machine              | 📡 Machine machine_3 going OFFLINE for 20 seconds
+2026-02-20 23:27:46 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 112.0°C
+2026-02-20 23:27:51 [WARNING] machine              | 📳 Machine machine_10 VIBRATION SPIKE: 8.56 g
+2026-02-20 23:27:51 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 9.50 g
+2026-02-20 23:28:01 [WARNING] machine              | 📳 Machine machine_9 VIBRATION SPIKE: 11.00 g
+2026-02-20 23:28:01 [WARNING] machine              | 📡 Machine machine_20 going OFFLINE for 20 seconds
+2026-02-20 23:28:01 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 131.5°C
+2026-02-20 23:28:01 [WARNING] machine              | 📳 Machine machine_16 VIBRATION SPIKE: 10.81 g
+2026-02-20 23:28:01 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 127.0°C
+2026-02-20 23:28:06 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 138.9°C
+2026-02-20 23:28:11 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 121.0°C
+2026-02-20 23:28:11 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 114.6°C
+2026-02-20 23:28:11 [WARNING] machine              | 📡 Machine machine_16 going OFFLINE for 20 seconds
+2026-02-20 23:28:21 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 131.8°C
+2026-02-20 23:28:21 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 112.7°C
+2026-02-20 23:28:26 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 122.7°C
+2026-02-20 23:28:26 [WARNING] machine              | 📡 Machine machine_3 going OFFLINE for 20 seconds
+2026-02-20 23:28:26 [WARNING] machine              | 📳 Machine machine_18 VIBRATION SPIKE: 10.42 g
+2026-02-20 23:28:26 [WARNING] machine              | 📡 Machine machine_1 going OFFLINE for 20 seconds
+2026-02-20 23:28:36 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 119.5°C
+2026-02-20 23:28:36 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 132.5°C
+2026-02-20 23:28:41 [WARNING] machine              | 📡 Machine machine_13 going OFFLINE for 20 seconds
+2026-02-20 23:28:41 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 123.1°C
+2026-02-20 23:28:46 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 133.6°C
+2026-02-20 23:28:46 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 126.1°C
+2026-02-20 23:28:51 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 110.0°C
+2026-02-20 23:28:56 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 122.7°C
+2026-02-20 23:28:56 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 11.30 g
+2026-02-20 23:29:01 [WARNING] machine              | 📡 Machine machine_3 going OFFLINE for 20 seconds
+2026-02-20 23:29:01 [WARNING] machine              | 📡 Machine machine_17 going OFFLINE for 20 seconds
+2026-02-20 23:29:06 [WARNING] machine              | 📡 Machine machine_12 going OFFLINE for 20 seconds
+2026-02-20 23:29:16 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 115.5°C
+2026-02-20 23:29:16 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 138.9°C
+2026-02-20 23:29:16 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 136.5°C
+2026-02-20 23:29:21 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 126.7°C
+2026-02-20 23:29:21 [WARNING] machine              | 📡 Machine machine_10 going OFFLINE for 20 seconds
+2026-02-20 23:29:26 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 110.5°C
+2026-02-20 23:29:26 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 11.01 g
+2026-02-20 23:29:31 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:29:31 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 8.01 g
+2026-02-20 23:29:31 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 124.1°C
+2026-02-20 23:29:36 [WARNING] machine              | 📳 Machine machine_8 VIBRATION SPIKE: 11.72 g
+2026-02-20 23:29:36 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 131.6°C
+2026-02-20 23:29:36 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 111.3°C
+2026-02-20 23:29:36 [WARNING] machine              | 📳 Machine machine_19 VIBRATION SPIKE: 9.35 g
+2026-02-20 23:29:36 [WARNING] machine              | 📡 Machine machine_2 going OFFLINE for 20 seconds
+2026-02-20 23:29:41 [WARNING] machine              | 📳 Machine machine_18 VIBRATION SPIKE: 9.37 g
+2026-02-20 23:29:41 [WARNING] machine              | 📡 Machine machine_13 going OFFLINE for 20 seconds
+2026-02-20 23:29:56 [WARNING] machine              | 📳 Machine machine_19 VIBRATION SPIKE: 10.26 g
+2026-02-20 23:30:06 [WARNING] machine              | 📡 Machine machine_19 going OFFLINE for 20 seconds
+2026-02-20 23:30:06 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 138.7°C
+2026-02-20 23:30:06 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 121.4°C
+2026-02-20 23:30:06 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 121.2°C
+2026-02-20 23:30:21 [WARNING] machine              | 📳 Machine machine_8 VIBRATION SPIKE: 9.06 g
+2026-02-20 23:30:21 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 112.8°C
+2026-02-20 23:30:21 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 112.3°C
+2026-02-20 23:30:36 [WARNING] machine              | 📡 Machine machine_5 going OFFLINE for 20 seconds
+2026-02-20 23:30:36 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 137.3°C
+2026-02-20 23:30:36 [WARNING] machine              | 📳 Machine machine_19 VIBRATION SPIKE: 11.49 g
+2026-02-20 23:30:46 [WARNING] machine              | 📡 Machine machine_14 going OFFLINE for 20 seconds
+2026-02-20 23:30:46 [WARNING] machine              | 📡 Machine machine_20 going OFFLINE for 20 seconds
+2026-02-20 23:30:46 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 125.4°C
+2026-02-20 23:30:51 [WARNING] machine              | 📡 Machine machine_17 going OFFLINE for 20 seconds
+2026-02-20 23:30:51 [WARNING] machine              | 📳 Machine machine_16 VIBRATION SPIKE: 9.76 g
+2026-02-20 23:30:56 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 133.4°C
+2026-02-20 23:31:01 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:31:01 [WARNING] machine              | 📡 Machine machine_18 going OFFLINE for 20 seconds
+2026-02-20 23:31:01 [WARNING] machine              | 📳 Machine machine_19 VIBRATION SPIKE: 10.76 g
+2026-02-20 23:31:06 [WARNING] machine              | 📡 Machine machine_19 going OFFLINE for 20 seconds
+2026-02-20 23:31:06 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 10.62 g
+2026-02-20 23:31:11 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 11.04 g
+2026-02-20 23:31:11 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 136.3°C
+2026-02-20 23:31:11 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 121.1°C
+2026-02-20 23:31:16 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 135.2°C
+2026-02-20 23:31:16 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 131.1°C
+2026-02-20 23:31:21 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 125.6°C
+2026-02-20 23:31:26 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 117.4°C
+2026-02-20 23:31:26 [WARNING] machine              | 📡 Machine machine_13 going OFFLINE for 20 seconds
+2026-02-20 23:31:31 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 125.0°C
+2026-02-20 23:31:41 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 124.9°C
+2026-02-20 23:31:41 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 8.04 g
+2026-02-20 23:31:46 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 139.0°C
+2026-02-20 23:31:51 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 113.6°C
+2026-02-20 23:31:51 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 123.1°C
+2026-02-20 23:31:51 [WARNING] machine              | 📡 Machine machine_1 going OFFLINE for 20 seconds
+2026-02-20 23:31:56 [WARNING] machine              | 📡 Machine machine_16 going OFFLINE for 20 seconds
+2026-02-20 23:32:01 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 9.61 g
+2026-02-20 23:32:06 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 130.5°C
+2026-02-20 23:32:06 [WARNING] machine              | 📡 Machine machine_10 going OFFLINE for 20 seconds
+2026-02-20 23:32:06 [WARNING] machine              | 📡 Machine machine_17 going OFFLINE for 20 seconds
+2026-02-20 23:32:11 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 121.3°C
+2026-02-20 23:32:11 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 113.8°C
+2026-02-20 23:32:11 [WARNING] machine              | 📡 Machine machine_5 going OFFLINE for 20 seconds
+2026-02-20 23:32:11 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 9.39 g
+2026-02-20 23:32:16 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 124.3°C
+2026-02-20 23:32:26 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 9.85 g
+2026-02-20 23:32:31 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 124.2°C
+2026-02-20 23:32:31 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 125.3°C
+2026-02-20 23:32:31 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 118.9°C
+2026-02-20 23:32:31 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 8.02 g
+2026-02-20 23:32:36 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 116.4°C
+2026-02-20 23:32:36 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 10.79 g
+2026-02-20 23:32:41 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 11.13 g
+2026-02-20 23:32:41 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 124.1°C
+2026-02-20 23:32:46 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 11.02 g
+2026-02-20 23:32:51 [WARNING] machine              | 📡 Machine machine_5 going OFFLINE for 20 seconds
+2026-02-20 23:32:51 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 8.57 g
+2026-02-20 23:32:56 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 117.4°C
+2026-02-20 23:32:56 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 139.3°C
+2026-02-20 23:33:01 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 114.2°C
+2026-02-20 23:33:01 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 130.0°C
+2026-02-20 23:33:01 [WARNING] machine              | 📡 Machine machine_1 going OFFLINE for 20 seconds
+2026-02-20 23:33:06 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 131.0°C
+2026-02-20 23:33:11 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 121.6°C
+2026-02-20 23:33:11 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 134.5°C
+2026-02-20 23:33:11 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 117.5°C
+2026-02-20 23:33:16 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 122.0°C
+2026-02-20 23:33:21 [WARNING] machine              | 📳 Machine machine_7 VIBRATION SPIKE: 10.50 g
+2026-02-20 23:33:26 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 10.19 g
+2026-02-20 23:33:31 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 10.38 g
+2026-02-20 23:33:31 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 122.4°C
+2026-02-20 23:33:36 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 10.46 g
+2026-02-20 23:33:36 [WARNING] machine              | 📳 Machine machine_9 VIBRATION SPIKE: 10.61 g
+2026-02-20 23:33:36 [WARNING] machine              | 📡 Machine machine_19 going OFFLINE for 20 seconds
+2026-02-20 23:33:41 [WARNING] machine              | 📡 Machine machine_9 going OFFLINE for 20 seconds
+2026-02-20 23:33:41 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 10.65 g
+2026-02-20 23:33:41 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 10.13 g
+2026-02-20 23:33:41 [WARNING] machine              | 📡 Machine machine_14 going OFFLINE for 20 seconds
+2026-02-20 23:33:51 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 8.97 g
+2026-02-20 23:33:51 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 10.94 g
+2026-02-20 23:33:51 [WARNING] machine              | 📡 Machine machine_11 going OFFLINE for 20 seconds
+2026-02-20 23:33:56 [WARNING] machine              | 📡 Machine machine_10 going OFFLINE for 20 seconds
+2026-02-20 23:33:56 [WARNING] machine              | 📳 Machine machine_5 VIBRATION SPIKE: 10.52 g
+2026-02-20 23:34:01 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 9.77 g
+2026-02-20 23:34:01 [WARNING] machine              | 📡 Machine machine_2 going OFFLINE for 20 seconds
+2026-02-20 23:34:01 [WARNING] machine              | 📡 Machine machine_14 going OFFLINE for 20 seconds
+2026-02-20 23:34:06 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 11.61 g
+2026-02-20 23:34:11 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 9.13 g
+2026-02-20 23:34:21 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 139.4°C
+2026-02-20 23:34:21 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 8.09 g
+2026-02-20 23:34:21 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 111.7°C
+2026-02-20 23:34:26 [WARNING] machine              | 📳 Machine machine_16 VIBRATION SPIKE: 11.15 g
+2026-02-20 23:34:31 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 10.44 g
+2026-02-20 23:34:31 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:34:31 [WARNING] machine              | 📡 Machine machine_4 going OFFLINE for 20 seconds
+2026-02-20 23:34:31 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 11.14 g
+2026-02-20 23:34:36 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 121.8°C
+2026-02-20 23:34:51 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 137.0°C
+2026-02-20 23:34:51 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 115.9°C
+2026-02-20 23:34:51 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 11.04 g
+2026-02-20 23:34:51 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 123.0°C
+2026-02-20 23:34:56 [WARNING] machine              | 📡 Machine machine_12 going OFFLINE for 20 seconds
+2026-02-20 23:34:56 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 110.7°C
+2026-02-20 23:34:56 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 9.98 g
+2026-02-20 23:35:01 [WARNING] machine              | 📡 Machine machine_1 going OFFLINE for 20 seconds
+2026-02-20 23:35:06 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 132.4°C
+2026-02-20 23:35:06 [WARNING] machine              | 📳 Machine machine_14 VIBRATION SPIKE: 10.10 g
+2026-02-20 23:35:16 [WARNING] machine              | 📳 Machine machine_7 VIBRATION SPIKE: 9.89 g
+2026-02-20 23:35:16 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 9.45 g
+2026-02-20 23:35:21 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 112.9°C
+2026-02-20 23:35:21 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 124.2°C
+2026-02-20 23:35:26 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 124.7°C
+2026-02-20 23:35:26 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 9.47 g
+2026-02-20 23:35:31 [WARNING] machine              | 📡 Machine machine_4 going OFFLINE for 20 seconds
+2026-02-20 23:35:41 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 136.7°C
+2026-02-20 23:35:41 [WARNING] machine              | 📳 Machine machine_5 VIBRATION SPIKE: 10.68 g
+2026-02-20 23:35:41 [WARNING] machine              | 📡 Machine machine_5 going OFFLINE for 20 seconds
+2026-02-20 23:35:41 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 124.6°C
+2026-02-20 23:35:41 [WARNING] machine              | 📡 Machine machine_2 going OFFLINE for 20 seconds
+2026-02-20 23:35:41 [WARNING] machine              | 📡 Machine machine_14 going OFFLINE for 20 seconds
+2026-02-20 23:35:46 [WARNING] machine              | 📡 Machine machine_15 going OFFLINE for 20 seconds
+2026-02-20 23:35:46 [WARNING] machine              | 📡 Machine machine_11 going OFFLINE for 20 seconds
+2026-02-20 23:35:46 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 128.3°C
+2026-02-20 23:35:46 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 132.0°C
+2026-02-20 23:35:51 [WARNING] machine              | 📡 Machine machine_10 going OFFLINE for 20 seconds
+2026-02-20 23:35:51 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 9.50 g
+2026-02-20 23:35:56 [WARNING] machine              | 📳 Machine machine_8 VIBRATION SPIKE: 8.35 g
+2026-02-20 23:35:56 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 128.6°C
+2026-02-20 23:35:56 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 11.92 g
+2026-02-20 23:35:56 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 125.3°C
+2026-02-20 23:36:01 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 111.6°C
+2026-02-20 23:36:01 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 128.8°C
+2026-02-20 23:36:06 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 9.44 g
+2026-02-20 23:36:11 [WARNING] machine              | 📡 Machine machine_4 going OFFLINE for 20 seconds
+2026-02-20 23:36:11 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 8.40 g
+2026-02-20 23:36:16 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:36:16 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 11.96 g
+2026-02-20 23:36:21 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 129.2°C
+2026-02-20 23:36:26 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 124.7°C
+2026-02-20 23:36:26 [WARNING] machine              | 📳 Machine machine_7 VIBRATION SPIKE: 9.10 g
+2026-02-20 23:36:26 [WARNING] machine              | 📡 Machine machine_10 going OFFLINE for 20 seconds
+2026-02-20 23:36:31 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 123.2°C
+2026-02-20 23:36:46 [WARNING] machine              | 📳 Machine machine_5 VIBRATION SPIKE: 10.31 g
+2026-02-20 23:36:56 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 137.8°C
+2026-02-20 23:36:56 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 9.20 g
+2026-02-20 23:36:56 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 9.61 g
+2026-02-20 23:36:56 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 137.2°C
+2026-02-20 23:37:01 [WARNING] machine              | 📳 Machine machine_5 VIBRATION SPIKE: 8.73 g
+2026-02-20 23:37:06 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 133.6°C
+2026-02-20 23:37:06 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 135.7°C
+2026-02-20 23:37:06 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 113.7°C
+2026-02-20 23:37:11 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 9.81 g
+2026-02-20 23:37:16 [WARNING] machine              | 📡 Machine machine_17 going OFFLINE for 20 seconds
+2026-02-20 23:37:16 [WARNING] machine              | 📳 Machine machine_9 VIBRATION SPIKE: 11.39 g
+2026-02-20 23:37:21 [WARNING] machine              | 📳 Machine machine_14 VIBRATION SPIKE: 11.30 g
+2026-02-20 23:37:26 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 116.0°C
+2026-02-20 23:37:26 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 117.0°C
+2026-02-20 23:37:31 [WARNING] machine              | 📳 Machine machine_7 VIBRATION SPIKE: 11.64 g
+2026-02-20 23:37:31 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 10.26 g
+2026-02-20 23:37:31 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 115.4°C
+2026-02-20 23:37:36 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 113.2°C
+2026-02-20 23:37:41 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 9.39 g
+2026-02-20 23:37:46 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 137.1°C
+2026-02-20 23:37:46 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 125.8°C
+2026-02-20 23:37:51 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 111.8°C
+2026-02-20 23:37:51 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 137.1°C
+2026-02-20 23:37:56 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 123.5°C
+2026-02-20 23:37:56 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 11.95 g
+2026-02-20 23:38:01 [WARNING] machine              | 📳 Machine machine_16 VIBRATION SPIKE: 8.38 g
+2026-02-20 23:38:01 [WARNING] machine              | 📡 Machine machine_16 going OFFLINE for 20 seconds
+2026-02-20 23:38:01 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 138.7°C
+2026-02-20 23:38:01 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 8.49 g
+2026-02-20 23:38:01 [WARNING] machine              | 📳 Machine machine_14 VIBRATION SPIKE: 10.60 g
+2026-02-20 23:38:01 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 122.8°C
+2026-02-20 23:38:16 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 9.46 g
+2026-02-20 23:38:16 [WARNING] machine              | 📡 Machine machine_12 going OFFLINE for 20 seconds
+2026-02-20 23:38:16 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 125.5°C
+2026-02-20 23:38:21 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 9.08 g
+2026-02-20 23:38:26 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:38:26 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 116.4°C
+2026-02-20 23:38:31 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 133.8°C
+2026-02-20 23:38:36 [WARNING] machine              | 📡 Machine machine_18 going OFFLINE for 20 seconds
+2026-02-20 23:38:36 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 119.6°C
+2026-02-20 23:38:36 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 127.1°C
+2026-02-20 23:38:36 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 136.6°C
+2026-02-20 23:38:36 [WARNING] machine              | 📳 Machine machine_14 VIBRATION SPIKE: 8.84 g
+2026-02-20 23:38:36 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 139.3°C
+2026-02-20 23:38:46 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:38:46 [WARNING] machine              | 📳 Machine machine_7 VIBRATION SPIKE: 8.90 g
+2026-02-20 23:38:46 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 125.9°C
+2026-02-20 23:38:51 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 117.4°C
+2026-02-20 23:39:01 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 113.6°C
+2026-02-20 23:39:01 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:39:01 [WARNING] machine              | 📡 Machine machine_14 going OFFLINE for 20 seconds
+2026-02-20 23:39:11 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 127.5°C
+2026-02-20 23:39:16 [WARNING] machine              | 📡 Machine machine_7 going OFFLINE for 20 seconds
+2026-02-20 23:39:16 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 130.2°C
+2026-02-20 23:39:16 [WARNING] machine              | 📡 Machine machine_2 going OFFLINE for 20 seconds
+2026-02-20 23:39:21 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 136.5°C
+2026-02-20 23:39:31 [WARNING] machine              | 📡 Machine machine_4 going OFFLINE for 20 seconds
+2026-02-20 23:39:31 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 8.69 g
+2026-02-20 23:39:31 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 137.5°C
+2026-02-20 23:39:36 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 135.9°C
+2026-02-20 23:39:51 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 129.2°C
+2026-02-20 23:39:51 [WARNING] machine              | 📡 Machine machine_17 going OFFLINE for 20 seconds
+2026-02-20 23:39:56 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 137.3°C
+2026-02-20 23:39:56 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 112.5°C
+2026-02-20 23:39:56 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 133.2°C
+2026-02-20 23:40:01 [WARNING] machine              | 📡 Machine machine_1 going OFFLINE for 20 seconds
+2026-02-20 23:40:01 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 127.2°C
+2026-02-20 23:40:01 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 113.3°C
+2026-02-20 23:40:01 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 10.50 g
+2026-02-20 23:40:01 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:40:06 [WARNING] machine              | 📳 Machine machine_7 VIBRATION SPIKE: 9.25 g
+2026-02-20 23:40:06 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 113.1°C
+2026-02-20 23:40:21 [WARNING] machine              | 📳 Machine machine_7 VIBRATION SPIKE: 8.13 g
+2026-02-20 23:40:21 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 11.24 g
+2026-02-20 23:40:21 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 9.52 g
+2026-02-20 23:40:26 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 110.0°C
+2026-02-20 23:40:26 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 139.7°C
+2026-02-20 23:40:26 [WARNING] machine              | 📡 Machine machine_14 going OFFLINE for 20 seconds
+2026-02-20 23:40:31 [WARNING] machine              | 📳 Machine machine_16 VIBRATION SPIKE: 9.41 g
+2026-02-20 23:40:31 [WARNING] machine              | 📡 Machine machine_2 going OFFLINE for 20 seconds
+2026-02-20 23:40:36 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 137.3°C
+2026-02-20 23:40:41 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 9.78 g
+2026-02-20 23:40:41 [WARNING] machine              | 📡 Machine machine_1 going OFFLINE for 20 seconds
+2026-02-20 23:40:41 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 11.09 g
+2026-02-20 23:40:41 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 9.60 g
+2026-02-20 23:40:46 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 8.81 g
+2026-02-20 23:40:51 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 11.68 g
+2026-02-20 23:40:51 [WARNING] machine              | 📡 Machine machine_14 going OFFLINE for 20 seconds
+2026-02-20 23:40:56 [WARNING] machine              | 📡 Machine machine_7 going OFFLINE for 20 seconds
+2026-02-20 23:40:56 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 121.9°C
+2026-02-20 23:40:56 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 10.37 g
+2026-02-20 23:41:01 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 135.8°C
+2026-02-20 23:41:01 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 136.6°C
+2026-02-20 23:41:06 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 9.08 g
+2026-02-20 23:41:11 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 9.69 g
+2026-02-20 23:41:16 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 9.78 g
+2026-02-20 23:41:21 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 119.8°C
+2026-02-20 23:41:21 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 10.21 g
+2026-02-20 23:41:21 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 9.67 g
+2026-02-20 23:41:21 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 114.9°C
+2026-02-20 23:41:26 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 130.1°C
+2026-02-20 23:41:26 [WARNING] machine              | 📡 Machine machine_7 going OFFLINE for 20 seconds
+2026-02-20 23:41:26 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 8.64 g
+2026-02-20 23:41:31 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 120.1°C
+2026-02-20 23:41:31 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 8.69 g
+2026-02-20 23:41:31 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 8.13 g
+2026-02-20 23:41:36 [WARNING] machine              | 📡 Machine machine_17 going OFFLINE for 20 seconds
+2026-02-20 23:41:51 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 137.0°C
+2026-02-20 23:41:51 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 9.20 g
+2026-02-20 23:41:51 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 111.3°C
+2026-02-20 23:41:51 [WARNING] machine              | 📳 Machine machine_19 VIBRATION SPIKE: 9.49 g
+2026-02-20 23:41:51 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 135.0°C
+2026-02-20 23:41:56 [WARNING] machine              | 📡 Machine machine_7 going OFFLINE for 20 seconds
+2026-02-20 23:41:56 [WARNING] machine              | 📡 Machine machine_12 going OFFLINE for 20 seconds
+2026-02-20 23:42:06 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 125.5°C
+2026-02-20 23:42:06 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 117.3°C
+2026-02-20 23:42:06 [WARNING] machine              | 📳 Machine machine_5 VIBRATION SPIKE: 11.84 g
+2026-02-20 23:42:11 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 111.2°C
+2026-02-20 23:42:16 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 133.0°C
+2026-02-20 23:42:16 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 136.3°C
+2026-02-20 23:42:21 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:42:21 [WARNING] machine              | 📡 Machine machine_3 going OFFLINE for 20 seconds
+2026-02-20 23:42:21 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 120.1°C
+2026-02-20 23:42:31 [WARNING] machine              | 📡 Machine machine_13 going OFFLINE for 20 seconds
+2026-02-20 23:42:36 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 9.29 g
+2026-02-20 23:42:41 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:42:41 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 10.29 g
+2026-02-20 23:42:46 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 139.7°C
+2026-02-20 23:42:51 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 122.2°C
+2026-02-20 23:42:51 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 137.7°C
+2026-02-20 23:42:56 [WARNING] machine              | 📳 Machine machine_18 VIBRATION SPIKE: 9.59 g
+2026-02-20 23:42:56 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 130.0°C
+2026-02-20 23:43:06 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 134.2°C
+2026-02-20 23:43:11 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 118.2°C
+2026-02-20 23:43:11 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 9.44 g
+2026-02-20 23:43:16 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 139.0°C
+2026-02-20 23:43:16 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 118.0°C
+2026-02-20 23:43:16 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 126.5°C
+2026-02-20 23:43:21 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 112.6°C
+2026-02-20 23:43:31 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 117.7°C
+2026-02-20 23:43:31 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 115.1°C
+2026-02-20 23:43:36 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 139.1°C
+2026-02-20 23:43:36 [WARNING] machine              | 📳 Machine machine_7 VIBRATION SPIKE: 10.43 g
+2026-02-20 23:43:36 [WARNING] machine              | 📡 Machine machine_7 going OFFLINE for 20 seconds
+2026-02-20 23:43:46 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 10.73 g
+2026-02-20 23:43:51 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 9.79 g
+2026-02-20 23:43:56 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 111.5°C
+2026-02-20 23:44:01 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 117.1°C
+2026-02-20 23:44:01 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 127.3°C
+2026-02-20 23:44:06 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 8.85 g
+2026-02-20 23:44:06 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 10.72 g
+2026-02-20 23:44:11 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 118.4°C
+2026-02-20 23:44:11 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 119.9°C
+2026-02-20 23:44:16 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 125.0°C
+2026-02-20 23:44:16 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 112.1°C
+2026-02-20 23:44:16 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 117.5°C
+2026-02-20 23:44:16 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 10.80 g
+2026-02-20 23:44:21 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 126.4°C
+2026-02-20 23:44:21 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 116.8°C
+2026-02-20 23:44:21 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 9.64 g
+2026-02-20 23:44:26 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 133.4°C
+2026-02-20 23:44:26 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 131.1°C
+2026-02-20 23:44:26 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 132.8°C
+2026-02-20 23:44:31 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 9.98 g
+2026-02-20 23:44:31 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 135.4°C
+2026-02-20 23:44:31 [WARNING] machine              | 📡 Machine machine_1 going OFFLINE for 20 seconds
+2026-02-20 23:44:36 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 114.9°C
+2026-02-20 23:44:36 [WARNING] machine              | 📡 Machine machine_12 going OFFLINE for 20 seconds
+2026-02-20 23:44:41 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 10.82 g
+2026-02-20 23:44:41 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 120.6°C
+2026-02-20 23:44:41 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 116.9°C
+2026-02-20 23:44:41 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 115.2°C
+2026-02-20 23:44:51 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 139.4°C
+2026-02-20 23:45:01 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 9.06 g
+2026-02-20 23:45:06 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 126.0°C
+2026-02-20 23:45:11 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 120.6°C
+2026-02-20 23:45:16 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 10.57 g
+2026-02-20 23:45:16 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 111.4°C
+2026-02-20 23:45:16 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 117.9°C
+2026-02-20 23:45:16 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 9.36 g
+2026-02-20 23:45:21 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 129.0°C
+2026-02-20 23:45:26 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 120.6°C
+2026-02-20 23:45:26 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 135.8°C
+2026-02-20 23:45:31 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 112.7°C
+2026-02-20 23:45:31 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 132.6°C
+2026-02-20 23:45:31 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 127.4°C
+2026-02-20 23:45:31 [WARNING] machine              | 📳 Machine machine_9 VIBRATION SPIKE: 9.47 g
+2026-02-20 23:45:36 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 117.9°C
+2026-02-20 23:45:36 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 9.31 g
+2026-02-20 23:45:41 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 11.44 g
+2026-02-20 23:45:46 [WARNING] machine              | 📳 Machine machine_18 VIBRATION SPIKE: 8.14 g
+2026-02-20 23:45:46 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 136.6°C
+2026-02-20 23:45:46 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:45:46 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 123.2°C
+2026-02-20 23:45:46 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 11.96 g
+2026-02-20 23:45:56 [WARNING] machine              | 📳 Machine machine_18 VIBRATION SPIKE: 11.70 g
+2026-02-20 23:45:56 [WARNING] machine              | 📳 Machine machine_16 VIBRATION SPIKE: 11.38 g
+2026-02-20 23:45:56 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 11.87 g
+2026-02-20 23:45:56 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 129.2°C
+2026-02-20 23:46:06 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 133.0°C
+2026-02-20 23:46:06 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 120.8°C
+2026-02-20 23:46:16 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 127.1°C
+2026-02-20 23:46:16 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 123.6°C
+2026-02-20 23:46:16 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 11.75 g
+2026-02-20 23:46:16 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 10.85 g
+2026-02-20 23:46:21 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 110.5°C
+2026-02-20 23:46:21 [WARNING] machine              | 📳 Machine machine_14 VIBRATION SPIKE: 9.90 g
+2026-02-20 23:46:21 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:46:26 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 130.4°C
+2026-02-20 23:46:26 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 121.6°C
+2026-02-20 23:46:26 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 120.8°C
+2026-02-20 23:46:31 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 137.4°C
+2026-02-20 23:46:36 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 113.1°C
+2026-02-20 23:46:36 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 124.4°C
+2026-02-20 23:46:41 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 10.98 g
+2026-02-20 23:46:46 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 129.8°C
+2026-02-20 23:46:46 [WARNING] machine              | 📳 Machine machine_18 VIBRATION SPIKE: 10.93 g
+2026-02-20 23:46:51 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 127.1°C
+2026-02-20 23:46:51 [WARNING] machine              | 🔥 Machine machine_20 OVERHEATING: 126.7°C
+2026-02-20 23:46:51 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 137.4°C
+2026-02-20 23:46:56 [WARNING] machine              | 📳 Machine machine_9 VIBRATION SPIKE: 10.60 g
+2026-02-20 23:47:01 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 130.6°C
+2026-02-20 23:47:01 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 116.6°C
+2026-02-20 23:47:06 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 130.6°C
+2026-02-20 23:47:06 [WARNING] machine              | 📡 Machine machine_13 going OFFLINE for 20 seconds
+2026-02-20 23:47:11 [WARNING] machine              | 📡 Machine machine_1 going OFFLINE for 20 seconds
+2026-02-20 23:47:11 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 10.72 g
+2026-02-20 23:47:11 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 123.9°C
+2026-02-20 23:47:21 [WARNING] machine              | 📳 Machine machine_5 VIBRATION SPIKE: 11.43 g
+2026-02-20 23:47:21 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 118.8°C
+2026-02-20 23:47:26 [WARNING] machine              | 📳 Machine machine_8 VIBRATION SPIKE: 11.88 g
+2026-02-20 23:47:26 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 10.16 g
+2026-02-20 23:47:31 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 11.60 g
+2026-02-20 23:47:31 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:47:36 [WARNING] machine              | 🔥 Machine machine_8 OVERHEATING: 129.1°C
+2026-02-20 23:47:41 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 128.3°C
+2026-02-20 23:47:41 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 137.2°C
+2026-02-20 23:47:41 [WARNING] machine              | 📳 Machine machine_5 VIBRATION SPIKE: 9.19 g
+2026-02-20 23:47:41 [WARNING] machine              | 📡 Machine machine_12 going OFFLINE for 20 seconds
+2026-02-20 23:47:46 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 10.79 g
+2026-02-20 23:47:46 [WARNING] machine              | 📡 Machine machine_20 going OFFLINE for 20 seconds
+2026-02-20 23:47:46 [WARNING] machine              | 📳 Machine machine_19 VIBRATION SPIKE: 9.36 g
+2026-02-20 23:47:51 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 132.1°C
+2026-02-20 23:48:01 [WARNING] machine              | 📡 Machine machine_16 going OFFLINE for 20 seconds
+2026-02-20 23:48:06 [WARNING] machine              | 📳 Machine machine_10 VIBRATION SPIKE: 8.47 g
+2026-02-20 23:48:06 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 136.8°C
+2026-02-20 23:48:11 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:48:11 [WARNING] machine              | 📳 Machine machine_10 VIBRATION SPIKE: 11.46 g
+2026-02-20 23:48:11 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 10.90 g
+2026-02-20 23:48:11 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 136.7°C
+2026-02-20 23:48:16 [WARNING] machine              | 🔥 Machine machine_4 OVERHEATING: 139.7°C
+2026-02-20 23:48:16 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 131.6°C
+2026-02-20 23:48:16 [WARNING] machine              | 📡 Machine machine_12 going OFFLINE for 20 seconds
+2026-02-20 23:48:21 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 9.76 g
+2026-02-20 23:48:26 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 116.4°C
+2026-02-20 23:48:26 [WARNING] machine              | 📳 Machine machine_19 VIBRATION SPIKE: 10.73 g
+2026-02-20 23:48:26 [WARNING] machine              | 📳 Machine machine_5 VIBRATION SPIKE: 11.82 g
+2026-02-20 23:48:31 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 118.5°C
+2026-02-20 23:48:31 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 11.97 g
+2026-02-20 23:48:31 [WARNING] machine              | 📳 Machine machine_3 VIBRATION SPIKE: 11.50 g
+2026-02-20 23:48:36 [WARNING] machine              | 📳 Machine machine_7 VIBRATION SPIKE: 11.28 g
+2026-02-20 23:48:36 [WARNING] machine              | 📳 Machine machine_20 VIBRATION SPIKE: 10.75 g
+2026-02-20 23:48:36 [WARNING] machine              | 📳 Machine machine_1 VIBRATION SPIKE: 8.20 g
+2026-02-20 23:48:41 [WARNING] machine              | 📡 Machine machine_13 going OFFLINE for 20 seconds
+2026-02-20 23:48:41 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 117.4°C
+2026-02-20 23:48:46 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 122.9°C
+2026-02-20 23:48:46 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 10.78 g
+2026-02-20 23:48:46 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 126.7°C
+2026-02-20 23:48:51 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 131.7°C
+2026-02-20 23:48:51 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 136.5°C
+2026-02-20 23:48:51 [WARNING] machine              | 📳 Machine machine_10 VIBRATION SPIKE: 8.41 g
+2026-02-20 23:48:51 [WARNING] machine              | 📡 Machine machine_9 going OFFLINE for 20 seconds
+2026-02-20 23:48:56 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 10.97 g
+2026-02-20 23:49:01 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 118.0°C
+2026-02-20 23:49:01 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 138.8°C
+2026-02-20 23:49:06 [WARNING] machine              | 🔥 Machine machine_3 OVERHEATING: 132.2°C
+2026-02-20 23:49:06 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 8.47 g
+2026-02-20 23:49:06 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 117.6°C
+2026-02-20 23:49:11 [WARNING] machine              | 🔥 Machine machine_17 OVERHEATING: 130.9°C
+2026-02-20 23:49:11 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 8.32 g
+2026-02-20 23:49:16 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 10.58 g
+2026-02-20 23:49:16 [WARNING] machine              | 📡 Machine machine_7 going OFFLINE for 20 seconds
+2026-02-20 23:49:16 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 112.9°C
+2026-02-20 23:49:16 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 110.7°C
+2026-02-20 23:49:21 [WARNING] machine              | 📡 Machine machine_11 going OFFLINE for 20 seconds
+2026-02-20 23:49:21 [WARNING] machine              | 📳 Machine machine_17 VIBRATION SPIKE: 11.40 g
+2026-02-20 23:49:21 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 10.35 g
+2026-02-20 23:49:26 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 118.5°C
+2026-02-20 23:49:26 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 112.6°C
+2026-02-20 23:49:26 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:49:31 [WARNING] machine              | 📡 Machine machine_1 going OFFLINE for 20 seconds
+2026-02-20 23:49:36 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 8.47 g
+2026-02-20 23:49:36 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 123.3°C
+2026-02-20 23:49:36 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 117.7°C
+2026-02-20 23:49:36 [WARNING] machine              | 📡 Machine machine_9 going OFFLINE for 20 seconds
+2026-02-20 23:49:41 [WARNING] machine              | 📡 Machine machine_7 going OFFLINE for 20 seconds
+2026-02-20 23:49:46 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 111.7°C
+2026-02-20 23:49:46 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 129.0°C
+2026-02-20 23:49:51 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 118.4°C
+2026-02-20 23:49:51 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 121.8°C
+2026-02-20 23:49:56 [WARNING] machine              | 🔥 Machine machine_11 OVERHEATING: 120.4°C
+2026-02-20 23:49:56 [WARNING] machine              | 📳 Machine machine_19 VIBRATION SPIKE: 8.07 g
+2026-02-20 23:49:56 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 10.42 g
+2026-02-20 23:50:01 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 127.2°C
+2026-02-20 23:50:01 [WARNING] machine              | 📳 Machine machine_19 VIBRATION SPIKE: 8.22 g
+2026-02-20 23:50:06 [WARNING] machine              | 🔥 Machine machine_18 OVERHEATING: 118.1°C
+2026-02-20 23:50:11 [WARNING] machine              | 📡 Machine machine_8 going OFFLINE for 20 seconds
+2026-02-20 23:50:16 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 114.6°C
+2026-02-20 23:50:16 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 9.41 g
+2026-02-20 23:50:16 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 11.18 g
+2026-02-20 23:50:16 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 139.1°C
+2026-02-20 23:50:26 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 110.3°C
+2026-02-20 23:50:26 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 133.7°C
+2026-02-20 23:50:26 [WARNING] machine              | 📡 Machine machine_14 going OFFLINE for 20 seconds
+2026-02-20 23:50:31 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 111.2°C
+2026-02-20 23:50:31 [WARNING] machine              | 📳 Machine machine_8 VIBRATION SPIKE: 8.46 g
+2026-02-20 23:50:31 [WARNING] machine              | 📳 Machine machine_12 VIBRATION SPIKE: 10.08 g
+2026-02-20 23:50:36 [WARNING] machine              | 📳 Machine machine_11 VIBRATION SPIKE: 11.85 g
+2026-02-20 23:50:36 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 111.6°C
+2026-02-20 23:50:41 [WARNING] machine              | 📳 Machine machine_16 VIBRATION SPIKE: 9.17 g
+2026-02-20 23:50:41 [WARNING] machine              | 📳 Machine machine_9 VIBRATION SPIKE: 8.91 g
+2026-02-20 23:50:46 [WARNING] machine              | 📡 Machine machine_10 going OFFLINE for 20 seconds
+2026-02-20 23:50:51 [WARNING] machine              | 📳 Machine machine_2 VIBRATION SPIKE: 10.49 g
+2026-02-20 23:50:51 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 116.9°C
+2026-02-20 23:51:01 [WARNING] machine              | 🔥 Machine machine_7 OVERHEATING: 111.5°C
+2026-02-20 23:51:01 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 133.6°C
+2026-02-20 23:51:06 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 130.6°C
+2026-02-20 23:51:06 [WARNING] machine              | 🔥 Machine machine_16 OVERHEATING: 121.6°C
+2026-02-20 23:51:06 [WARNING] machine              | 🔥 Machine machine_5 OVERHEATING: 124.8°C
+2026-02-20 23:51:11 [WARNING] machine              | 🔥 Machine machine_13 OVERHEATING: 113.8°C
+2026-02-20 23:51:11 [WARNING] machine              | 📡 Machine machine_14 going OFFLINE for 20 seconds
+2026-02-20 23:51:16 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 122.9°C
+2026-02-20 23:51:16 [WARNING] machine              | 📳 Machine machine_6 VIBRATION SPIKE: 10.46 g
+2026-02-20 23:51:16 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:51:21 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 115.1°C
+2026-02-20 23:51:21 [WARNING] machine              | 📳 Machine machine_19 VIBRATION SPIKE: 8.39 g
+2026-02-20 23:51:21 [WARNING] machine              | 📳 Machine machine_4 VIBRATION SPIKE: 10.87 g
+2026-02-20 23:51:26 [WARNING] machine              | 📡 Machine machine_16 going OFFLINE for 20 seconds
+2026-02-20 23:51:31 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 9.46 g
+2026-02-20 23:51:36 [WARNING] machine              | 📳 Machine machine_13 VIBRATION SPIKE: 8.48 g
+2026-02-20 23:51:36 [WARNING] machine              | 📳 Machine machine_14 VIBRATION SPIKE: 11.54 g
+2026-02-20 23:51:41 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 137.0°C
+2026-02-20 23:51:41 [WARNING] machine              | 📡 Machine machine_7 going OFFLINE for 20 seconds
+2026-02-20 23:51:41 [WARNING] machine              | 🔥 Machine machine_2 OVERHEATING: 138.7°C
+2026-02-20 23:51:46 [WARNING] machine              | 📳 Machine machine_15 VIBRATION SPIKE: 10.06 g
+2026-02-20 23:51:46 [WARNING] machine              | 📡 Machine machine_20 going OFFLINE for 20 seconds
+2026-02-20 23:51:51 [WARNING] machine              | 📡 Machine machine_2 going OFFLINE for 20 seconds
+2026-02-20 23:51:56 [WARNING] machine              | 🔥 Machine machine_19 OVERHEATING: 131.0°C
+2026-02-20 23:51:56 [WARNING] machine              | 🔥 Machine machine_12 OVERHEATING: 138.7°C
+2026-02-20 23:51:56 [WARNING] machine              | 📡 Machine machine_13 going OFFLINE for 20 seconds
+2026-02-20 23:52:01 [WARNING] machine              | 📳 Machine machine_5 VIBRATION SPIKE: 9.65 g
+2026-02-20 23:52:06 [WARNING] machine              | 📳 Machine machine_18 VIBRATION SPIKE: 11.85 g
+2026-02-20 23:52:06 [WARNING] machine              | 📡 Machine machine_4 going OFFLINE for 20 seconds
+2026-02-20 23:52:06 [WARNING] machine              | 📡 Machine machine_6 going OFFLINE for 20 seconds
+2026-02-20 23:52:11 [WARNING] machine              | 🔥 Machine machine_15 OVERHEATING: 130.6°C
+2026-02-20 23:52:11 [WARNING] machine              | 📡 Machine machine_20 going OFFLINE for 20 seconds
+2026-02-20 23:52:11 [WARNING] machine              | 🔥 Machine machine_14 OVERHEATING: 121.1°C
+2026-02-20 23:52:21 [WARNING] machine              | 🔥 Machine machine_10 OVERHEATING: 132.0°C
+2026-02-20 23:52:26 [WARNING] machine              | 🔥 Machine machine_1 OVERHEATING: 121.3°C
+2026-02-20 23:52:36 [WARNING] machine              | 📡 Machine machine_1 going OFFLINE for 20 seconds
+2026-02-20 23:52:36 [WARNING] machine              | 🔥 Machine machine_9 OVERHEATING: 135.1°C
+2026-02-20 23:52:36 [WARNING] machine              | 🔥 Machine machine_6 OVERHEATING: 139.2°C
+2026-02-20 23:52:40 [WARNING] rigs.simulator       | ⚠️ Unexpected MQTT disconnect (rc=7). Will auto-reconnect...

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>R.I.G.S. — Remote Industrial Governance System</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Retrofit legacy machines into smart factory assets with real-time monitoring, remote control, and predictive maintenance.">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .home-nav {
+            padding: 20px 0;
+            background: transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .home-nav .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hero-section {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 60px 24px 40px;
+            background: radial-gradient(ellipse at top, #1a2744 0%, var(--bg-body) 70%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -25%;
+            width: 150%;
+            height: 150%;
+            background: radial-gradient(circle at 70% 30%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 30% 70%, rgba(6, 182, 212, 0.06) 0%, transparent 50%);
+            animation: drift 20s ease-in-out infinite;
+        }
+
+        @keyframes drift {
+
+            0%,
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            50% {
+                transform: translate(2%, 1%) rotate(1deg);
+            }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            padding: 6px 18px;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: 20px;
+            color: var(--accent);
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 28px;
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.12;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero-cta .btn {
+            padding: 14px 32px;
+            font-size: 1rem;
+            border-radius: 10px;
+        }
+
+        .btn-glow {
+            background: linear-gradient(135deg, var(--accent), #2563eb);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.35);
+        }
+
+        .btn-glow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(59, 130, 246, 0.5);
+            color: #fff;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-hover);
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Features */
+        .features {
+            padding: 80px 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .features-header {
+            text-align: center;
+            margin-bottom: 56px;
+        }
+
+        .features-header h2 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .features-header p {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            margin-bottom: 18px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        /* Stats bar */
+        .stats-bar {
+            background: var(--bg-card);
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 40px 24px;
+        }
+
+        .stats-bar-inner {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            text-align: center;
+        }
+
+        .stats-bar-item h3 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stats-bar-item p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        /* Footer */
+        .home-footer {
+            padding: 40px 24px;
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .footer-brand {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 2px;
+        }
+
+        .footer-text {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.2rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-bar-inner {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav class="home-nav">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <img src="/images/logo.svg" alt="R.I.G.S." class="nav-logo">
+                <div>
+                    <span class="brand-title">R.I.G.S.</span>
+                </div>
+            </div>
+            <div style="display:flex; gap:12px; align-items:center;">
+                <a href="/login" class="btn btn-ghost" style="padding:8px 20px; font-size:0.85rem;">Login</a>
+                <a href="/register" class="btn btn-glow" style="padding:8px 20px; font-size:0.85rem;">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <span class="hero-badge">🏭 Industry 4.0 Ready</span>
+            <h1 class="hero-title">Remote Industrial Governance System</h1>
+            <p class="hero-subtitle">Retrofit legacy machines into smart factory assets. Monitor, control, and predict —
+                all from one unified dashboard.</p>
+            <div class="hero-cta">
+                <a href="/login" class="btn btn-glow">Login to Dashboard</a>
+                <a href="/register" class="btn btn-ghost">Create Account</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stats-bar-inner">
+            <div class="stats-bar-item">
+                <h3>20+</h3>
+                <p>Machines Monitored</p>
+            </div>
+            <div class="stats-bar-item">
+                <h3>99.9%</h3>
+                <p>Uptime SLA</p>
+            </div>
+            <div class="stats-bar-item">
+                <h3>5s</h3>
+                <p>Telemetry Interval</p>
+            </div>
+            <div class="stats-bar-item">
+                <h3>SHA-256</h3>
+                <p>Audit Integrity</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <section class="features">
+        <div class="features-header">
+            <h2>Everything You Need for Smart Manufacturing</h2>
+            <p>Enterprise features built for industrial-grade reliability</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(16,185,129,0.12);">📡</div>
+                <h3>Real-Time Monitoring</h3>
+                <p>Live telemetry streaming via MQTT — temperature, vibration, current draw, and runtime hours updated
+                    every 5 seconds.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(59,130,246,0.12);">🎮</div>
+                <h3>Remote Control</h3>
+                <p>Send START, STOP, and CONFIGURE commands to any machine from the admin dashboard with instant
+                    acknowledgment.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(245,158,11,0.12);">🔮</div>
+                <h3>Predictive Maintenance</h3>
+                <p>Automatic alerts when vibration exceeds thresholds, temperatures spike, or runtime hours reach
+                    maintenance intervals.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(139,92,246,0.12);">📋</div>
+                <h3>Black Box Audit Logging</h3>
+                <p>Every action is cryptographically signed with SHA-256. Immutable, exportable, and filterable audit
+                    trail for compliance.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(6,182,212,0.12);">🏗️</div>
+                <h3>Multi-Machine Support</h3>
+                <p>Monitor 20+ machines simultaneously across multiple floors and bays. Scalable architecture for
+                    growing operations.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(239,68,68,0.12);">🔐</div>
+                <h3>Role-Based Access</h3>
+                <p>Admin and Worker roles with approval workflows. Google OAuth and local authentication. Account
+                    locking and 2FA support.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section
+        style="padding:80px 24px; text-align:center; background: radial-gradient(ellipse at bottom, #1a2744, var(--bg-body) 70%);">
+        <h2 style="font-size:2rem; font-weight:800; margin-bottom:12px;">Ready to modernize your factory?</h2>
+        <p style="color:var(--text-secondary); font-size:1.05rem; margin-bottom:32px;">Start monitoring your machines in
+            minutes.</p>
+        <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+            <a href="/register" class="btn btn-glow" style="padding:14px 36px; font-size:1rem;">Get Started Free</a>
+            <a href="/login" class="btn btn-ghost" style="padding:14px 36px; font-size:1rem;">Admin Login</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="home-footer">
+        <div class="footer-brand">R.I.G.S.</div>
+        <p class="footer-text">Remote Industrial Governance System — Industry 4.0 Machine Management Platform</p>
+        <p class="footer-text" style="margin-top:4px;">© 2026 R.I.G.S. All rights reserved.</p>
+    </footer>
+
+</body>
+
+</html>

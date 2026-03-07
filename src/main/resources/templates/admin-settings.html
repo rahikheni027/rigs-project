@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>Factory Settings — R.I.G.S.</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <img src="/images/logo.svg" alt="R.I.G.S." class="nav-logo">
+                <div>
+                    <span class="brand-title">R.I.G.S.</span>
+                    <span class="brand-subtitle">Remote Industrial Governance System</span>
+                </div>
+            </div>
+            <div class="nav-links">
+                <a href="/admin/dashboard">Dashboard</a>
+                <a href="/admin/settings" class="active">Factory Settings</a>
+                <a href="/admin/audit-logs">Audit Logs</a>
+                <a href="/profile">Profile</a>
+            </div>
+            <div class="nav-actions">
+                <span class="user-badge">Admin</span>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container" style="max-width:1100px;">
+        <div class="section-header" style="margin-top:0;">
+            <div>
+                <h2 class="section-title">Factory Settings</h2>
+                <p class="section-subtitle">Configure machine thresholds and sensor parameters</p>
+            </div>
+        </div>
+
+        <div th:if="${success}" class="alert-success" th:text="${success}"></div>
+        <div th:if="${error}" class="alert-error" th:text="${error}"></div>
+
+        <div th:each="ms : ${machineSettings}" class="card" style="margin-bottom:20px;">
+            <div
+                style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap; gap:8px;">
+                <div>
+                    <h3 class="card-title" style="margin:0;" th:text="${ms.machineName()}">Machine</h3>
+                    <span style="font-size:0.82rem; color:var(--text-muted);"
+                        th:text="'📍 ' + ${ms.location()}">Location</span>
+                </div>
+                <span class="badge badge-info" th:text="'ID: ' + ${ms.machineId()}">ID</span>
+            </div>
+
+            <!-- Threshold Settings -->
+            <form th:action="@{'/admin/settings/' + ${ms.machineId()}}" method="post" style="margin-bottom:20px;">
+                <div
+                    style="font-size:0.72rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">
+                    Sensor Thresholds</div>
+                <div
+                    style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:14px;">
+                    <div class="form-group" style="margin:0;">
+                        <label class="form-label">Vibration (g)</label>
+                        <input type="number" name="vibrationThreshold" step="0.1" min="0"
+                            th:value="${ms.vibrationThreshold()}" required>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label class="form-label">Runtime Limit (hrs)</label>
+                        <input type="number" name="runtimeLimitHours" step="1" min="0"
+                            th:value="${ms.runtimeLimitHours()}" required>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label class="form-label">Temperature (°C)</label>
+                        <input type="number" name="temperatureThreshold" step="1" min="0"
+                            th:value="${ms.temperatureThreshold()}" required>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label class="form-label">Heartbeat Timeout (s)</label>
+                        <input type="number" name="heartbeatTimeout" step="1" min="5"
+                            th:value="${ms.heartbeatTimeout()}" required>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:16px;">
+                    <label
+                        style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; color:var(--text-secondary);">
+                        <input type="checkbox" name="sensorEnabled" value="true" th:checked="${ms.sensorEnabled()}"
+                            style="width:auto; accent-color:var(--accent);">
+                        Sensors Enabled
+                    </label>
+                    <button type="submit" class="btn btn-primary btn-sm">Save Thresholds</button>
+                </div>
+            </form>
+
+            <!-- Machine Info -->
+            <div style="border-top:1px solid var(--border-color); padding-top:16px;">
+                <div
+                    style="font-size:0.72rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">
+                    Machine Information</div>
+                <form th:action="@{'/admin/settings/' + ${ms.machineId()} + '/info'}" method="post"
+                    style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:180px;">
+                        <label class="form-label">Machine Name</label>
+                        <input type="text" name="name" th:value="${ms.machineName()}" required>
+                    </div>
+                    <div style="flex:1; min-width:180px;">
+                        <label class="form-label">Location</label>
+                        <input type="text" name="location" th:value="${ms.location()}" required>
+                    </div>
+                    <button type="submit" class="btn btn-secondary btn-sm" style="height:42px;">Update Info</button>
+                </form>
+            </div>
+        </div>
+
+        <p th:if="${machineSettings.isEmpty()}" style="color:var(--text-muted); text-align:center; padding:48px 0;">No
+            machines found. Add machines via the dashboard first.</p>
+    </div>
+</body>
+
+</html>

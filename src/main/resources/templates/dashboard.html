@@ -1,28 +1,125 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+
 <head>
-    <title>RIGS Dashboard</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <title>Dashboard — R.I.G.S.</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
+
 <body>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <img src="/images/logo.svg" alt="R.I.G.S." class="nav-logo">
+                <div>
+                    <span class="brand-title">R.I.G.S.</span>
+                    <span class="brand-subtitle">Remote Industrial Governance System</span>
+                </div>
+            </div>
+            <div class="nav-links">
+                <a href="/dashboard" class="active">Dashboard</a>
+                <a href="/profile">Profile</a>
+            </div>
+            <div class="nav-actions">
+                <span class="user-badge">Worker</span>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        </div>
+    </nav>
 
-<div class="dashboard">
+    <div class="dashboard-container">
+        <div class="stats-grid" id="stats-container">
+            <div class="stat-card">
+                <div class="stat-icon">🏭</div>
+                <div>
+                    <div class="stat-value" id="total-machines">-</div>
+                    <div class="stat-label">Total Machines</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background:var(--success-bg);">🟢</div>
+                <div>
+                    <div class="stat-value" id="running-machines">-</div>
+                    <div class="stat-label">Running</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background:var(--danger-bg);">🔴</div>
+                <div>
+                    <div class="stat-value" id="offline-machines">-</div>
+                    <div class="stat-label">Offline</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background:var(--warning-bg);">⚠️</div>
+                <div>
+                    <div class="stat-value" id="alerts-count">-</div>
+                    <div class="stat-label">Alerts</div>
+                </div>
+            </div>
+        </div>
 
-    <div class="top-bar">
-        <h2>Remote Industrial Governance System</h2>
-        <a href="/logout">Logout</a>
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">Machine Monitoring</h2>
+                <p class="section-subtitle">Real-time status and telemetry data</p>
+            </div>
+            <div class="refresh-indicator"><span class="refresh-dot"></span><span>Live</span></div>
+        </div>
+
+        <div id="machines-container" class="machines-grid">
+            <div class="loading-message">Loading machines...</div>
+        </div>
     </div>
 
-    <div class="card">
-        <p th:text="'Welcome, ' + ${name}"></p>
-        <p th:text="'Role: ' + ${role}"></p>
-    </div>
+    <script>
+        const API_BASE_URL = '/api/machines';
+        const POLL_INTERVAL = 3000;
 
-    <div class="card">
-        <p>Worker dashboard loaded successfully.</p>
-    </div>
+        function fmt(v, u) { return v == null ? 'N/A' : v.toFixed(2) + ' ' + u; }
+        function fmtTs(ts) { if (!ts) return 'N/A'; try { return new Date(ts).toLocaleTimeString(); } catch (e) { return ts; } }
+        function statusCls(s, on) { if (!on) return 'status-offline'; switch (s) { case 'RUNNING': return 'status-running'; case 'STOPPED': return 'status-stopped'; case 'ERROR': return 'status-error'; default: return 'status-offline'; } }
+        function statusIcon(s, on) { if (!on) return '🔴'; switch (s) { case 'RUNNING': return '🟢'; case 'STOPPED': return '🟡'; default: return '⚪'; } }
 
-</div>
+        function machineHtml(m) {
+            const cls = statusCls(m.status, m.isOnline);
+            const icon = statusIcon(m.status, m.isOnline);
+            const maint = m.maintenanceAlert ? '<span class="maintenance-badge">⚠️ Maintenance Due</span>' : '';
+            return `<div class="machine-panel ${cls}" data-machine-id="${m.machineId}">
+        <div class="machine-header">
+            <div class="machine-title"><h4>${m.machineName}</h4><span class="machine-location">📍 ${m.location}</span></div>
+            <div class="machine-status-indicator"><span>${icon}</span><span class="status-text">${m.status || 'OFFLINE'}</span></div>
+        </div>
+        ${maint}
+        <div class="telemetry-grid">
+            <div class="telemetry-item"><div class="telemetry-label">🌡️ Temperature</div><div class="telemetry-value">${fmt(m.temperature, '°C')}</div></div>
+            <div class="telemetry-item"><div class="telemetry-label">📳 Vibration</div><div class="telemetry-value">${fmt(m.vibration, 'g')}</div></div>
+            <div class="telemetry-item"><div class="telemetry-label">⚡ Current</div><div class="telemetry-value">${fmt(m.currentDraw, 'A')}</div></div>
+            <div class="telemetry-item"><div class="telemetry-label">⏱️ Runtime</div><div class="telemetry-value">${fmt(m.cumulativeRuntimeHours, 'hrs')}</div></div>
+        </div>
+        <div class="command-panel view-only"><div class="cmd-info">Commands: Admin Only</div></div>
+        <div class="machine-footer"><div class="last-update">${m.timestamp ? 'Updated: ' + fmtTs(m.timestamp) : 'No data'}</div></div>
+    </div>`;
+        }
 
+        async function refresh() {
+            try {
+                const res = await fetch(API_BASE_URL);
+                if (!res.ok) return;
+                const data = await res.json();
+                const c = document.getElementById('machines-container');
+                if (!data.length) { c.innerHTML = '<div class="no-machines">No machines available.</div>'; } else { c.innerHTML = data.map(machineHtml).join(''); }
+                document.getElementById('total-machines').textContent = data.length;
+                document.getElementById('running-machines').textContent = data.filter(m => m.status === 'RUNNING' && m.isOnline).length;
+                document.getElementById('offline-machines').textContent = data.filter(m => !m.isOnline).length;
+                document.getElementById('alerts-count').textContent = data.filter(m => m.maintenanceAlert).length;
+            } catch (e) { console.error(e); }
+        }
+        refresh();
+        setInterval(refresh, POLL_INTERVAL);
+    </script>
 </body>
+
 </html>

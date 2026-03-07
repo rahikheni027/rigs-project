@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>Pending Approval — R.I.G.S.</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <img src="/images/logo.svg" alt="R.I.G.S." class="logo-image">
+                <h1 class="logo-title">R.I.G.S.</h1>
+                <p class="logo-subtitle">Remote Industrial Governance System</p>
+            </div>
+            <div class="auth-content" style="text-align:center;">
+                <div style="font-size:3rem; margin-bottom:16px;">⏳</div>
+                <h2 class="auth-title">Account Pending Approval</h2>
+                <p class="auth-description" style="margin-bottom:24px;">Your account has been created
+                    successfully.<br>An administrator needs to approve your access before you can use the system.</p>
+
+                <div class="form-note" style="text-align:left;">
+                    <p>💡 Contact your system administrator to expedite the approval process.</p>
+                </div>
+
+                <a href="/logout" class="auth-button btn-secondary" style="margin-top:16px;">
+                    <span>Return to Login</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
