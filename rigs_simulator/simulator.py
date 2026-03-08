@@ -224,13 +224,13 @@ MQTT Topics:
   ACK:        rigs/ack/{machineId}
         """
     )
-    parser.add_argument("--machines", type=int, default=3,
+    parser.add_argument("--machines", type=int, default=None,
                         help="Number of virtual machines to simulate (default: 3)")
-    parser.add_argument("--broker", type=str, default="localhost",
+    parser.add_argument("--broker", type=str, default=None,
                         help="MQTT broker host (default: localhost)")
-    parser.add_argument("--port", type=int, default=1883,
+    parser.add_argument("--port", type=int, default=None,
                         help="MQTT broker port (default: 1883)")
-    parser.add_argument("--interval", type=int, default=5,
+    parser.add_argument("--interval", type=int, default=None,
                         help="Telemetry publish interval in seconds (default: 5)")
     parser.add_argument("--config", type=str, default="config.json",
                         help="Path to config file (default: config.json)")
