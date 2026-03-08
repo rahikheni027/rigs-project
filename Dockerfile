@@ -21,5 +21,5 @@ COPY --from=build /app/target/rigs-0.0.1-SNAPSHOT.jar app.jar
 # Expose the port (Render sets the PORT environment variable natively)
 EXPOSE 8080
 
-# Run the jar file
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Run the jar file, passing Environment Variables explicitly
+ENTRYPOINT ["sh", "-c", "java -jar app.jar --spring.datasource.url=${DB_URL} --spring.datasource.username=${DB_USERNAME} --spring.datasource.password=${DB_PASSWORD}"]
