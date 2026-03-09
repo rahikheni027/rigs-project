@@ -22,4 +22,4 @@ COPY --from=build /app/target/rigs-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
 
 # Run the jar file, passing Environment Variables explicitly
-ENTRYPOINT ["sh", "-c", "java -jar app.jar --spring.datasource.url=${DB_URL} --spring.datasource.username=${DB_USERNAME} --spring.datasource.password=${DB_PASSWORD} --rigs.frontend.url=${FRONTEND_URL:http://localhost:5173} --spring.security.oauth2.client.registration.google.client-id=${GOOGLE_CLIENT_ID} --spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_SECRET}"]
+ENTRYPOINT ["sh", "-c", "java -jar app.jar --spring.datasource.url=${DB_URL} --spring.datasource.username=${DB_USERNAME} --spring.datasource.password=${DB_PASSWORD} --rigs.frontend.url=${FRONTEND_URL} --spring.security.oauth2.client.registration.google.client-id=${GOOGLE_CLIENT_ID} --spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_SECRET}"]
