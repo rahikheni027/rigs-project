@@ -5,6 +5,8 @@ import Layout from './components/Layout';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import NotFoundPage from './pages/NotFoundPage';
 import AdminDashboard from './pages/AdminDashboard';
 import WorkerDashboard from './pages/WorkerDashboard';
 import MachinesPage from './pages/MachinesPage';
@@ -27,6 +29,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           {/* Protected layout */}
           <Route path="/app" element={<Layout />}>
@@ -44,7 +47,8 @@ function App() {
           <Route path="/alerts" element={<Navigate to="/app/alerts" replace />} />
           <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* 404 catch-all */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
@@ -52,3 +56,4 @@ function App() {
 }
 
 export default App;
+

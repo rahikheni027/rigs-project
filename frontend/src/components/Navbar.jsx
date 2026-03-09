@@ -1,15 +1,18 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { LayoutDashboard, Shield, AlertTriangle, User, LogOut, Cpu, Zap } from 'lucide-react';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const { showToast } = useToast();
 
     const handleLogout = () => {
         logout();
+        showToast('Signed out successfully', 'success');
         navigate('/');
     };
 

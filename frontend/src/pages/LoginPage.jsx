@@ -53,7 +53,8 @@ const LoginPage = () => {
     };
 
     const handleGoogleLogin = () => {
-        window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+        const base = import.meta.env.VITE_API_BASE_URL || '';
+        window.location.href = `${base}/oauth2/authorization/google`;
     };
 
     const S = {

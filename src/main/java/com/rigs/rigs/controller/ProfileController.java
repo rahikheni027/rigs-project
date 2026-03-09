@@ -56,4 +56,22 @@ public class ProfileController {
         profileService.toggleTwoFactor(userDetails.getUsername());
         return ResponseEntity.ok(new MessageResponse("2FA setting updated"));
     }
+
+    @PutMapping("/password")
+    public ResponseEntity<?> changePassword(@AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Map<String, String> request) {
+        String currentPassword = request.get("currentPassword");
+        String newPassword = request.get("newPassword");
+
+        if (newPassword == null || newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body(new MessageResponse("New password must be at least 6 characters"));
+        }
+
+        try {
+            profileService.changePassword(userDetails.getUsername(), currentPassword, newPassword);
+            return ResponseEntity.ok(new MessageResponse("Password changed successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
+        }
+    }
 }
