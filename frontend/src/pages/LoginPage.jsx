@@ -53,7 +53,7 @@ const LoginPage = () => {
     };
 
     const handleGoogleLogin = () => {
-        const base = import.meta.env.VITE_API_BASE_URL || '';
+        const base = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
         window.location.href = `${base}/oauth2/authorization/google`;
     };
 

@@ -6,7 +6,6 @@ import com.rigs.rigs.service.CommandService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,7 +33,6 @@ public class MachineController {
     }
 
     @PostMapping("/{machineId}/command")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> sendCommand(@PathVariable Long machineId, @RequestParam String command,
             @RequestParam(required = false) String issuedBy) {
         log.info("Sending command '{}' to machine {}", command, machineId);

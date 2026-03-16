@@ -7,21 +7,28 @@ const MachinesPage = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
 
+    const fetchMachines = async () => {
+        try {
+            const r = await api.get('/machines');
+            setMachines(r.data);
+        } catch (e) { console.error(e); } finally { setLoading(false); }
+    };
+
     useEffect(() => {
-        const fetch = async () => {
-            try {
-                const r = await api.get('/machines');
-                setMachines(r.data);
-            } catch (e) { console.error(e); } finally { setLoading(false); }
-        };
-        fetch();
-        const t = setInterval(fetch, 10000);
+        fetchMachines();
+        const t = setInterval(fetchMachines, 10000);
         return () => clearInterval(t);
     }, []);
 
     const handleCommand = async (id, cmd) => {
-        try { await api.post(`/machines/${id}/command?command=${cmd}`); }
-        catch { alert('Failed to send command'); }
+        try {
+            await api.post(`/machines/${id}/command?command=${cmd}`);
+            // Refresh data immediately after command
+            setTimeout(fetchMachines, 1000);
+        } catch (e) {
+            console.error('Command failed:', e);
+            alert('Failed to send command. Please try again.');
+        }
     };
 
     const filtered = filter === 'all' ? machines : machines.filter(m => m.status === filter.toUpperCase());
@@ -85,8 +92,8 @@ const MachinesPage = () => {
                     <p style={st.sub}>{machines.length} machines · {machines.filter(m => m.status === 'RUNNING').length} running</p>
                 </div>
                 <div style={st.tabs}>
-                    {['all', 'running', 'offline'].map(f => (
-                        <button key={f} style={st.tab(filter === f)} onClick={() => setFilter(f)}>{f}</button>
+                    {['all', 'running', 'stopped'].map(f => (
+                        <button key={f} style={st.tab(filter === f)} onClick={() => setFilter(f)}>{f === 'stopped' ? 'Offline' : f}</button>
                     ))}
                 </div>
             </div>
@@ -114,12 +121,12 @@ const MachinesPage = () => {
                             <div style={st.metrics}>
                                 <div style={st.metric}>
                                     <div style={st.metricLbl}><Thermometer size={10} />Temp</div>
-                                    <div style={st.metricVal(hot)}>{m.temperature ?? '—'}<span style={{ fontSize: 11, fontWeight: 400, color: '#6b7280' }}>°C</span></div>
+                                    <div style={st.metricVal(hot)}>{m.temperature != null ? m.temperature.toFixed(1) : '—'}<span style={{ fontSize: 11, fontWeight: 400, color: '#6b7280' }}>°C</span></div>
                                     {m.temperature && <div style={st.track}><div style={st.bar(hot, Math.min(m.temperature, 100))} /></div>}
                                 </div>
                                 <div style={st.metric}>
                                     <div style={st.metricLbl}><Activity size={10} />Vibration</div>
-                                    <div style={st.metricVal(m.vibration > 2.5)}>{m.vibration ?? '—'}<span style={{ fontSize: 11, fontWeight: 400, color: '#6b7280' }}> mm/s</span></div>
+                                    <div style={st.metricVal(m.vibration > 2.5)}>{m.vibration != null ? m.vibration.toFixed(2) : '—'}<span style={{ fontSize: 11, fontWeight: 400, color: '#6b7280' }}> mm/s</span></div>
                                 </div>
                             </div>
 

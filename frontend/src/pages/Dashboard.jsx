@@ -89,7 +89,7 @@ const Dashboard = () => {
                 ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, flexWrap: 'wrap' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                     {/* Chart */}
                     <div style={S.card}>
@@ -132,7 +132,7 @@ const Dashboard = () => {
                                 </div>
                                 <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
                                     <span>Temperature</span>
-                                    <span style={{ color: m.temperature > 80 ? '#f87171' : '#f9fafb', fontWeight: 700 }}>{m.temperature ?? '—'}°C</span>
+                                    <span style={{ color: m.temperature > 80 ? '#f87171' : '#f9fafb', fontWeight: 700 }}>{m.temperature != null ? m.temperature.toFixed(1) : '—'}°C</span>
                                 </div>
                                 <div style={{ height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 999, overflow: 'hidden' }}>
                                     <div style={{ height: '100%', borderRadius: 999, background: m.temperature > 80 ? '#ef4444' : '#0ea5e9', width: `${Math.min(m.temperature || 0, 100)}%` }} />

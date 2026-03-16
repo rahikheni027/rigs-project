@@ -192,7 +192,7 @@ const AdminDashboard = () => {
             </div>
 
             {/* Main content grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
                 {/* User management panel */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}

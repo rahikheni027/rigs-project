@@ -109,7 +109,7 @@ const WorkerDashboard = () => {
             </div>
 
             {/* Main grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                     {/* Temperature chart */}
                     <motion.div
@@ -186,9 +186,9 @@ const WorkerDashboard = () => {
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                                     {[
-                                        { label: 'Temp', value: `${m.temperature ?? '—'}°`, icon: Thermometer, color: (m.temperature || 0) > 80 ? '#f87171' : '#38bdf8' },
-                                        { label: 'Vibration', value: m.vibration ?? '—', icon: Waves, color: '#a78bfa' },
-                                        { label: 'Current', value: m.currentDraw ?? '—', icon: BatteryCharging, color: '#fbbf24' },
+                                        { label: 'Temp', value: `${m.temperature != null ? m.temperature.toFixed(1) : '—'}°`, icon: Thermometer, color: (m.temperature || 0) > 80 ? '#f87171' : '#38bdf8' },
+                                        { label: 'Vibration', value: m.vibration != null ? m.vibration.toFixed(2) : '—', icon: Waves, color: '#a78bfa' },
+                                        { label: 'Current', value: m.currentDraw != null ? m.currentDraw.toFixed(1) : '—', icon: BatteryCharging, color: '#fbbf24' },
                                     ].map(metric => (
                                         <div key={metric.label} style={{
                                             background: 'rgba(31,41,55,0.5)', borderRadius: 8, padding: 8, textAlign: 'center',
