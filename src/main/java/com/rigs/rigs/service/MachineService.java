@@ -65,6 +65,11 @@ public class MachineService {
                 .temperature(latestTelemetry != null ? latestTelemetry.getTemperature() : null)
                 .vibration(latestTelemetry != null ? latestTelemetry.getVibration() : null)
                 .currentDraw(latestTelemetry != null ? latestTelemetry.getCurrentDraw() : null)
+                .rpm(latestTelemetry != null ? latestTelemetry.getRpm() : null)
+                .pressure(latestTelemetry != null ? latestTelemetry.getPressure() : null)
+                .powerConsumption(latestTelemetry != null ? latestTelemetry.getPowerConsumption() : null)
+                .efficiency(latestTelemetry != null ? latestTelemetry.getEfficiency() : null)
+                .errorRate(latestTelemetry != null ? latestTelemetry.getErrorRate() : null)
                 .lastHeartbeat(machine.getLastHeartbeat())
                 .isOnline(isOnline)
                 .maintenanceAlert(machine.getMaintenanceAlert())
@@ -86,7 +91,9 @@ public class MachineService {
 
     @Transactional
     public void saveTelemetry(Long machineId, Double temperature, Double vibration,
-            Double currentDraw, String machineStatus) {
+            Double currentDraw, String machineStatus,
+            Double rpm, Double pressure, Double powerConsumption,
+            Double efficiency, Double errorRate) {
         Machine machine = machineRepository.findById(machineId)
                 .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + machineId));
 
@@ -96,6 +103,11 @@ public class MachineService {
                 .vibration(vibration)
                 .currentDraw(currentDraw)
                 .machineStatus(machineStatus)
+                .rpm(rpm)
+                .pressure(pressure)
+                .powerConsumption(powerConsumption)
+                .efficiency(efficiency)
+                .errorRate(errorRate)
                 .timestamp(LocalDateTime.now())
                 .build();
 
@@ -110,6 +122,28 @@ public class MachineService {
         checkAlerts(machine, telemetry, settings);
 
         machineRepository.save(machine);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MachineTelemetryResponse> getTelemetryHistory(Long machineId) {
+        Machine machine = machineRepository.findById(machineId)
+                .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + machineId));
+        return telemetryRepository.findTop50ByMachineOrderByTimestampDesc(machine).stream()
+                .map(t -> MachineTelemetryResponse.builder()
+                        .machineId(machine.getId())
+                        .machineName(machine.getName())
+                        .temperature(t.getTemperature())
+                        .vibration(t.getVibration())
+                        .currentDraw(t.getCurrentDraw())
+                        .rpm(t.getRpm())
+                        .pressure(t.getPressure())
+                        .powerConsumption(t.getPowerConsumption())
+                        .efficiency(t.getEfficiency())
+                        .errorRate(t.getErrorRate())
+                        .status(t.getMachineStatus())
+                        .timestamp(t.getTimestamp())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private void checkAlerts(Machine machine, MachineTelemetry telemetry, MachineSettings settings) {

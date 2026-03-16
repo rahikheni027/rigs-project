@@ -10,6 +10,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import AdminDashboard from './pages/AdminDashboard';
 import WorkerDashboard from './pages/WorkerDashboard';
 import MachinesPage from './pages/MachinesPage';
+import MachineDetailPage from './pages/MachineDetailPage';
 import AlertsPage from './pages/AlertsPage';
 import ProfilePage from './pages/ProfilePage';
 
@@ -36,6 +37,7 @@ function App() {
             <Route index element={<Navigate to="/app/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardRouter />} />
             <Route path="machines" element={<MachinesPage />} />
+            <Route path="machines/:id" element={<MachineDetailPage />} />
             <Route path="alerts" element={<AlertsPage />} />
             <Route path="admin" element={<AdminDashboard />} />
             <Route path="profile" element={<ProfilePage />} />

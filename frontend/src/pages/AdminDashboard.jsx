@@ -54,12 +54,18 @@ const AdminDashboard = () => {
 
     const handleApprove = async (id) => {
         setActionLoading(id);
+        const userToApprove = pendingUsers.find(u => u.id === id) || users.find(u => u.id === id);
+        if (userToApprove) {
+            setPendingUsers(prev => prev.filter(u => u.id !== id));
+            setUsers(prev => [...prev.filter(u => u.id !== id), { ...userToApprove, enabled: 1 }]);
+            setStats(prev => ({ ...prev, activeWorkers: (prev.activeWorkers || 0) + 1, pendingApproval: Math.max(0, (prev.pendingApproval || 0) - 1) }));
+        }
         try {
             await api.put(`/admin/users/${id}/approve`);
             showNotification('User approved successfully!');
-            fetchData();
         } catch (e) {
             showNotification('Failed to approve user', 'error');
+            fetchData();
         } finally {
             setActionLoading(null);
         }
@@ -67,12 +73,14 @@ const AdminDashboard = () => {
 
     const handleReject = async (id) => {
         setActionLoading(id);
+        setPendingUsers(prev => prev.filter(u => u.id !== id));
+        setStats(prev => ({ ...prev, pendingApproval: Math.max(0, (prev.pendingApproval || 0) - 1) }));
         try {
             await api.put(`/admin/users/${id}/reject`);
             showNotification('User rejected');
-            fetchData();
         } catch (e) {
             showNotification('Failed to reject user', 'error');
+            fetchData();
         } finally {
             setActionLoading(null);
         }
@@ -81,12 +89,14 @@ const AdminDashboard = () => {
     const handleRemove = async (id, name) => {
         if (!window.confirm(`Remove worker "${name}"? This cannot be undone.`)) return;
         setActionLoading(id);
+        setUsers(prev => prev.filter(u => u.id !== id));
+        setStats(prev => ({ ...prev, activeWorkers: Math.max(0, (prev.activeWorkers || 0) - 1) }));
         try {
             await api.delete(`/admin/users/${id}`);
             showNotification('Worker removed');
-            fetchData();
         } catch (e) {
             showNotification('Failed to remove worker', 'error');
+            fetchData();
         } finally {
             setActionLoading(null);
         }

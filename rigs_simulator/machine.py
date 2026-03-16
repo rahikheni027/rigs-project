@@ -104,6 +104,9 @@ class Machine:
             # Simulate predictive maintenance degradation
             vibration = self._simulate_maintenance(vibration)
 
+            # Generate extended metrics
+            rpm, pressure, power, efficiency, error_rate = self._generate_extended_metrics(temperature)
+
             # Accumulate runtime
             if self.status == "RUNNING":
                 self.runtime_hours += self.interval / 3600.0
@@ -113,11 +116,48 @@ class Machine:
                 "temperature": round(temperature, 2),
                 "vibration": round(vibration, 3),
                 "current": round(current, 2),
+                "rpm": round(rpm, 1),
+                "pressure": round(pressure, 2),
+                "power": round(power, 2),
+                "efficiency": round(efficiency, 1),
+                "errorRate": round(error_rate, 3),
                 "status": self.status,
                 "runtimeHours": round(self.runtime_hours, 4),
                 "heartbeat": True,
                 "timestamp": int(time.time())
             }
+
+    def _generate_extended_metrics(self, temperature):
+        """Generate RPM, pressure, power consumption, efficiency, and error rate."""
+        if self.status == "RUNNING":
+            rpm = random.uniform(800, 3600)
+            pressure = random.uniform(15, 120)
+            # Higher RPM = more power consumption
+            power = (rpm / 3600) * random.uniform(8, 25)
+            efficiency = random.uniform(75, 99) - (temperature - 60) * 0.1
+            efficiency = max(60, min(99.5, efficiency))
+            error_rate = random.uniform(0, 0.05)
+            if temperature > 85:
+                error_rate += random.uniform(0.02, 0.08)
+        elif self.status == "MAINTENANCE":
+            rpm = 0
+            pressure = random.uniform(5, 15)
+            power = random.uniform(0.3, 1.0)
+            efficiency = 0
+            error_rate = 0
+        elif self.status == "CALIBRATING":
+            rpm = random.uniform(400, 800)
+            pressure = random.uniform(10, 30)
+            power = random.uniform(1.0, 3.0)
+            efficiency = random.uniform(90, 99)
+            error_rate = 0
+        else:  # STOPPED, EMERGENCY, OFFLINE
+            rpm = 0
+            pressure = random.uniform(0, 5)
+            power = random.uniform(0.0, 0.3)
+            efficiency = 0
+            error_rate = 0
+        return rpm, pressure, power, efficiency, error_rate
 
     def _generate_sensor_readings(self):
         """Generate base sensor readings based on machine status."""
@@ -168,23 +208,27 @@ class Machine:
         return vibration
 
     def handle_command(self, payload):
-        """Process an incoming START/STOP command."""
+        """Process an incoming command."""
         try:
             data = json.loads(payload)
             command = data.get("command", "").upper()
 
-            if command not in ("START", "STOP"):
+            valid_commands = {
+                "START": "RUNNING",
+                "STOP": "STOPPED",
+                "EMERGENCY_STOP": "EMERGENCY",
+                "RESET": "STOPPED",
+                "MAINTENANCE_MODE": "MAINTENANCE",
+                "CALIBRATION": "CALIBRATING",
+            }
+
+            if command not in valid_commands:
                 logger.warning("Machine %s received unknown command: %s", self.machine_id, command)
                 return
 
             with self.lock:
                 old_status = self.status
-
-                if command == "START":
-                    self.status = "RUNNING"
-                elif command == "STOP":
-                    self.status = "STOPPED"
-
+                self.status = valid_commands[command]
                 logger.info("Machine %s command received: %s (status: %s → %s)",
                             self.machine_id, command, old_status, self.status)
 

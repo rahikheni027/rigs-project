@@ -18,6 +18,11 @@ public class MachineTelemetryResponse {
     private Double temperature;
     private Double vibration;
     private Double currentDraw;
+    private Double rpm;
+    private Double pressure;
+    private Double powerConsumption;
+    private Double efficiency;
+    private Double errorRate;
     private LocalDateTime lastHeartbeat;
     private boolean isOnline;
     private boolean maintenanceAlert;

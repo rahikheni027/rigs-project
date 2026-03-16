@@ -32,6 +32,18 @@ public class MachineTelemetry {
     @Column(nullable = false)
     private String machineStatus;
 
+    private Double rpm;
+
+    private Double pressure;
+
+    @Column(name = "power_consumption")
+    private Double powerConsumption;
+
+    private Double efficiency;
+
+    @Column(name = "error_rate")
+    private Double errorRate;
+
     @Column(nullable = false)
     private LocalDateTime timestamp;
 

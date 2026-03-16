@@ -32,6 +32,12 @@ public class MachineController {
         return ResponseEntity.ok(machineService.getMachineTelemetry(machineId));
     }
 
+    @GetMapping("/{machineId}/history")
+    public ResponseEntity<List<MachineTelemetryResponse>> getTelemetryHistory(@PathVariable Long machineId) {
+        log.debug("Fetching telemetry history for machine ID: {}", machineId);
+        return ResponseEntity.ok(machineService.getTelemetryHistory(machineId));
+    }
+
     @PostMapping("/{machineId}/command")
     public ResponseEntity<?> sendCommand(@PathVariable Long machineId, @RequestParam String command,
             @RequestParam(required = false) String issuedBy) {

@@ -40,7 +40,8 @@ const RegisterPage = () => {
     };
 
     const handleGoogleSignup = () => {
-        window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+        const base = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
+        window.location.href = `${base}/oauth2/authorization/google`;
     };
 
     const S = {

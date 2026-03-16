@@ -1,272 +1,271 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { motion } from 'framer-motion';
 import api from '../api/axios';
-import { useAuth } from '../context/AuthContext';
 import {
-    Cpu, Activity, AlertCircle, CheckCircle2, Zap, TrendingUp,
-    Thermometer, Waves, BatteryCharging, MapPin, ChevronRight,
-    Clock, ShieldAlert
+    Cpu, Thermometer, Activity, Zap, Gauge, AlertTriangle, Signal, ChevronRight,
+    Shield, Clock, BarChart3, Wifi
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+const STATUS_CONFIG = {
+    RUNNING: { color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+    STOPPED: { color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
+    EMERGENCY: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+    MAINTENANCE: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+    CALIBRATING: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
+    OFFLINE: { color: '#4b5563', bg: 'rgba(75,85,99,0.1)' },
+};
+
+const S = {
+    card: { background: 'rgba(17,24,39,0.85)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: 18 },
+    label: { fontSize: 10, color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' },
+};
+
+const CustomTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    return (
+        <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px', fontSize: 12 }}>
+            <div style={{ color: '#6b7280', marginBottom: 6 }}>{label}</div>
+            {payload.map(p => (
+                <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: p.color }} />
+                    <span style={{ color: '#9ca3af' }}>{p.name}:</span>
+                    <span style={{ color: '#f9fafb', fontWeight: 700 }}>{p.value != null ? Number(p.value).toFixed(1) : '—'}</span>
+                </div>
+            ))}
+        </div>
+    );
+};
 
 const WorkerDashboard = () => {
-    const { user } = useAuth();
     const [machines, setMachines] = useState([]);
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [chartData, setChartData] = useState([]);
+
+    const fetchData = async () => {
+        try {
+            const [machRes, alertRes] = await Promise.all([
+                api.get('/machines'),
+                api.get('/alerts?size=8'),
+            ]);
+            setMachines(machRes.data);
+            setAlerts(alertRes.data.content || []);
+
+            // Build chart data point from current state
+            setChartData(prev => {
+                const now = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const avgTemp = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.temperature || 0), 0) / machRes.data.length : 0;
+                const avgVib = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.vibration || 0), 0) / machRes.data.length : 0;
+                const totalPower = machRes.data.reduce((s, m) => s + (m.powerConsumption || 0), 0);
+                const avgRpm = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.rpm || 0), 0) / machRes.data.length : 0;
+                const next = [...prev, { time: now, temp: avgTemp, vib: avgVib, power: totalPower, rpm: avgRpm }];
+                return next.length > 30 ? next.slice(-30) : next;
+            });
+        } catch (e) { console.error(e); } finally { setLoading(false); }
+    };
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [mR, aR] = await Promise.all([api.get('/machines'), api.get('/alerts')]);
-                setMachines(mR.data);
-                setAlerts(aR.data.content || []);
-            } catch (e) { console.error(e); } finally { setLoading(false); }
-        };
         fetchData();
-        const t = setInterval(fetchData, 10000);
+        const t = setInterval(fetchData, 4000);
         return () => clearInterval(t);
     }, []);
 
+    const runCount = machines.filter(m => m.status === 'RUNNING').length;
+    const alertCount = machines.filter(m => m.status === 'EMERGENCY' || m.maintenanceAlert).length;
+    const avgTemp = machines.length ? (machines.reduce((s, m) => s + (m.temperature || 0), 0) / machines.length).toFixed(1) : '—';
+    const totalPower = machines.reduce((s, m) => s + (m.powerConsumption || 0), 0).toFixed(1);
+    const avgEfficiency = machines.length ? (machines.reduce((s, m) => s + (m.efficiency || 0), 0) / machines.length).toFixed(1) : '—';
+    const activeAlerts = alerts.filter(a => !a.acknowledged);
+
     if (loading) return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', flexDirection: 'column', gap: 16 }}>
-            <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                style={{
-                    width: 56, height: 56, borderRadius: 16,
-                    background: 'linear-gradient(135deg, rgba(14,165,233,0.2), rgba(34,197,94,0.2))',
-                    border: '1px solid rgba(14,165,233,0.3)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                <Zap size={26} color="#38bdf8" />
-            </motion.div>
-            <p style={{ color: '#6b7280', fontSize: 14 }}>Loading dashboard…</p>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: 14 }}>
+            <Signal size={28} color="#38bdf8" style={{ animation: 'pulse 1.5s infinite' }} />
+            <p style={{ color: '#6b7280', fontSize: 13 }}>Initializing SCADA overview…</p>
         </div>
     );
 
-    const running = machines.filter(m => m.status === 'RUNNING').length;
-    const stopped = machines.filter(m => m.status === 'STOPPED').length;
-    const activeAlerts = alerts.filter(a => !a.acknowledged).length;
-    const health = machines.length > 0 ? Math.round((running / machines.length) * 100) : 0;
-    const chartData = machines.slice(0, 10).map(m => ({
-        name: m.name?.replace(/[-_]/g, ' ').split(' ').pop() || m.name,
-        temp: m.temperature || Math.round(55 + Math.random() * 30),
-        vib: m.vibration || Math.round((0.5 + Math.random() * 2) * 10) / 10,
-    }));
-
-    const stats = [
-        { label: 'Total Machines', value: machines.length, icon: Cpu, bg: 'linear-gradient(135deg, #0ea5e9, #0284c7)', shadow: 'rgba(14,165,233,0.3)' },
-        { label: 'Running', value: running, icon: Activity, bg: 'linear-gradient(135deg, #22c55e, #16a34a)', shadow: 'rgba(34,197,94,0.3)' },
-        { label: 'Stopped', value: stopped, icon: Clock, bg: 'linear-gradient(135deg, #6b7280, #4b5563)', shadow: 'rgba(107,114,128,0.3)' },
-        { label: 'System Health', value: `${health}%`, icon: TrendingUp, bg: 'linear-gradient(135deg, #f59e0b, #d97706)', shadow: 'rgba(245,158,11,0.3)' },
-    ];
-
     return (
-        <div style={{ color: '#f9fafb', fontFamily: 'Inter, system-ui, sans-serif' }}>
+        <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#f9fafb' }}>
             {/* Header */}
-            <div style={{ marginBottom: 32 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s infinite' }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Live Monitoring</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                        <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.5px', margin: 0 }}>System Overview</h1>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, padding: '4px 10px' }}>
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s infinite' }} />
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#4ade80' }}>LIVE</span>
+                        </div>
+                    </div>
+                    <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>R.I.G.S. Industrial Monitoring Dashboard</p>
                 </div>
-                <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 4, letterSpacing: '-0.5px' }}>
-                    Welcome, {user?.name?.split(' ')[0] || 'Operator'} 👋
-                </h1>
-                <p style={{ fontSize: 14, color: '#6b7280' }}>Real-time overview of your industrial machines</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Wifi size={14} color="#22c55e" />
+                    <span style={{ fontSize: 11, color: '#6b7280' }}>MQTT Connected · Polling 4s</span>
+                </div>
             </div>
 
-            {/* Stat cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
-                {stats.map((s, i) => (
-                    <motion.div
-                        key={s.label}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        style={{
-                            background: 'rgba(17,24,39,0.8)',
-                            border: '1px solid rgba(255,255,255,0.07)',
-                            borderRadius: 16, padding: 24,
-                            display: 'flex', alignItems: 'center', gap: 16,
-                            cursor: 'default', transition: 'all 0.25s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.transform = 'none'; }}>
-                        <div style={{
-                            background: s.bg, borderRadius: 14, padding: 14,
-                            boxShadow: `0 4px 20px ${s.shadow}`, flexShrink: 0,
-                        }}>
-                            <s.icon size={22} color="white" />
+            {/* KPI Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 18 }}>
+                {[
+                    { label: 'Machines Online', value: `${runCount}/${machines.length}`, icon: Cpu, color: '#22c55e' },
+                    { label: 'Active Alerts', value: alertCount, icon: AlertTriangle, color: alertCount > 0 ? '#ef4444' : '#4ade80' },
+                    { label: 'Avg Temperature', value: `${avgTemp}°C`, icon: Thermometer, color: '#f59e0b' },
+                    { label: 'Total Power', value: `${totalPower} kW`, icon: Zap, color: '#ec4899' },
+                    { label: 'Avg Efficiency', value: `${avgEfficiency}%`, icon: BarChart3, color: '#22c55e' },
+                    { label: 'System Uptime', value: '99.7%', icon: Shield, color: '#3b82f6' },
+                ].map(kpi => (
+                    <motion.div key={kpi.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{
+                        background: 'rgba(17,24,39,0.85)', border: '1px solid rgba(255,255,255,0.07)',
+                        borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10,
+                    }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 10, background: `${kpi.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <kpi.icon size={15} color={kpi.color} />
                         </div>
                         <div>
-                            <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
-                            <div style={{ fontSize: 30, fontWeight: 900, color: '#f9fafb', lineHeight: 1.1 }}>{s.value}</div>
+                            <div style={S.label}>{kpi.label}</div>
+                            <div style={{ fontSize: 18, fontWeight: 800, color: kpi.color, fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{kpi.value}</div>
                         </div>
                     </motion.div>
                 ))}
             </div>
 
             {/* Main grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    {/* Temperature chart */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        style={{
-                            background: 'rgba(17,24,39,0.8)',
-                            border: '1px solid rgba(255,255,255,0.07)',
-                            borderRadius: 16, padding: 24,
-                        }}>
-                        <div style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-                            <Thermometer size={18} color="#38bdf8" />
-                            <span>Temperature Overview</span>
-                            <span style={{
-                                marginLeft: 'auto', fontSize: 10, fontWeight: 700,
-                                background: 'rgba(14,165,233,0.1)', color: '#38bdf8',
-                                border: '1px solid rgba(14,165,233,0.2)',
-                                borderRadius: 999, padding: '2px 10px',
-                                letterSpacing: '0.06em', textTransform: 'uppercase'
-                            }}>Live</span>
-                        </div>
-                        <div style={{ height: 220 }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData}>
-                                    <defs>
-                                        <linearGradient id="gTemp" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#4b5563', fontSize: 11 }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#4b5563', fontSize: 11 }} />
-                                    <Tooltip contentStyle={{ background: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#f9fafb', fontSize: 13 }} />
-                                    <Area type="monotone" dataKey="temp" name="Temp (°C)" stroke="#0ea5e9" fill="url(#gTemp)" strokeWidth={2.5} dot={false} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </motion.div>
-
-                    {/* Machine cards grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
-                        {machines.slice(0, 6).map((m, i) => (
-                            <motion.div
-                                key={m.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.4 + i * 0.05 }}
-                                style={{
-                                    background: 'rgba(17,24,39,0.7)',
-                                    border: '1px solid rgba(255,255,255,0.06)',
-                                    borderRadius: 14, padding: 18,
-                                    transition: 'all 0.25s',
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(14,165,233,0.2)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.transform = 'none'; }}>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-                                    <div>
-                                        <div style={{ fontSize: 13, fontWeight: 700 }}>{m.name}</div>
-                                        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <MapPin size={10} /> {m.location}
-                                        </div>
-                                    </div>
-                                    <span style={{
-                                        fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 999,
-                                        textTransform: 'uppercase', letterSpacing: '0.05em',
-                                        ...(m.status === 'RUNNING'
-                                            ? { background: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.2)' }
-                                            : { background: 'rgba(107,114,128,0.1)', color: '#9ca3af', border: '1px solid rgba(107,114,128,0.15)' })
-                                    }}>{m.status}</span>
-                                </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                                    {[
-                                        { label: 'Temp', value: `${m.temperature != null ? m.temperature.toFixed(1) : '—'}°`, icon: Thermometer, color: (m.temperature || 0) > 80 ? '#f87171' : '#38bdf8' },
-                                        { label: 'Vibration', value: m.vibration != null ? m.vibration.toFixed(2) : '—', icon: Waves, color: '#a78bfa' },
-                                        { label: 'Current', value: m.currentDraw != null ? m.currentDraw.toFixed(1) : '—', icon: BatteryCharging, color: '#fbbf24' },
-                                    ].map(metric => (
-                                        <div key={metric.label} style={{
-                                            background: 'rgba(31,41,55,0.5)', borderRadius: 8, padding: 8, textAlign: 'center',
-                                        }}>
-                                            <metric.icon size={12} color={metric.color} style={{ margin: '0 auto 4px' }} />
-                                            <div style={{ fontSize: 13, fontWeight: 800, color: metric.color }}>{metric.value}</div>
-                                            <div style={{ fontSize: 9, color: '#6b7280', fontWeight: 600 }}>{metric.label}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
-
-                    {machines.length > 6 && (
-                        <Link to="/app/machines" style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                            padding: '12px', borderRadius: 12,
-                            background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(14,165,233,0.15)',
-                            color: '#38bdf8', fontSize: 13, fontWeight: 600, textDecoration: 'none',
-                            transition: 'all 0.2s',
-                        }}>
-                            View All {machines.length} Machines <ChevronRight size={16} />
-                        </Link>
-                    )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 14, marginBottom: 18 }}>
+                {/* Live Telemetry Chart */}
+                <div style={S.card}>
+                    <div style={{ ...S.label, marginBottom: 14 }}>Fleet Telemetry — Live Feed</div>
+                    <ResponsiveContainer width="100%" height={240}>
+                        <AreaChart data={chartData}>
+                            <defs>
+                                <linearGradient id="tempG" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
+                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="powerG" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#ec4899" stopOpacity={0.25} />
+                                    <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                            <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} axisLine={false} />
+                            <YAxis tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} axisLine={false} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Area type="monotone" dataKey="temp" stroke="#f59e0b" fill="url(#tempG)" strokeWidth={2} name="Avg Temp (°C)" dot={false} />
+                            <Area type="monotone" dataKey="power" stroke="#ec4899" fill="url(#powerG)" strokeWidth={2} name="Total Power (kW)" dot={false} />
+                        </AreaChart>
+                    </ResponsiveContainer>
                 </div>
 
-                {/* Alerts sidebar */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    style={{
-                        background: 'rgba(17,24,39,0.8)',
-                        border: '1px solid rgba(255,255,255,0.07)',
-                        borderRadius: 16, padding: 24,
-                        height: 'fit-content',
-                    }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-                        <ShieldAlert size={18} color="#f87171" />
-                        <span>Priority Alerts</span>
-                        {activeAlerts > 0 && (
-                            <span style={{
-                                marginLeft: 'auto', fontSize: 10, fontWeight: 800,
-                                background: 'rgba(239,68,68,0.1)', color: '#f87171',
-                                border: '1px solid rgba(239,68,68,0.25)',
-                                borderRadius: 999, padding: '2px 10px'
-                            }}>{activeAlerts} active</span>
+                {/* Alarm Panel */}
+                <div style={S.card}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                        <div style={S.label}>Active Alarms</div>
+                        {activeAlerts.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', animation: 'pulse 1.5s infinite' }} />
+                                <span style={{ fontSize: 11, fontWeight: 700, color: '#f87171' }}>{activeAlerts.length} unresolved</span>
+                            </div>
                         )}
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {alerts.length > 0 ? alerts.slice(0, 8).map(a => (
-                            <div key={a.id} style={{
-                                display: 'flex', gap: 12, padding: '10px 12px',
-                                borderRadius: 10, background: 'rgba(255,255,255,0.02)',
-                            }}>
-                                <div style={{
-                                    width: 8, height: 8, borderRadius: '50%', marginTop: 5, flexShrink: 0,
-                                    background: a.severity === 'CRITICAL' ? '#ef4444' : '#f59e0b',
-                                    ...(a.severity === 'CRITICAL' && { animation: 'pulse 2s infinite' }),
-                                }} />
-                                <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontSize: 13, color: '#e5e7eb', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        {a.message}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
+                        {activeAlerts.length > 0 ? activeAlerts.map(a => {
+                            const sevColors = { CRITICAL: '#ef4444', MEDIUM: '#f59e0b', LOW: '#38bdf8' };
+                            return (
+                                <div key={a.id} style={{
+                                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                                    background: 'rgba(31,41,55,0.5)', borderRadius: 10,
+                                    borderLeft: `3px solid ${sevColors[a.severity] || '#38bdf8'}`,
+                                }}>
+                                    <AlertTriangle size={13} color={sevColors[a.severity] || '#38bdf8'} />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.message}</div>
+                                        <div style={{ fontSize: 10, color: '#6b7280' }}>{a.machineName} · {a.severity}</div>
                                     </div>
-                                    <div style={{ fontSize: 11, color: '#4b5563' }}>
-                                        {a.machineName} · {new Date(a.createdAt).toLocaleTimeString()}
-                                    </div>
+                                    <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${sevColors[a.severity] || '#38bdf8'}15`, color: sevColors[a.severity] || '#38bdf8', textTransform: 'uppercase' }}>{a.type}</span>
                                 </div>
-                            </div>
-                        )) : (
-                            <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                                <CheckCircle2 color="#4ade80" size={36} style={{ margin: '0 auto 12px' }} />
-                                <div style={{ fontSize: 13, color: '#6b7280' }}>All systems operational</div>
+                            );
+                        }) : (
+                            <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280' }}>
+                                <Shield size={24} style={{ marginBottom: 8, opacity: 0.4 }} />
+                                <div style={{ fontSize: 12, fontWeight: 600 }}>All systems nominal</div>
                             </div>
                         )}
                     </div>
-                </motion.div>
+                </div>
+            </div>
+
+            {/* Machine Health Grid */}
+            <div style={{ marginBottom: 18 }}>
+                <div style={{ ...S.label, marginBottom: 12 }}>Machine Health Overview</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+                    {machines.map(m => {
+                        const sc = STATUS_CONFIG[m.status] || STATUS_CONFIG.OFFLINE;
+                        return (
+                            <Link key={m.machineId} to={`/app/machines/${m.machineId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                <motion.div whileHover={{ scale: 1.01 }} style={{
+                                    background: 'rgba(17,24,39,0.85)', border: `1px solid ${sc.color}25`,
+                                    borderRadius: 14, padding: '12px 16px',
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <div style={{ width: 28, height: 28, borderRadius: 8, background: sc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Cpu size={13} color={sc.color} />
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: 13, fontWeight: 700 }}>{m.machineName}</div>
+                                                <div style={{ fontSize: 10, color: '#6b7280' }}>{m.location}</div>
+                                            </div>
+                                        </div>
+                                        <span style={{
+                                            fontSize: 8, fontWeight: 800, padding: '3px 8px', borderRadius: 999,
+                                            background: sc.bg, color: sc.color, textTransform: 'uppercase',
+                                        }}>{m.status}</span>
+                                    </div>
+                                    {/* Mini metric row */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 6 }}>
+                                        {[
+                                            { label: 'Temp', value: m.temperature, unit: '°', color: '#f59e0b' },
+                                            { label: 'RPM', value: m.rpm, unit: '', color: '#3b82f6' },
+                                            { label: 'Power', value: m.powerConsumption, unit: 'kW', color: '#ec4899' },
+                                            { label: 'Eff', value: m.efficiency, unit: '%', color: '#22c55e' },
+                                        ].map(metric => (
+                                            <div key={metric.label} style={{ textAlign: 'center', padding: '6px 4px', background: 'rgba(31,41,55,0.5)', borderRadius: 8 }}>
+                                                <div style={{ fontSize: 8, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase' }}>{metric.label}</div>
+                                                <div style={{ fontSize: 13, fontWeight: 800, color: metric.color, fontVariantNumeric: 'tabular-nums' }}>
+                                                    {metric.value != null ? metric.value.toFixed(metric.label === 'RPM' ? 0 : 1) : '—'}
+                                                    <span style={{ fontSize: 8, fontWeight: 400, color: '#6b7280' }}>{metric.unit}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            </Link>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* System Diagnostics */}
+            <div style={S.card}>
+                <div style={{ ...S.label, marginBottom: 12 }}>System Diagnostics</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+                    {[
+                        { label: 'MQTT Broker', status: 'Connected', color: '#22c55e', icon: Wifi },
+                        { label: 'Data Pipeline', status: 'Active · 4s interval', color: '#22c55e', icon: Signal },
+                        { label: 'Last Data Update', status: new Date().toLocaleTimeString(), color: '#38bdf8', icon: Clock },
+                        { label: 'Alert Engine', status: 'Monitoring', color: '#22c55e', icon: Shield },
+                    ].map(d => (
+                        <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'rgba(31,41,55,0.4)', borderRadius: 10 }}>
+                            <d.icon size={14} color={d.color} />
+                            <div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: '#f9fafb' }}>{d.label}</div>
+                                <div style={{ fontSize: 10, color: d.color }}>{d.status}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

@@ -80,8 +80,14 @@ public class MqttListenerService implements MqttCallbackExtended {
             Double vibration = data.has("vibration") ? data.get("vibration").asDouble() : null;
             Double currentDraw = data.has("current") ? data.get("current").asDouble() : null;
             String status = data.has("status") ? data.get("status").asText() : "RUNNING";
+            Double rpm = data.has("rpm") ? data.get("rpm").asDouble() : null;
+            Double pressure = data.has("pressure") ? data.get("pressure").asDouble() : null;
+            Double powerConsumption = data.has("power") ? data.get("power").asDouble() : null;
+            Double efficiency = data.has("efficiency") ? data.get("efficiency").asDouble() : null;
+            Double errorRate = data.has("errorRate") ? data.get("errorRate").asDouble() : null;
 
-            machineService.saveTelemetry(machineId, temperature, vibration, currentDraw, status);
+            machineService.saveTelemetry(machineId, temperature, vibration, currentDraw, status,
+                    rpm, pressure, powerConsumption, efficiency, errorRate);
         } catch (Exception e) {
             log.error("Telemetry error: {}", e.getMessage());
         }
