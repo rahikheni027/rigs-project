@@ -15,6 +15,8 @@ public class MachineTelemetryResponse {
     private String machineName;
     private String location;
     private String status;
+    private String machineType;
+    private String processUnit;
     private Double temperature;
     private Double vibration;
     private Double currentDraw;

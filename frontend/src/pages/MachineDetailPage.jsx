@@ -1,56 +1,99 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { motion } from 'framer-motion';
 import api from '../api/axios';
-import { useAuth } from '../context/AuthContext';
 import {
-    ArrowLeft, Cpu, Thermometer, Activity, Zap, Gauge, Wind, BarChart3,
-    Play, Square, OctagonX, RotateCcw, Wrench, SlidersHorizontal, AlertTriangle, Clock
+    ArrowLeft, Thermometer, Activity, Zap, Gauge, Wind, BarChart3, AlertTriangle,
+    Play, Square, OctagonX, RotateCcw, Wrench, SlidersHorizontal, Cpu,
+    Clock, TrendingUp, Download, Droplets, Fan, Cog, Radio
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
-    RUNNING: { color: '#22c55e', label: 'RUNNING' },
-    STOPPED: { color: '#6b7280', label: 'STOPPED' },
-    EMERGENCY: { color: '#ef4444', label: 'EMERGENCY' },
-    MAINTENANCE: { color: '#f59e0b', label: 'MAINTENANCE' },
-    CALIBRATING: { color: '#3b82f6', label: 'CALIBRATING' },
-    OFFLINE: { color: '#4b5563', label: 'OFFLINE' },
+    RUNNING: { color: '#22c55e', bg: 'rgba(34,197,94,0.06)', label: 'RUNNING' },
+    STOPPED: { color: '#64748b', bg: 'rgba(100,116,139,0.06)', label: 'STOPPED' },
+    EMERGENCY: { color: '#ef4444', bg: 'rgba(239,68,68,0.08)', label: 'EMERGENCY' },
+    MAINTENANCE: { color: '#f59e0b', bg: 'rgba(245,158,11,0.06)', label: 'MAINTENANCE' },
+    CALIBRATING: { color: '#3b82f6', bg: 'rgba(59,130,246,0.06)', label: 'CALIBRATING' },
+    OFFLINE: { color: '#475569', bg: 'rgba(71,85,105,0.06)', label: 'OFFLINE' },
 };
 
+const MACHINE_ICONS = { PUMP: Droplets, MOTOR: Cog, COMPRESSOR: Fan, TURBINE: Activity, GENERATOR: Zap };
+
 const COMMANDS = [
-    { cmd: 'START', icon: Play, label: 'Start Machine', color: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
-    { cmd: 'STOP', icon: Square, label: 'Stop Machine', color: '#6b7280', bg: 'rgba(107,114,128,0.08)' },
-    { cmd: 'EMERGENCY_STOP', icon: OctagonX, label: 'Emergency Stop', color: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
-    { cmd: 'RESET', icon: RotateCcw, label: 'Reset', color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)' },
-    { cmd: 'MAINTENANCE_MODE', icon: Wrench, label: 'Maintenance Mode', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
-    { cmd: 'CALIBRATION', icon: SlidersHorizontal, label: 'Calibration', color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
+    { cmd: 'START', icon: Play, label: 'START', color: '#22c55e' },
+    { cmd: 'STOP', icon: Square, label: 'STOP', color: '#64748b' },
+    { cmd: 'EMERGENCY_STOP', icon: OctagonX, label: 'E-STOP', color: '#ef4444' },
+    { cmd: 'RESET', icon: RotateCcw, label: 'RESET', color: '#8b5cf6' },
+    { cmd: 'MAINTENANCE_MODE', icon: Wrench, label: 'MAINT', color: '#f59e0b' },
+    { cmd: 'CALIBRATION', icon: SlidersHorizontal, label: 'CAL', color: '#3b82f6' },
 ];
 
+const SETPOINTS = {
+    temperature: { min: 30, max: 85, unit: '°C', label: 'TEMPERATURE' },
+    rpm: { min: 0, max: 3600, unit: '', label: 'RPM' },
+    vibration: { min: 0, max: 5.0, unit: 'g', label: 'VIBRATION' },
+    pressure: { min: 15, max: 120, unit: 'PSI', label: 'PRESSURE' },
+    powerConsumption: { min: 0, max: 25, unit: 'kW', label: 'POWER' },
+    efficiency: { min: 75, max: 100, unit: '%', label: 'EFFICIENCY' },
+    currentDraw: { min: 0, max: 15, unit: 'A', label: 'CURRENT' },
+    errorRate: { min: 0, max: 0.05, unit: '', label: 'ERROR RATE' },
+};
+
 const S = {
-    card: { background: 'rgba(17,24,39,0.85)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: 20 },
-    label: { fontSize: 10, color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 },
-    bigVal: { fontSize: 28, fontWeight: 900, fontVariantNumeric: 'tabular-nums' },
+    card: { background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(14,165,233,0.08)', borderRadius: 10, padding: 16 },
+    label: { fontSize: 9, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace" },
 };
 
 const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
-        <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px', fontSize: 12 }}>
-            <div style={{ color: '#6b7280', marginBottom: 6 }}>{label}</div>
+        <div style={{ background: '#0f172a', border: '1px solid rgba(14,165,233,0.15)', borderRadius: 8, padding: '8px 12px', fontSize: 11 }}>
+            <div style={{ color: '#64748b', marginBottom: 4, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>{label}</div>
             {payload.map(p => (
-                <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: p.color }} />
-                    <span style={{ color: '#9ca3af' }}>{p.name}:</span>
-                    <span style={{ color: '#f9fafb', fontWeight: 700 }}>{p.value != null ? p.value.toFixed(1) : '—'}</span>
+                <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 1 }}>
+                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: p.color }} />
+                    <span style={{ color: '#94a3b8', fontSize: 10 }}>{p.name}:</span>
+                    <span style={{ color: '#f1f5f9', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{p.value != null ? Number(p.value).toFixed(2) : '—'}</span>
                 </div>
             ))}
         </div>
     );
 };
 
+const MetricCard = ({ label, value, unit, icon: Icon, color, setpoint }) => {
+    const isOverLimit = setpoint && value != null && value > setpoint.max;
+    const displayColor = isOverLimit ? '#ef4444' : color;
+
+    return (
+        <div style={{
+            background: 'rgba(15,23,42,0.7)', border: `1px solid ${displayColor}12`, borderRadius: 8, padding: '10px 12px',
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Icon size={12} color={displayColor} />
+                    <span style={{ ...S.label, marginBottom: 0 }}>{label}</span>
+                </div>
+                {isOverLimit && <AlertTriangle size={10} color="#ef4444" style={{ animation: 'alarm-flash 1s infinite' }} />}
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: displayColor, fontFamily: "'JetBrains Mono', monospace", marginBottom: 4 }}>
+                {value != null ? (typeof value === 'number' ? value.toFixed(label === 'RPM' ? 0 : 2) : value) : '--'}
+                <span style={{ fontSize: 10, fontWeight: 400, color: '#64748b', marginLeft: 2 }}>{unit}</span>
+            </div>
+            {setpoint && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: '#475569', fontFamily: "'JetBrains Mono', monospace" }}>
+                    <span>SP: {setpoint.min}–{setpoint.max}{unit}</span>
+                    {value != null && (
+                        <span style={{ color: isOverLimit ? '#ef4444' : '#22c55e' }}>{isOverLimit ? '▲ HIGH' : '✓ NORM'}</span>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const MachineDetailPage = () => {
-    const { id } = useParams();
-    const { user } = useAuth();
+    const { machineId } = useParams();
     const [machine, setMachine] = useState(null);
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -59,15 +102,17 @@ const MachineDetailPage = () => {
     const fetchData = async () => {
         try {
             const [machRes, histRes] = await Promise.all([
-                api.get(`/machines/${id}`),
-                api.get(`/machines/${id}/history`),
+                api.get(`/machines/${machineId}/telemetry`),
+                api.get(`/machines/${machineId}/telemetry/history`),
             ]);
             setMachine(machRes.data);
-            // Reverse so oldest is first for charts
-            setHistory(histRes.data.reverse().map((d, i) => ({
-                ...d,
-                time: d.timestamp ? new Date(d.timestamp).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : `T-${histRes.data.length - i}`,
-            })));
+            const histData = (histRes.data || []).slice(-40).map((d, i) => ({
+                time: d.timestamp ? new Date(d.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : `T${i}`,
+                temp: d.temperature, vib: d.vibration, rpm: d.rpm,
+                pres: d.pressure, power: d.powerConsumption, eff: d.efficiency,
+                cur: d.currentDraw, err: d.errorRate,
+            }));
+            setHistory(histData);
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
@@ -75,189 +120,220 @@ const MachineDetailPage = () => {
         fetchData();
         const t = setInterval(fetchData, 4000);
         return () => clearInterval(t);
-    }, [id]);
+    }, [machineId]);
 
     const handleCommand = async (cmd) => {
         setCmdLoading(p => ({ ...p, [cmd]: true }));
         try {
-            await api.post(`/machines/${id}/command?command=${cmd}&issuedBy=${user?.name || 'operator'}`);
+            await api.post(`/machines/${machineId}/command?command=${cmd}&issuedBy=operator`);
             setTimeout(fetchData, 800);
         } catch (e) { console.error(e); }
         finally { setTimeout(() => setCmdLoading(p => ({ ...p, [cmd]: false })), 1200); }
     };
 
-    if (loading) return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: 14 }}>
-            <Cpu size={28} color="#38bdf8" style={{ animation: 'pulse 1.5s infinite' }} />
-            <p style={{ color: '#6b7280', fontSize: 13 }}>Loading machine analytics…</p>
-        </div>
-    );
+    const exportCSV = () => {
+        const headers = ['Time', 'Temp', 'RPM', 'Vibration', 'Pressure', 'Power', 'Efficiency', 'Current', 'ErrorRate'];
+        const rows = history.map(d => [d.time, d.temp?.toFixed(1), d.rpm?.toFixed(0), d.vib?.toFixed(2), d.pres?.toFixed(1), d.power?.toFixed(2), d.eff?.toFixed(1), d.cur?.toFixed(1), d.err?.toFixed(3)]);
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = `rigs_machine_${machineId}_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+        URL.revokeObjectURL(url);
+    };
 
-    if (!machine) return (
-        <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>
-            <p>Machine not found</p>
-            <Link to="/app/machines" style={{ color: '#38bdf8' }}>← Back to machines</Link>
+    if (loading || !machine) return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: 14 }}>
+            <Gauge size={28} color="#0ea5e9" style={{ animation: 'pulse 1.5s infinite' }} />
+            <p style={{ color: '#64748b', fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>LOADING MACHINE TELEMETRY...</p>
         </div>
     );
 
     const sc = STATUS_CONFIG[machine.status] || STATUS_CONFIG.OFFLINE;
-
-    const metrics = [
-        { label: 'Temperature', value: machine.temperature, unit: '°C', color: '#f59e0b', icon: Thermometer },
-        { label: 'RPM', value: machine.rpm, unit: '', color: '#3b82f6', icon: Gauge },
-        { label: 'Vibration', value: machine.vibration, unit: ' g', color: '#8b5cf6', icon: Activity },
-        { label: 'Pressure', value: machine.pressure, unit: ' PSI', color: '#06b6d4', icon: Wind },
-        { label: 'Power', value: machine.powerConsumption, unit: ' kW', color: '#ec4899', icon: Zap },
-        { label: 'Efficiency', value: machine.efficiency, unit: '%', color: '#22c55e', icon: BarChart3 },
-    ];
+    const MIcon = MACHINE_ICONS[machine.machineType] || Cpu;
+    const timeSinceUpdate = machine.lastHeartbeat ? Math.round((Date.now() - new Date(machine.lastHeartbeat).getTime()) / 1000) : null;
 
     return (
-        <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#f9fafb' }}>
-            {/* Back & Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                <Link to="/app/machines" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#6b7280', fontSize: 13, textDecoration: 'none' }}>
-                    <ArrowLeft size={16} /> Back
-                </Link>
-                <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)' }} />
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 12, background: `${sc.color}15`, border: `1px solid ${sc.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Cpu size={18} color={sc.color} />
-                    </div>
+        <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#f1f5f9' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <Link to="/app/machines" style={{ color: '#64748b', display: 'flex', padding: 6, borderRadius: 6, border: '1px solid rgba(14,165,233,0.1)', background: 'rgba(14,165,233,0.04)' }}>
+                        <ArrowLeft size={16} />
+                    </Link>
                     <div>
-                        <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.5px' }}>{machine.machineName}</div>
-                        <div style={{ fontSize: 12, color: '#6b7280' }}>{machine.location} · Machine #{id}</div>
-                    </div>
-                </div>
-                <span style={{ fontSize: 10, fontWeight: 800, padding: '4px 12px', borderRadius: 999, background: `${sc.color}15`, color: sc.color, border: `1px solid ${sc.color}30`, textTransform: 'uppercase', letterSpacing: '0.05em', marginLeft: 'auto' }}>
-                    {sc.label}
-                </span>
-            </div>
-
-            {/* Current Metrics Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 20 }}>
-                {metrics.map(m => (
-                    <div key={m.label} style={{ ...S.card, padding: '14px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                            <m.icon size={13} color={m.color} />
-                            <span style={S.label}>{m.label}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                            <MIcon size={16} color={sc.color} />
+                            <h1 style={{ fontSize: 18, fontWeight: 900, margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>{machine.machineName}</h1>
+                            <span style={{
+                                fontSize: 8, fontWeight: 800, padding: '3px 8px', borderRadius: 3,
+                                background: sc.bg, color: sc.color, fontFamily: "'JetBrains Mono', monospace",
+                            }}>
+                                <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: sc.color, marginRight: 4, animation: machine.status === 'EMERGENCY' ? 'alarm-flash 0.8s infinite' : machine.status === 'RUNNING' ? 'pulse 2s infinite' : 'none' }} />
+                                {sc.label}
+                            </span>
                         </div>
-                        <div style={{ ...S.bigVal, color: m.color }}>
-                            {m.value != null ? m.value.toFixed(1) : '—'}
-                            <span style={{ fontSize: 13, fontWeight: 500, color: '#6b7280', marginLeft: 3 }}>{m.unit}</span>
+                        <div style={{ fontSize: 10, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>
+                            {machine.location} · {machine.machineType || 'MOTOR'} · {machine.processUnit || 'Unit A'} · RUNTIME: {(machine.cumulativeRuntimeHours || 0).toFixed(1)}h
+                            {timeSinceUpdate !== null && (
+                                <span style={{ marginLeft: 8, color: timeSinceUpdate > 30 ? '#ef4444' : '#22c55e' }}>
+                                    · LAST UPDATE: {timeSinceUpdate}s AGO
+                                </span>
+                            )}
                         </div>
                     </div>
-                ))}
-            </div>
-
-            {/* Charts Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 14, marginBottom: 20 }}>
-                {/* Temperature & RPM Chart */}
-                <div style={S.card}>
-                    <div style={{ ...S.label, marginBottom: 14 }}>Temperature & RPM Trend</div>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={history}>
-                            <defs>
-                                <linearGradient id="tempGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="rpmGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                            <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} axisLine={false} />
-                            <YAxis yAxisId="temp" tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} axisLine={false} />
-                            <YAxis yAxisId="rpm" orientation="right" tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} axisLine={false} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area yAxisId="temp" type="monotone" dataKey="temperature" stroke="#f59e0b" fill="url(#tempGrad)" strokeWidth={2} name="Temp (°C)" dot={false} />
-                            <Area yAxisId="rpm" type="monotone" dataKey="rpm" stroke="#3b82f6" fill="url(#rpmGrad)" strokeWidth={2} name="RPM" dot={false} />
-                        </AreaChart>
-                    </ResponsiveContainer>
                 </div>
-
-                {/* Vibration & Pressure Chart */}
-                <div style={S.card}>
-                    <div style={{ ...S.label, marginBottom: 14 }}>Vibration & Pressure Trend</div>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={history}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                            <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} axisLine={false} />
-                            <YAxis yAxisId="vib" tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} axisLine={false} />
-                            <YAxis yAxisId="press" orientation="right" tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} axisLine={false} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Line yAxisId="vib" type="monotone" dataKey="vibration" stroke="#8b5cf6" strokeWidth={2} name="Vibration (g)" dot={false} />
-                            <Line yAxisId="press" type="monotone" dataKey="pressure" stroke="#06b6d4" strokeWidth={2} name="Pressure (PSI)" dot={false} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
-
-                {/* Power & Efficiency Chart */}
-                <div style={S.card}>
-                    <div style={{ ...S.label, marginBottom: 14 }}>Power Consumption & Efficiency</div>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={history}>
-                            <defs>
-                                <linearGradient id="powerGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#ec4899" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                            <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} axisLine={false} />
-                            <YAxis yAxisId="power" tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} axisLine={false} />
-                            <YAxis yAxisId="eff" orientation="right" tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} axisLine={false} domain={[0, 100]} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area yAxisId="power" type="monotone" dataKey="powerConsumption" stroke="#ec4899" fill="url(#powerGrad)" strokeWidth={2} name="Power (kW)" dot={false} />
-                            <Line yAxisId="eff" type="monotone" dataKey="efficiency" stroke="#22c55e" strokeWidth={2} name="Efficiency (%)" dot={false} />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-
-                {/* Error Rate Chart */}
-                <div style={S.card}>
-                    <div style={{ ...S.label, marginBottom: 14 }}>Error Rate History</div>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={history}>
-                            <defs>
-                                <linearGradient id="errGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                            <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} axisLine={false} />
-                            <YAxis tick={{ fontSize: 9, fill: '#6b7280' }} tickLine={false} axisLine={false} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area type="monotone" dataKey="errorRate" stroke="#ef4444" fill="url(#errGrad)" strokeWidth={2} name="Error Rate" dot={false} />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={exportCSV} style={{
+                        display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px',
+                        background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.15)',
+                        borderRadius: 6, color: '#38bdf8', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                        fontFamily: "'JetBrains Mono', monospace",
+                    }}>
+                        <Download size={11} /> EXPORT
+                    </button>
                 </div>
             </div>
 
             {/* Command Panel */}
-            <div style={S.card}>
-                <div style={{ ...S.label, marginBottom: 14 }}>Machine Control Panel</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
-                    {COMMANDS.map(c => {
-                        const isActive = cmdLoading[c.cmd];
-                        return (
-                            <button key={c.cmd} onClick={() => handleCommand(c.cmd)} disabled={isActive}
-                                style={{
-                                    padding: '12px 10px', borderRadius: 12, border: `1px solid ${c.color}30`,
-                                    background: isActive ? c.bg : 'transparent', color: c.color, cursor: 'pointer',
-                                    fontFamily: 'inherit', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center',
-                                    justifyContent: 'center', gap: 8, transition: 'all 0.15s', opacity: isActive ? 0.6 : 1,
-                                }}
-                                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = c.bg; } }}
-                                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; } }}
-                            >
-                                <c.icon size={15} />
-                                {c.label}
-                            </button>
-                        );
-                    })}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}>
+                {COMMANDS.map(c => {
+                    const isActive = cmdLoading[c.cmd];
+                    return (
+                        <button key={c.cmd} onClick={() => handleCommand(c.cmd)} disabled={isActive}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px',
+                                borderRadius: 6, border: `1px solid ${c.color}20`, cursor: 'pointer',
+                                background: isActive ? `${c.color}10` : 'rgba(15,23,42,0.9)',
+                                color: c.color, fontSize: 10, fontWeight: 700,
+                                fontFamily: "'JetBrains Mono', monospace",
+                                transition: 'all 0.15s', opacity: isActive ? 0.6 : 1,
+                            }}
+                            onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = `${c.color}10`; e.currentTarget.style.borderColor = `${c.color}40`; } }}
+                            onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(15,23,42,0.9)'; e.currentTarget.style.borderColor = `${c.color}20`; } }}
+                        >
+                            <c.icon size={12} />
+                            {c.label}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Live Metrics Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 16 }}>
+                <MetricCard label="TEMPERATURE" value={machine.temperature} unit="°C" icon={Thermometer} color="#f59e0b" setpoint={SETPOINTS.temperature} />
+                <MetricCard label="RPM" value={machine.rpm} unit="" icon={Gauge} color="#3b82f6" setpoint={SETPOINTS.rpm} />
+                <MetricCard label="VIBRATION" value={machine.vibration} unit="g" icon={Activity} color="#8b5cf6" setpoint={SETPOINTS.vibration} />
+                <MetricCard label="PRESSURE" value={machine.pressure} unit="PSI" icon={Wind} color="#06b6d4" setpoint={SETPOINTS.pressure} />
+                <MetricCard label="POWER" value={machine.powerConsumption} unit="kW" icon={Zap} color="#a855f7" setpoint={SETPOINTS.powerConsumption} />
+                <MetricCard label="EFFICIENCY" value={machine.efficiency} unit="%" icon={BarChart3} color="#22c55e" setpoint={SETPOINTS.efficiency} />
+                <MetricCard label="CURRENT" value={machine.currentDraw} unit="A" icon={Radio} color="#ec4899" setpoint={SETPOINTS.currentDraw} />
+                <MetricCard label="ERROR RATE" value={machine.errorRate} unit="" icon={AlertTriangle} color="#ef4444" setpoint={SETPOINTS.errorRate} />
+            </div>
+
+            {/* Historical Charts */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                {/* Temperature + Vibration */}
+                <div style={S.card}>
+                    <div style={{ ...S.label, marginBottom: 10 }}>TEMPERATURE & VIBRATION TREND</div>
+                    <ResponsiveContainer width="100%" height={220}>
+                        <AreaChart data={history}>
+                            <defs>
+                                <linearGradient id="tG" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(14,165,233,0.05)" />
+                            <XAxis dataKey="time" tick={{ fontSize: 8, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
+                            <YAxis yAxisId="temp" tick={{ fontSize: 8, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
+                            <YAxis yAxisId="vib" orientation="right" tick={{ fontSize: 8, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Area yAxisId="temp" type="monotone" dataKey="temp" stroke="#f59e0b" fill="url(#tG)" strokeWidth={1.5} name="Temp (°C)" dot={false} />
+                            <Line yAxisId="vib" type="monotone" dataKey="vib" stroke="#8b5cf6" strokeWidth={1.5} name="Vibration (g)" dot={false} strokeDasharray="4 2" />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* RPM + Power */}
+                <div style={S.card}>
+                    <div style={{ ...S.label, marginBottom: 10 }}>RPM & POWER CONSUMPTION</div>
+                    <ResponsiveContainer width="100%" height={220}>
+                        <AreaChart data={history}>
+                            <defs>
+                                <linearGradient id="rpmG" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(14,165,233,0.05)" />
+                            <XAxis dataKey="time" tick={{ fontSize: 8, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
+                            <YAxis yAxisId="rpm" tick={{ fontSize: 8, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
+                            <YAxis yAxisId="power" orientation="right" tick={{ fontSize: 8, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Area yAxisId="rpm" type="monotone" dataKey="rpm" stroke="#3b82f6" fill="url(#rpmG)" strokeWidth={1.5} name="RPM" dot={false} />
+                            <Line yAxisId="power" type="monotone" dataKey="power" stroke="#a855f7" strokeWidth={1.5} name="Power (kW)" dot={false} strokeDasharray="4 2" />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            {/* Efficiency + Pressure + Current Charts */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <div style={S.card}>
+                    <div style={{ ...S.label, marginBottom: 10 }}>EFFICIENCY TREND</div>
+                    <ResponsiveContainer width="100%" height={160}>
+                        <AreaChart data={history}>
+                            <defs>
+                                <linearGradient id="eG" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(14,165,233,0.05)" />
+                            <XAxis dataKey="time" tick={{ fontSize: 7, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
+                            <YAxis tick={{ fontSize: 7, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} domain={[0, 100]} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Area type="monotone" dataKey="eff" stroke="#22c55e" fill="url(#eG)" strokeWidth={1.5} name="Efficiency (%)" dot={false} />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+
+                <div style={S.card}>
+                    <div style={{ ...S.label, marginBottom: 10 }}>PRESSURE TREND</div>
+                    <ResponsiveContainer width="100%" height={160}>
+                        <AreaChart data={history}>
+                            <defs>
+                                <linearGradient id="pG" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(14,165,233,0.05)" />
+                            <XAxis dataKey="time" tick={{ fontSize: 7, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
+                            <YAxis tick={{ fontSize: 7, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Area type="monotone" dataKey="pres" stroke="#06b6d4" fill="url(#pG)" strokeWidth={1.5} name="Pressure (PSI)" dot={false} />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+
+                <div style={S.card}>
+                    <div style={{ ...S.label, marginBottom: 10 }}>CURRENT DRAW TREND</div>
+                    <ResponsiveContainer width="100%" height={160}>
+                        <AreaChart data={history}>
+                            <defs>
+                                <linearGradient id="cG" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#ec4899" stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(14,165,233,0.05)" />
+                            <XAxis dataKey="time" tick={{ fontSize: 7, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
+                            <YAxis tick={{ fontSize: 7, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Area type="monotone" dataKey="cur" stroke="#ec4899" fill="url(#cG)" strokeWidth={1.5} name="Current (A)" dot={false} />
+                        </AreaChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
         </div>

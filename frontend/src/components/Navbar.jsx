@@ -1,18 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { LayoutDashboard, Shield, AlertTriangle, User, LogOut, Cpu, Zap } from 'lucide-react';
+import { LayoutDashboard, Shield, AlertTriangle, User, LogOut, Cpu, Zap, Radio, Clock } from 'lucide-react';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const { showToast } = useToast();
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     const handleLogout = () => {
         logout();
-        showToast('Signed out successfully', 'success');
+        showToast('Session terminated', 'success');
         navigate('/');
     };
 
@@ -32,79 +38,125 @@ const Navbar = () => {
     return (
         <nav style={{
             position: 'sticky', top: 0, zIndex: 50,
-            background: 'rgba(3, 7, 18, 0.85)',
+            background: 'rgba(2, 6, 23, 0.95)',
             backdropFilter: 'blur(20px)',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid rgba(14, 165, 233, 0.1)',
             fontFamily: 'Inter, system-ui, sans-serif',
         }}>
-            <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
-                {/* Logo + links */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+            <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
+                {/* Left — Logo + Navigation */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
                     <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'white' }}>
-                        <div style={{ background: 'linear-gradient(135deg,#0ea5e9,#6366f1)', borderRadius: 10, padding: 7, boxShadow: '0 0 16px rgba(14,165,233,0.35)' }}>
-                            <Zap size={18} color="white" />
+                        <div style={{
+                            background: 'linear-gradient(135deg, #0ea5e9, #2563eb)',
+                            borderRadius: 8, padding: 6,
+                            boxShadow: '0 0 20px rgba(14, 165, 233, 0.3)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                            <Zap size={16} color="white" />
                         </div>
                         <div>
-                            <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: '-0.5px' }}>R.I.G.S.</div>
-                            <div style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, marginTop: -2 }}>Industrial</div>
+                            <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.5px', fontFamily: "'JetBrains Mono', monospace" }}>R.I.G.S.</div>
+                            <div style={{ fontSize: 8, color: '#0ea5e9', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 700, marginTop: -2 }}>SCADA · v3.0</div>
                         </div>
                     </Link>
 
-                    <div style={{ display: 'flex', gap: 4 }}>
+                    {/* Separator */}
+                    <div style={{ width: 1, height: 28, background: 'rgba(14, 165, 233, 0.15)' }} />
+
+                    <div style={{ display: 'flex', gap: 2 }}>
                         {navLinks.map(({ to, label, icon: Icon }) => (
                             <Link
                                 key={to}
                                 to={to}
                                 style={{
-                                    display: 'flex', alignItems: 'center', gap: 7,
-                                    padding: '7px 12px', borderRadius: 10,
-                                    fontSize: 13, fontWeight: 500, textDecoration: 'none',
+                                    display: 'flex', alignItems: 'center', gap: 6,
+                                    padding: '6px 12px', borderRadius: 6,
+                                    fontSize: 12, fontWeight: 600, textDecoration: 'none',
                                     transition: 'all 0.2s',
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.04em',
                                     ...(isActive(to)
-                                        ? { background: 'rgba(14,165,233,0.12)', color: '#38bdf8', border: '1px solid rgba(14,165,233,0.22)' }
-                                        : { color: '#9ca3af', border: '1px solid transparent', background: 'transparent' }
+                                        ? { background: 'rgba(14, 165, 233, 0.12)', color: '#38bdf8', border: '1px solid rgba(14, 165, 233, 0.25)' }
+                                        : { color: '#64748b', border: '1px solid transparent', background: 'transparent' }
                                     ),
                                 }}
                             >
-                                <Icon size={15} />
+                                <Icon size={14} />
                                 {label}
                             </Link>
                         ))}
                     </div>
                 </div>
 
-                {/* Right */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* Right — System Status + Clock + User */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    {/* System Status Indicator */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: 'rgba(34, 197, 94, 0.06)', border: '1px solid rgba(34, 197, 94, 0.15)', borderRadius: 6 }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px rgba(34,197,94,0.5)', animation: 'pulse 2s infinite' }} />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#4ade80', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' }}>ONLINE</span>
+                    </div>
+
+                    {/* Real-time Clock */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '4px 10px',
+                        background: 'rgba(14, 165, 233, 0.04)',
+                        border: '1px solid rgba(14, 165, 233, 0.1)',
+                        borderRadius: 6,
+                    }}>
+                        <Clock size={12} color="#0ea5e9" />
+                        <span style={{
+                            fontSize: 11, fontWeight: 600, color: '#38bdf8',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontVariantNumeric: 'tabular-nums',
+                        }}>
+                            {currentTime.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            {' · '}
+                            {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                        </span>
+                    </div>
+
+                    {/* Separator */}
+                    <div style={{ width: 1, height: 24, background: 'rgba(14, 165, 233, 0.1)' }} />
+
+                    {/* User Profile */}
                     <Link to="/app/profile" style={{
                         display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '6px 12px', borderRadius: 10, textDecoration: 'none',
-                        background: isActive('/app/profile') ? 'rgba(14,165,233,0.12)' : 'transparent',
-                        color: isActive('/app/profile') ? '#38bdf8' : '#9ca3af',
+                        padding: '4px 10px', borderRadius: 6, textDecoration: 'none',
+                        background: isActive('/app/profile') ? 'rgba(14, 165, 233, 0.1)' : 'transparent',
+                        color: isActive('/app/profile') ? '#38bdf8' : '#94a3b8',
                         transition: 'all 0.2s',
                         border: '1px solid transparent',
                     }}>
                         <div style={{
-                            width: 30, height: 30, borderRadius: 8,
+                            width: 26, height: 26, borderRadius: 6,
                             background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'white', fontSize: 12, fontWeight: 900,
+                            color: 'white', fontSize: 10, fontWeight: 900,
+                            fontFamily: "'JetBrains Mono', monospace",
                         }}>
                             {user.name?.charAt(0)?.toUpperCase() || 'U'}
                         </div>
-                        <span style={{ fontSize: 13, fontWeight: 500 }}>{user.name}</span>
+                        <div>
+                            <div style={{ fontSize: 11, fontWeight: 600 }}>{user.name}</div>
+                            <div style={{ fontSize: 8, color: '#64748b', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>{isAdmin ? 'ADMIN' : 'OPERATOR'}</div>
+                        </div>
                     </Link>
+
                     <button
                         onClick={handleLogout}
-                        title="Logout"
+                        title="Terminate Session"
                         style={{
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            padding: 8, borderRadius: 8, color: '#6b7280',
+                            background: 'none', border: '1px solid rgba(239, 68, 68, 0.1)',
+                            cursor: 'pointer', padding: 6, borderRadius: 6, color: '#475569',
                             transition: 'all 0.2s', display: 'flex',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'none'; }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.2)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.1)'; }}
                     >
-                        <LogOut size={17} />
+                        <LogOut size={15} />
                     </button>
                 </div>
             </div>

@@ -39,13 +39,23 @@ const LoginPage = () => {
             await login(email, password);
             navigate('/app/dashboard');
         } catch (err) {
-            const msg = err.response?.data?.message || err.message || '';
-            if (msg.includes('disabled') || msg.includes('not enabled')) {
-                setError('Your account is pending admin approval. Please wait.');
-            } else if (msg.includes('locked')) {
-                setError('Your account has been locked. Contact the administrator.');
+            const data = err.response?.data;
+            const errorCode = data?.error;
+            if (errorCode === 'ACCOUNT_PENDING') {
+                setInfo(data.message || 'Your account is pending admin approval. Please wait.');
+            } else if (errorCode === 'ACCOUNT_LOCKED') {
+                setError(data.message || 'Your account has been locked. Contact the administrator.');
+            } else if (errorCode === 'BAD_CREDENTIALS') {
+                setError(data.message || 'Invalid email or password.');
             } else {
-                setError('Login failed. Please check your credentials.');
+                const msg = data?.message || err.message || '';
+                if (msg.includes('disabled') || msg.includes('not enabled') || err.response?.status === 403) {
+                    setInfo('Your account is pending admin approval. Please wait for the administrator to approve your access.');
+                } else if (msg.includes('locked')) {
+                    setError('Your account has been locked. Contact the administrator.');
+                } else {
+                    setError('Login failed. Please check your credentials.');
+                }
             }
         } finally {
             setLoading(false);

@@ -1,9 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @import 'tailwindcss';
 
 @theme {
   --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 
   --color-brand-50: #f0f9ff;
   --color-brand-100: #e0f2fe;
@@ -27,29 +28,31 @@ html {
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background-color: #030712;
+  background-color: #020617;
   color: #f9fafb;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #111827;
+  background: #0f172a;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #374151;
+  background: #1e3a5f;
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4b5563;
+  background: #2563eb;
 }
+
+/* ——— SCADA Animations ——— */
 
 @keyframes fadeUp {
   from {
@@ -97,12 +100,121 @@ body {
   }
 }
 
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+@keyframes alarm-flash {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes data-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes glitch {
+
+  0%,
+  100% {
+    transform: translate(0);
+  }
+
+  20% {
+    transform: translate(-1px, 1px);
+  }
+
+  40% {
+    transform: translate(1px, -1px);
+  }
+
+  60% {
+    transform: translate(-1px, 0px);
+  }
+
+  80% {
+    transform: translate(1px, 1px);
+  }
+}
+
+@keyframes border-glow {
+
+  0%,
+  100% {
+    border-color: rgba(14, 165, 233, 0.15);
+  }
+
+  50% {
+    border-color: rgba(14, 165, 233, 0.4);
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
 .anim-fade-up {
   animation: fadeUp 0.5s ease both;
 }
 
 .anim-float {
   animation: float 4s ease-in-out infinite;
+}
+
+/* SCADA scanline overlay */
+.scada-scanline::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 20, 40, 0.03) 2px,
+      rgba(0, 20, 40, 0.03) 4px);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* SCADA grid background */
+.scada-grid-bg {
+  background-image:
+    linear-gradient(rgba(14, 165, 233, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 165, 233, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Industrial monospaced readout */
+.scada-readout {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 .gradient-text {
@@ -138,19 +250,19 @@ body {
   box-shadow: 0 0 15px rgba(14, 165, 233, 0.2);
 }
 
-/* Card components */
+/* SCADA Card */
 .card {
-  background: rgba(17, 24, 39, 0.8);
+  background: rgba(15, 23, 42, 0.9);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  border: 1px solid rgba(14, 165, 233, 0.08);
+  border-radius: 12px;
   padding: 24px;
 }
 
 .card-sm {
-  background: rgba(17, 24, 39, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(14, 165, 233, 0.06);
+  border-radius: 10px;
   padding: 16px;
 }
 
@@ -161,7 +273,7 @@ body {
   justify-content: center;
   gap: 8px;
   padding: 10px 20px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -227,9 +339,9 @@ body {
 .input {
   width: 100%;
   padding: 10px 16px;
-  background: rgba(31, 41, 55, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(14, 165, 233, 0.1);
+  border-radius: 8px;
   color: #f9fafb;
   font-size: 14px;
   font-family: inherit;
@@ -243,7 +355,7 @@ body {
 }
 
 .input::placeholder {
-  color: #6b7280;
+  color: #475569;
 }
 
 /* Badges */
@@ -252,11 +364,12 @@ body {
   align-items: center;
   justify-content: center;
   padding: 2px 10px;
-  border-radius: 999px;
+  border-radius: 4px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .badge-running {
@@ -292,27 +405,28 @@ body {
 /* Label */
 .label {
   display: block;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: #6b7280;
+  letter-spacing: 0.08em;
+  color: #64748b;
   margin-bottom: 6px;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 /* Stat metric block */
 .metric-block {
-  background: rgba(31, 41, 55, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(14, 165, 233, 0.06);
+  border-radius: 8px;
   padding: 12px;
 }
 
 /* Progress bar track */
 .progress-track {
   width: 100%;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.06);
+  height: 3px;
+  background: rgba(14, 165, 233, 0.06);
   border-radius: 999px;
   overflow: hidden;
   margin-top: 8px;
@@ -324,7 +438,7 @@ body {
   transition: width 0.5s ease;
 }
 
-/* Nav active */
+/* Nav */
 .nav-active {
   background: rgba(14, 165, 233, 0.12);
   color: #38bdf8;
@@ -336,7 +450,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   color: #9ca3af;
@@ -347,5 +461,48 @@ body {
 
 .nav-link:hover {
   color: #f9fafb;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(14, 165, 233, 0.06);
+}
+
+/* SCADA alarm indicators */
+.alarm-critical {
+  animation: alarm-flash 1s ease-in-out infinite;
+}
+
+.alarm-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.alarm-indicator.critical {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+  animation: alarm-flash 0.8s ease-in-out infinite;
+}
+
+.alarm-indicator.warning {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+  animation: alarm-flash 1.5s ease-in-out infinite;
+}
+
+.alarm-indicator.normal {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+/* Status strip for machine cards */
+.status-strip {
+  height: 2px;
+  width: 100%;
+  transition: background 0.3s ease;
+}
+
+/* Data flowing animation */
+.data-flow {
+  background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.3), transparent);
+  background-size: 200% 100%;
+  animation: data-flow 2s linear infinite;
 }

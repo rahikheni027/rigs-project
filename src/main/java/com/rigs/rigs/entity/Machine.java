@@ -26,6 +26,14 @@ public class Machine {
     @Column(nullable = false)
     private String status = "OFFLINE";
 
+    @Builder.Default
+    @Column(name = "machine_type")
+    private String machineType = "MOTOR";
+
+    @Builder.Default
+    @Column(name = "process_unit")
+    private String processUnit = "Unit A";
+
     @Column(name = "last_heartbeat")
     private LocalDateTime lastHeartbeat;
 

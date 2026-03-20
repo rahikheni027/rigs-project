@@ -1,486 +1,333 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import {
-    Users, UserCheck, UserX, Shield, Clock, Trash2,
-    CheckCircle2, XCircle, AlertCircle, Activity,
-    Cpu, TrendingUp, Zap, ChevronRight, Search,
-    RefreshCw, Mail, Calendar
+    Cpu, Shield, AlertTriangle, Users, UserCheck, UserX, Clock,
+    CheckCircle, XCircle, Trash2, Bell, BarChart3, TrendingUp,
+    Signal, Server, Database, Activity, Zap
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const S = {
+    card: { background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(14,165,233,0.08)', borderRadius: 10, padding: 16 },
+    label: { fontSize: 9, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace" },
+};
 
 const AdminDashboard = () => {
     const [users, setUsers] = useState([]);
     const [pendingUsers, setPendingUsers] = useState([]);
-    const [stats, setStats] = useState({});
     const [machines, setMachines] = useState([]);
     const [alerts, setAlerts] = useState([]);
-    const [activeTab, setActiveTab] = useState('pending');
+    const [stats, setStats] = useState({});
     const [loading, setLoading] = useState(true);
-    const [actionLoading, setActionLoading] = useState(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [notification, setNotification] = useState(null);
+    const [toast, setToast] = useState(null);
+    const [btnLoading, setBtnLoading] = useState({});
+
+    const showToast = (msg, type = 'success') => {
+        setToast({ msg, type });
+        setTimeout(() => setToast(null), 3000);
+    };
 
     const fetchData = async () => {
         try {
-            const [usersRes, pendingRes, statsRes, machinesRes, alertsRes] = await Promise.all([
+            const [usersRes, pendRes, statsRes, machRes, alertRes] = await Promise.all([
                 api.get('/admin/users'),
                 api.get('/admin/users/pending'),
                 api.get('/admin/stats'),
                 api.get('/machines'),
-                api.get('/alerts'),
+                api.get('/alerts?size=10'),
             ]);
             setUsers(usersRes.data);
-            setPendingUsers(pendingRes.data);
+            setPendingUsers(pendRes.data);
             setStats(statsRes.data);
-            setMachines(machinesRes.data);
-            setAlerts(alertsRes.data.content || []);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
+            setMachines(machRes.data);
+            setAlerts(alertRes.data.content || []);
+        } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
     useEffect(() => {
         fetchData();
-        const t = setInterval(fetchData, 15000);
+        const t = setInterval(fetchData, 10000);
         return () => clearInterval(t);
     }, []);
 
-    const showNotification = (message, type = 'success') => {
-        setNotification({ message, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
-
     const handleApprove = async (id) => {
-        setActionLoading(id);
-        const userToApprove = pendingUsers.find(u => u.id === id) || users.find(u => u.id === id);
-        if (userToApprove) {
+        setBtnLoading(p => ({ ...p, [`approve-${id}`]: true }));
+        try {
+            const userToApprove = pendingUsers.find(u => u.id === id);
             setPendingUsers(prev => prev.filter(u => u.id !== id));
             setUsers(prev => [...prev.filter(u => u.id !== id), { ...userToApprove, enabled: 1 }]);
             setStats(prev => ({ ...prev, activeWorkers: (prev.activeWorkers || 0) + 1, pendingApproval: Math.max(0, (prev.pendingApproval || 0) - 1) }));
-        }
-        try {
             await api.put(`/admin/users/${id}/approve`);
-            showNotification('User approved successfully!');
-        } catch (e) {
-            showNotification('Failed to approve user', 'error');
-            fetchData();
-        } finally {
-            setActionLoading(null);
-        }
+            showToast(`Operator ${userToApprove?.name || ''} access granted`);
+        } catch (e) { showToast('Approval failed', 'error'); fetchData(); }
+        finally { setBtnLoading(p => ({ ...p, [`approve-${id}`]: false })); }
     };
 
     const handleReject = async (id) => {
-        setActionLoading(id);
-        setPendingUsers(prev => prev.filter(u => u.id !== id));
-        setStats(prev => ({ ...prev, pendingApproval: Math.max(0, (prev.pendingApproval || 0) - 1) }));
+        setBtnLoading(p => ({ ...p, [`reject-${id}`]: true }));
         try {
+            const userToReject = pendingUsers.find(u => u.id === id);
+            setPendingUsers(prev => prev.filter(u => u.id !== id));
+            setStats(prev => ({ ...prev, pendingApproval: Math.max(0, (prev.pendingApproval || 0) - 1) }));
             await api.put(`/admin/users/${id}/reject`);
-            showNotification('User rejected');
-        } catch (e) {
-            showNotification('Failed to reject user', 'error');
-            fetchData();
-        } finally {
-            setActionLoading(null);
-        }
+            showToast(`${userToReject?.name || ''} access denied`);
+        } catch (e) { showToast('Rejection failed', 'error'); fetchData(); }
+        finally { setBtnLoading(p => ({ ...p, [`reject-${id}`]: false })); }
     };
 
-    const handleRemove = async (id, name) => {
-        if (!window.confirm(`Remove worker "${name}"? This cannot be undone.`)) return;
-        setActionLoading(id);
-        setUsers(prev => prev.filter(u => u.id !== id));
-        setStats(prev => ({ ...prev, activeWorkers: Math.max(0, (prev.activeWorkers || 0) - 1) }));
+    const handleRemoveUser = async (id) => {
+        setBtnLoading(p => ({ ...p, [`remove-${id}`]: true }));
         try {
+            const userToRemove = users.find(u => u.id === id);
+            setUsers(prev => prev.filter(u => u.id !== id));
+            setStats(prev => ({ ...prev, activeWorkers: Math.max(0, (prev.activeWorkers || 0) - 1), totalWorkers: Math.max(0, (prev.totalWorkers || 0) - 1) }));
             await api.delete(`/admin/users/${id}`);
-            showNotification('Worker removed');
-        } catch (e) {
-            showNotification('Failed to remove worker', 'error');
-            fetchData();
-        } finally {
-            setActionLoading(null);
-        }
+            showToast(`${userToRemove?.name || 'User'} removed from system`);
+        } catch (e) { showToast('Removal failed', 'error'); fetchData(); }
+        finally { setBtnLoading(p => ({ ...p, [`remove-${id}`]: false })); }
     };
 
-    const running = machines.filter(m => m.status === 'RUNNING').length;
-    const activeAlerts = alerts.filter(a => !a.acknowledged).length;
-    const health = machines.length > 0 ? Math.round((running / machines.length) * 100) : 0;
-
-    const filteredUsers = (activeTab === 'pending' ? pendingUsers : users)
-        .filter(u => !searchQuery ||
-            u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            u.email?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+    const runCount = machines.filter(m => m.status === 'RUNNING').length;
+    const alertMachines = machines.filter(m => m.status === 'EMERGENCY' || m.maintenanceAlert).length;
+    const activeAlerts = alerts.filter(a => !a.acknowledged);
 
     if (loading) return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', flexDirection: 'column', gap: 16 }}>
-            <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
-                style={{
-                    width: 56, height: 56, borderRadius: 16,
-                    background: 'linear-gradient(135deg, rgba(14,165,233,0.2), rgba(99,102,241,0.2))',
-                    border: '1px solid rgba(14,165,233,0.3)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                <Shield size={26} color="#38bdf8" />
-            </motion.div>
-            <p style={{ color: '#6b7280', fontSize: 14 }}>Loading admin panel…</p>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: 14 }}>
+            <Shield size={28} color="#0ea5e9" style={{ animation: 'pulse 1.5s infinite' }} />
+            <p style={{ color: '#64748b', fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>LOADING ADMIN CONSOLE...</p>
         </div>
     );
 
-    const statCards = [
-        { label: 'Total Machines', value: machines.length, icon: Cpu, gradient: 'linear-gradient(135deg, #0ea5e9, #0284c7)', shadow: 'rgba(14,165,233,0.3)' },
-        { label: 'Running', value: running, icon: Activity, gradient: 'linear-gradient(135deg, #22c55e, #16a34a)', shadow: 'rgba(34,197,94,0.3)' },
-        { label: 'Active Workers', value: stats.activeWorkers || 0, icon: UserCheck, gradient: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', shadow: 'rgba(139,92,246,0.3)' },
-        { label: 'Pending Approval', value: stats.pendingApproval || 0, icon: Clock, gradient: 'linear-gradient(135deg, #f59e0b, #d97706)', shadow: 'rgba(245,158,11,0.3)' },
-    ];
-
     return (
-        <div style={{ color: '#f9fafb', fontFamily: 'Inter, system-ui, sans-serif' }}>
-            {/* Notification toast */}
-            <AnimatePresence>
-                {notification && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20, x: '-50%' }}
-                        animate={{ opacity: 1, y: 0, x: '-50%' }}
-                        exit={{ opacity: 0, y: -20, x: '-50%' }}
-                        style={{
-                            position: 'fixed', top: 80, left: '50%',
-                            zIndex: 100, padding: '12px 24px', borderRadius: 12,
-                            background: notification.type === 'success' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                            border: `1px solid ${notification.type === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                            color: notification.type === 'success' ? '#4ade80' : '#f87171',
-                            backdropFilter: 'blur(20px)',
-                            fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8,
-                        }}>
-                        {notification.type === 'success' ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
-                        {notification.message}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+        <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#f1f5f9', position: 'relative' }}>
+            {/* Pending Approval Banner */}
+            {pendingUsers.length > 0 && (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px',
+                        background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)',
+                        borderRadius: 6, marginBottom: 14,
+                    }}
+                >
+                    <Bell size={14} color="#f59e0b" />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', fontFamily: "'JetBrains Mono', monospace" }}>
+                        ⚠ {pendingUsers.length} OPERATOR{pendingUsers.length > 1 ? 'S' : ''} AWAITING ACCESS APPROVAL
+                    </span>
+                </motion.div>
+            )}
 
             {/* Header */}
-            <div style={{ marginBottom: 32 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6', animation: 'pulse 2s infinite' }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Admin Control Center</span>
+            <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
+                    <h1 style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.5px', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>ADMIN CONSOLE</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.12)', borderRadius: 4, padding: '3px 8px' }}>
+                        <Shield size={10} color="#0ea5e9" />
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>ADMIN</span>
+                    </div>
                 </div>
-                <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 4, letterSpacing: '-0.5px' }}>Command Center</h1>
-                <p style={{ fontSize: 14, color: '#6b7280' }}>Manage your industrial network and team</p>
+                <p style={{ fontSize: 11, color: '#64748b', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>SYSTEM ADMINISTRATION & ACCESS MANAGEMENT</p>
             </div>
 
-            {/* Stat cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 28 }}>
-                {statCards.map((s, i) => (
-                    <motion.div
-                        key={s.label}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        style={{
-                            background: 'rgba(17,24,39,0.8)',
-                            border: '1px solid rgba(255,255,255,0.07)',
-                            borderRadius: 16, padding: 24,
-                            display: 'flex', alignItems: 'center', gap: 16,
-                            cursor: 'default', transition: 'all 0.25s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.transform = 'none'; }}>
-                        <div style={{
-                            background: s.gradient, borderRadius: 14, padding: 14,
-                            boxShadow: `0 4px 20px ${s.shadow}`, flexShrink: 0,
-                        }}>
-                            <s.icon size={22} color="white" />
+            {/* KPIs */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 16 }}>
+                {[
+                    { label: 'Total Operators', value: stats.totalWorkers || 0, icon: Users, color: '#0ea5e9' },
+                    { label: 'Active', value: stats.activeWorkers || 0, icon: UserCheck, color: '#22c55e' },
+                    { label: 'Pending', value: stats.pendingApproval || 0, icon: Clock, color: (stats.pendingApproval || 0) > 0 ? '#f59e0b' : '#64748b' },
+                    { label: 'Machines', value: `${runCount}/${machines.length}`, icon: Cpu, color: '#22c55e' },
+                    { label: 'Alerts', value: activeAlerts.length, icon: AlertTriangle, color: activeAlerts.length > 0 ? '#ef4444' : '#64748b' },
+                    { label: 'System Health', value: alertMachines === 0 ? 'GOOD' : 'WARN', icon: Activity, color: alertMachines === 0 ? '#22c55e' : '#f59e0b' },
+                ].map(kpi => (
+                    <div key={kpi.label} style={{
+                        ...S.card, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10,
+                    }}>
+                        <div style={{ width: 30, height: 30, borderRadius: 7, background: `${kpi.color}10`, border: `1px solid ${kpi.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <kpi.icon size={13} color={kpi.color} />
                         </div>
                         <div>
-                            <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
-                            <div style={{ fontSize: 30, fontWeight: 900, color: '#f9fafb', lineHeight: 1.1 }}>{s.value}</div>
+                            <div style={{ ...S.label, marginBottom: 2 }}>{kpi.label}</div>
+                            <div style={{ fontSize: 16, fontWeight: 800, color: kpi.color, fontFamily: "'JetBrains Mono', monospace" }}>{kpi.value}</div>
                         </div>
-                    </motion.div>
+                    </div>
                 ))}
             </div>
 
-            {/* Main content grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
-                {/* User management panel */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    style={{
-                        background: 'rgba(17,24,39,0.8)',
-                        border: '1px solid rgba(255,255,255,0.07)',
-                        borderRadius: 16, padding: 24,
-                    }}>
-
-                    {/* Tabs + Search */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-                        <div style={{ display: 'flex', gap: 4, background: 'rgba(31,41,55,0.5)', borderRadius: 10, padding: 4 }}>
-                            {[
-                                { id: 'pending', label: 'Pending', icon: Clock, count: pendingUsers.length },
-                                { id: 'all', label: 'All Workers', icon: Users, count: users.length },
-                            ].map(tab => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
+            {/* Pending Users + Approved Users */}
+            <div style={{ display: 'grid', gridTemplateColumns: pendingUsers.length > 0 ? '1fr 1fr' : '1fr', gap: 12, marginBottom: 16 }}>
+                {/* Pending Approval */}
+                {pendingUsers.length > 0 && (
+                    <div style={S.card}>
+                        <div style={{ ...S.label, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', animation: 'alarm-flash 1.5s infinite' }} />
+                            PENDING ACCESS REQUESTS ({pendingUsers.length})
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
+                            {pendingUsers.map(u => (
+                                <motion.div key={u.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                                     style={{
-                                        display: 'flex', alignItems: 'center', gap: 6,
-                                        padding: '8px 16px', borderRadius: 8,
-                                        border: 'none', cursor: 'pointer',
-                                        fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
-                                        transition: 'all 0.2s',
-                                        ...(activeTab === tab.id
-                                            ? { background: 'rgba(14,165,233,0.15)', color: '#38bdf8' }
-                                            : { background: 'transparent', color: '#6b7280' }
-                                        ),
+                                        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                                        background: 'rgba(15,23,42,0.5)', borderRadius: 8,
+                                        borderLeft: '3px solid #f59e0b',
                                     }}>
-                                    <tab.icon size={14} />
-                                    {tab.label}
-                                    {tab.count > 0 && (
-                                        <span style={{
-                                            background: activeTab === tab.id ? 'rgba(14,165,233,0.2)' : 'rgba(107,114,128,0.2)',
-                                            padding: '1px 7px', borderRadius: 999, fontSize: 10, fontWeight: 800,
-                                        }}>{tab.count}</span>
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div style={{ position: 'relative' }}>
-                            <Search size={14} style={{ position: 'absolute', left: 10, top: 9, color: '#4b5563' }} />
-                            <input
-                                type="text"
-                                placeholder="Search users..."
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                style={{
-                                    padding: '8px 12px 8px 32px',
-                                    background: 'rgba(31,41,55,0.6)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    borderRadius: 8, color: '#f9fafb',
-                                    fontSize: 12, fontFamily: 'inherit', outline: 'none',
-                                    width: 200, transition: 'all 0.2s',
-                                }}
-                                onFocus={e => e.target.style.borderColor = 'rgba(14,165,233,0.4)'}
-                                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
-                            />
-                        </div>
-                    </div>
-
-                    {/* User list */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <AnimatePresence mode="popLayout">
-                            {filteredUsers.length > 0 ? filteredUsers.map((user, i) => (
-                                <motion.div
-                                    key={user.id}
-                                    layout
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 20, transition: { duration: 0.2 } }}
-                                    transition={{ delay: i * 0.05 }}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: 14,
-                                        padding: '14px 16px', borderRadius: 12,
-                                        background: 'rgba(31,41,55,0.4)',
-                                        border: '1px solid rgba(255,255,255,0.04)',
-                                        transition: 'all 0.2s',
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
-                                    onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)'}>
-
-                                    {/* Avatar */}
                                     <div style={{
-                                        width: 38, height: 38, borderRadius: 10,
-                                        background: user.enabled === 1
-                                            ? 'linear-gradient(135deg, #0ea5e9, #6366f1)'
-                                            : 'linear-gradient(135deg, #f59e0b, #ef4444)',
+                                        width: 30, height: 30, borderRadius: 7,
+                                        background: 'linear-gradient(135deg, #f59e0b, #d97706)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: 'white', fontSize: 14, fontWeight: 900, flexShrink: 0,
+                                        color: 'white', fontSize: 11, fontWeight: 900, fontFamily: "'JetBrains Mono', monospace",
                                     }}>
-                                        {user.name?.charAt(0)?.toUpperCase() || '?'}
+                                        {u.name?.charAt(0)?.toUpperCase() || '?'}
                                     </div>
-
-                                    {/* Info */}
                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <span style={{ fontSize: 13, fontWeight: 700, color: '#f9fafb' }}>{user.name}</span>
-                                            <span style={{
-                                                fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                                                textTransform: 'uppercase', letterSpacing: '0.05em',
-                                                ...(user.provider === 'GOOGLE'
-                                                    ? { background: 'rgba(234,179,8,0.1)', color: '#fbbf24', border: '1px solid rgba(234,179,8,0.2)' }
-                                                    : { background: 'rgba(107,114,128,0.1)', color: '#9ca3af', border: '1px solid rgba(107,114,128,0.15)' }
-                                                ),
-                                            }}>{user.provider || 'LOCAL'}</span>
-                                        </div>
-                                        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <Mail size={10} /> {user.email}
-                                        </div>
+                                        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 1 }}>{u.name}</div>
+                                        <div style={{ fontSize: 10, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>{u.email}</div>
                                     </div>
-
-                                    {/* Status */}
-                                    <span style={{
-                                        fontSize: 9, fontWeight: 800, padding: '3px 10px', borderRadius: 999,
-                                        textTransform: 'uppercase', letterSpacing: '0.05em',
-                                        ...(user.enabled === 1
-                                            ? { background: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.2)' }
-                                            : { background: 'rgba(245,158,11,0.1)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.2)' }
-                                        ),
-                                    }}>
-                                        {user.enabled === 1 ? 'Active' : 'Pending'}
-                                    </span>
-
-                                    {/* Actions */}
-                                    <div style={{ display: 'flex', gap: 6 }}>
-                                        {user.enabled === 0 && (
-                                            <>
-                                                <button
-                                                    onClick={() => handleApprove(user.id)}
-                                                    disabled={actionLoading === user.id}
-                                                    title="Approve"
-                                                    style={{
-                                                        background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)',
-                                                        borderRadius: 8, padding: 7, cursor: 'pointer',
-                                                        color: '#4ade80', transition: 'all 0.2s', display: 'flex',
-                                                    }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(34,197,94,0.2)'}
-                                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(34,197,94,0.1)'}>
-                                                    <CheckCircle2 size={14} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleReject(user.id)}
-                                                    disabled={actionLoading === user.id}
-                                                    title="Reject"
-                                                    style={{
-                                                        background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
-                                                        borderRadius: 8, padding: 7, cursor: 'pointer',
-                                                        color: '#f87171', transition: 'all 0.2s', display: 'flex',
-                                                    }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}
-                                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}>
-                                                    <XCircle size={14} />
-                                                </button>
-                                            </>
-                                        )}
-                                        {user.enabled === 1 && (
-                                            <button
-                                                onClick={() => handleRemove(user.id, user.name)}
-                                                disabled={actionLoading === user.id}
-                                                title="Remove Worker"
-                                                style={{
-                                                    background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)',
-                                                    borderRadius: 8, padding: 7, cursor: 'pointer',
-                                                    color: '#f87171', transition: 'all 0.2s', display: 'flex',
-                                                    opacity: 0.6,
-                                                }}
-                                                onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}>
-                                                <Trash2 size={14} />
-                                            </button>
-                                        )}
+                                    <div style={{ display: 'flex', gap: 4 }}>
+                                        <button onClick={() => handleApprove(u.id)} disabled={btnLoading[`approve-${u.id}`]}
+                                            style={{
+                                                padding: '5px 10px', borderRadius: 5, border: '1px solid rgba(34,197,94,0.2)',
+                                                background: 'rgba(34,197,94,0.06)', color: '#4ade80', fontSize: 9, fontWeight: 700,
+                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
+                                                fontFamily: "'JetBrains Mono', monospace", opacity: btnLoading[`approve-${u.id}`] ? 0.5 : 1,
+                                            }}>
+                                            <CheckCircle size={11} />APPROVE
+                                        </button>
+                                        <button onClick={() => handleReject(u.id)} disabled={btnLoading[`reject-${u.id}`]}
+                                            style={{
+                                                padding: '5px 10px', borderRadius: 5, border: '1px solid rgba(239,68,68,0.2)',
+                                                background: 'rgba(239,68,68,0.06)', color: '#f87171', fontSize: 9, fontWeight: 700,
+                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
+                                                fontFamily: "'JetBrains Mono', monospace", opacity: btnLoading[`reject-${u.id}`] ? 0.5 : 1,
+                                            }}>
+                                            <XCircle size={11} />DENY
+                                        </button>
                                     </div>
                                 </motion.div>
-                            )) : (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    style={{ textAlign: 'center', padding: '40px 0' }}>
-                                    <UserCheck size={36} color="#4ade80" style={{ margin: '0 auto 12px' }} />
-                                    <div style={{ fontSize: 13, color: '#6b7280' }}>
-                                        {activeTab === 'pending' ? 'No pending approvals' : 'No workers found'}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                </motion.div>
-
-                {/* Right sidebar — system overview */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {/* System health */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                        style={{
-                            background: 'rgba(17,24,39,0.8)',
-                            border: '1px solid rgba(255,255,255,0.07)',
-                            borderRadius: 16, padding: 24,
-                        }}>
-                        <div style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-                            <TrendingUp size={18} color="#38bdf8" />
-                            <span>System Health</span>
-                        </div>
-
-                        <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                            <div style={{ position: 'relative', width: 120, height: 120, margin: '0 auto' }}>
-                                <svg width="120" height="120" viewBox="0 0 120 120">
-                                    <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
-                                    <circle cx="60" cy="60" r="54" fill="none"
-                                        stroke={health >= 80 ? '#22c55e' : health >= 50 ? '#f59e0b' : '#ef4444'}
-                                        strokeWidth="8" strokeLinecap="round"
-                                        strokeDasharray={`${(health / 100) * 339} 339`}
-                                        transform="rotate(-90 60 60)"
-                                        style={{ transition: 'stroke-dasharray 1s ease' }}
-                                    />
-                                </svg>
-                                <div style={{
-                                    position: 'absolute', inset: 0, display: 'flex',
-                                    flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                }}>
-                                    <span style={{ fontSize: 28, fontWeight: 900, color: '#f9fafb' }}>{health}%</span>
-                                    <span style={{ fontSize: 10, color: '#6b7280', fontWeight: 600 }}>HEALTH</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                            <div style={{ background: 'rgba(31,41,55,0.5)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
-                                <div style={{ fontSize: 20, fontWeight: 900, color: '#4ade80' }}>{running}</div>
-                                <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginTop: 2 }}>RUNNING</div>
-                            </div>
-                            <div style={{ background: 'rgba(31,41,55,0.5)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
-                                <div style={{ fontSize: 20, fontWeight: 900, color: '#f87171' }}>{activeAlerts}</div>
-                                <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginTop: 2 }}>ALERTS</div>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* Quick actions */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 }}
-                        style={{
-                            background: 'rgba(17,24,39,0.8)',
-                            border: '1px solid rgba(255,255,255,0.07)',
-                            borderRadius: 16, padding: 24,
-                        }}>
-                        <div style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                            <Zap size={18} color="#fbbf24" />
-                            <span>Quick Info</span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {[
-                                { label: 'Total Workers', value: stats.totalWorkers || 0, color: '#38bdf8' },
-                                { label: 'Active Workers', value: stats.activeWorkers || 0, color: '#4ade80' },
-                                { label: 'Pending Approval', value: stats.pendingApproval || 0, color: '#fbbf24' },
-                                { label: 'Total Machines', value: machines.length, color: '#8b5cf6' },
-                            ].map(item => (
-                                <div key={item.label} style={{
-                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                    padding: '10px 12px', borderRadius: 10,
-                                    background: 'rgba(31,41,55,0.4)',
-                                }}>
-                                    <span style={{ fontSize: 12, color: '#9ca3af' }}>{item.label}</span>
-                                    <span style={{ fontSize: 14, fontWeight: 800, color: item.color }}>{item.value}</span>
-                                </div>
                             ))}
                         </div>
-                    </motion.div>
+                    </div>
+                )}
+
+                {/* Active Operators */}
+                <div style={S.card}>
+                    <div style={{ ...S.label, marginBottom: 12 }}>REGISTERED OPERATORS ({users.filter(u => u.enabled === 1).length})</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 300, overflowY: 'auto' }}>
+                        {users.filter(u => u.enabled === 1).length > 0 ? users.filter(u => u.enabled === 1).map(u => (
+                            <div key={u.id} style={{
+                                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                                background: 'rgba(15,23,42,0.5)', borderRadius: 6,
+                                borderLeft: '2px solid #22c55e',
+                            }}>
+                                <div style={{
+                                    width: 26, height: 26, borderRadius: 6,
+                                    background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: 'white', fontSize: 10, fontWeight: 900, fontFamily: "'JetBrains Mono', monospace",
+                                }}>
+                                    {u.name?.charAt(0)?.toUpperCase() || '?'}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 600 }}>{u.name}</div>
+                                    <div style={{ fontSize: 9, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>{u.email} · {u.role}</div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(34,197,94,0.06)', color: '#4ade80', fontFamily: "'JetBrains Mono', monospace" }}>ACTIVE</span>
+                                    <button onClick={() => handleRemoveUser(u.id)} disabled={btnLoading[`remove-${u.id}`]}
+                                        style={{
+                                            padding: 4, borderRadius: 4, border: '1px solid rgba(239,68,68,0.1)',
+                                            background: 'transparent', color: '#475569', cursor: 'pointer',
+                                            display: 'flex', transition: 'all 0.2s',
+                                            opacity: btnLoading[`remove-${u.id}`] ? 0.5 : 1,
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(239,68,68,0.06)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                        <Trash2 size={11} />
+                                    </button>
+                                </div>
+                            </div>
+                        )) : (
+                            <div style={{ textAlign: 'center', padding: '30px 0', color: '#64748b' }}>
+                                <Users size={20} style={{ marginBottom: 6, opacity: 0.4 }} />
+                                <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>NO OPERATORS REGISTERED</div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
+
+            {/* Machine Status + Recent Alerts */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {/* Machine Status */}
+                <div style={S.card}>
+                    <div style={{ ...S.label, marginBottom: 12 }}>MACHINE STATUS</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
+                        {machines.map(m => {
+                            const c = m.status === 'RUNNING' ? '#22c55e' : m.status === 'EMERGENCY' ? '#ef4444' : m.status === 'MAINTENANCE' ? '#f59e0b' : '#64748b';
+                            return (
+                                <div key={m.machineId} style={{
+                                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                    background: 'rgba(15,23,42,0.5)', borderRadius: 6,
+                                }}>
+                                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: c, animation: m.status === 'RUNNING' ? 'pulse 2s infinite' : m.status === 'EMERGENCY' ? 'alarm-flash 0.8s infinite' : 'none' }} />
+                                    <span style={{ fontSize: 11, fontWeight: 600, flex: 1 }}>{m.machineName}</span>
+                                    <span style={{ fontSize: 8, fontWeight: 700, color: c, fontFamily: "'JetBrains Mono', monospace" }}>{m.status}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Recent Alerts */}
+                <div style={S.card}>
+                    <div style={{ ...S.label, marginBottom: 12 }}>RECENT ALERTS</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
+                        {activeAlerts.length > 0 ? activeAlerts.slice(0, 6).map(a => {
+                            const c = a.severity === 'CRITICAL' ? '#ef4444' : a.severity === 'MEDIUM' ? '#f59e0b' : '#0ea5e9';
+                            return (
+                                <div key={a.id} style={{
+                                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                    background: 'rgba(15,23,42,0.5)', borderRadius: 6,
+                                    borderLeft: `2px solid ${c}`,
+                                }}>
+                                    <AlertTriangle size={11} color={c} />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.message}</div>
+                                        <div style={{ fontSize: 9, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>{a.machineName} · {a.severity}</div>
+                                    </div>
+                                </div>
+                            );
+                        }) : (
+                            <div style={{ textAlign: 'center', padding: '30px 0', color: '#64748b' }}>
+                                <Shield size={18} style={{ marginBottom: 6, opacity: 0.4 }} />
+                                <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>NO ACTIVE ALERTS</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Toast */}
+            <AnimatePresence>
+                {toast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 30 }}
+                        style={{
+                            position: 'fixed', bottom: 24, right: 24,
+                            background: toast.type === 'success' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                            border: `1px solid ${toast.type === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                            borderRadius: 8, padding: '10px 16px',
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            backdropFilter: 'blur(12px)', zIndex: 100,
+                        }}>
+                        {toast.type === 'success' ? <CheckCircle size={14} color="#4ade80" /> : <XCircle size={14} color="#f87171" />}
+                        <span style={{ fontSize: 12, fontWeight: 600, color: toast.type === 'success' ? '#4ade80' : '#f87171', fontFamily: "'JetBrains Mono', monospace" }}>{toast.msg}</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

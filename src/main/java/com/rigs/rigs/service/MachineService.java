@@ -62,6 +62,8 @@ public class MachineService {
                 .machineName(machine.getName())
                 .location(machine.getLocation())
                 .status(machine.getStatus())
+                .machineType(machine.getMachineType())
+                .processUnit(machine.getProcessUnit())
                 .temperature(latestTelemetry != null ? latestTelemetry.getTemperature() : null)
                 .vibration(latestTelemetry != null ? latestTelemetry.getVibration() : null)
                 .currentDraw(latestTelemetry != null ? latestTelemetry.getCurrentDraw() : null)
