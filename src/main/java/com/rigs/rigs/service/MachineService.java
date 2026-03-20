@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MachineService {
 
-    private static final long DEFAULT_HEARTBEAT_TIMEOUT = 60;
+    private static final long DEFAULT_HEARTBEAT_TIMEOUT = 120;
     private static final double DEFAULT_VIBRATION_THRESHOLD = 2.5;
     private static final double DEFAULT_RUNTIME_THRESHOLD = 5000.0;
     private static final double DEFAULT_TEMP_THRESHOLD = 85.0; // Overheat threshold
@@ -191,7 +191,7 @@ public class MachineService {
         }
     }
 
-    @Scheduled(fixedRate = 10000) // Check every 10 seconds
+    @Scheduled(fixedRate = 30000) // Check every 30 seconds
     @Transactional
     public void monitorHeartbeats() {
         List<Machine> machines = machineRepository.findAll();
