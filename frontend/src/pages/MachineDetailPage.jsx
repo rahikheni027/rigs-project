@@ -118,7 +118,7 @@ const MachineDetailPage = () => {
 
     useEffect(() => {
         fetchData();
-        const t = setInterval(fetchData, 4000);
+        const t = setInterval(fetchData, 2000);
         return () => clearInterval(t);
     }, [machineId]);
 

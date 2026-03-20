@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar } from 'recharts';
 import { motion } from 'framer-motion';
 import api from '../api/axios';
+import ProcessFlowDiagram from '../components/ProcessFlowDiagram';
 import {
     Cpu, Thermometer, Activity, Zap, Gauge, AlertTriangle, Signal, ChevronRight,
     Shield, Clock, BarChart3, Wifi, Radio, TrendingUp, Factory, Droplets,
@@ -102,7 +103,7 @@ const WorkerDashboard = () => {
 
     useEffect(() => {
         fetchData();
-        const t = setInterval(fetchData, 4000);
+        const t = setInterval(fetchData, 2000);
         return () => clearInterval(t);
     }, []);
 
@@ -165,7 +166,7 @@ const WorkerDashboard = () => {
                             <span style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', fontFamily: "'JetBrains Mono', monospace" }}>LIVE</span>
                         </div>
                     </div>
-                    <p style={{ fontSize: 11, color: '#64748b', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>R.I.G.S. INDUSTRIAL SCADA · POLL INTERVAL 4s</p>
+                    <p style={{ fontSize: 11, color: '#64748b', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>R.I.G.S. INDUSTRIAL SCADA · POLL INTERVAL 2s</p>
                 </div>
                 {/* Alarm Summary */}
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -214,6 +215,13 @@ const WorkerDashboard = () => {
                     );
                 })}
             </div>
+
+            {/* P&ID Process Flow Diagram */}
+            <div style={S.card}>
+                <ProcessFlowDiagram machines={machines} />
+            </div>
+
+            <div style={{ height: 12 }} />
 
             {/* Main Grid: Charts + OEE + Alarms */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 280px', gap: 12, marginBottom: 16 }}>

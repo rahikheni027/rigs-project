@@ -96,8 +96,27 @@ public class MachineService {
             Double currentDraw, String machineStatus,
             Double rpm, Double pressure, Double powerConsumption,
             Double efficiency, Double errorRate) {
-        Machine machine = machineRepository.findById(machineId)
-                .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + machineId));
+        // Auto-create machine if it doesn't exist (simulator sends telemetry for new
+        // machines)
+        String[] MACHINE_TYPES = { "MOTOR", "PUMP", "COMPRESSOR", "TURBINE", "GENERATOR" };
+        String[] MACHINE_NAMES = { "Hydraulic Press", "Centrifugal Pump", "Air Compressor", "Steam Turbine",
+                "Diesel Generator", "CNC Mill", "Ball Mill", "Cooling Tower" };
+        String[] LOCATIONS = { "Plant Floor A", "Plant Floor B", "Utility Wing", "Generator Room", "Assembly Line" };
+        String[] UNITS = { "Unit A", "Unit B", "Unit C" };
+
+        Machine machine = machineRepository.findById(machineId).orElseGet(() -> {
+            int idx = (int) (machineId % MACHINE_NAMES.length);
+            Machine newMachine = Machine.builder()
+                    .name(MACHINE_NAMES[idx])
+                    .location(LOCATIONS[(int) (machineId % LOCATIONS.length)])
+                    .machineType(MACHINE_TYPES[(int) (machineId % MACHINE_TYPES.length)])
+                    .processUnit(UNITS[(int) (machineId % UNITS.length)])
+                    .status("RUNNING")
+                    .build();
+            newMachine = machineRepository.save(newMachine);
+            log.info("Auto-created machine: {} (ID={})", newMachine.getName(), newMachine.getId());
+            return newMachine;
+        });
 
         MachineTelemetry telemetry = MachineTelemetry.builder()
                 .machine(machine)

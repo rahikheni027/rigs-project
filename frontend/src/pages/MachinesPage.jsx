@@ -69,7 +69,7 @@ const MachinesPage = () => {
 
     useEffect(() => {
         fetchMachines();
-        intervalRef.current = setInterval(fetchMachines, 3000);
+        intervalRef.current = setInterval(fetchMachines, 2000);
         return () => clearInterval(intervalRef.current);
     }, []);
 
