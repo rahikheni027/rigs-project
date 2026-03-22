@@ -26,6 +26,12 @@ public class MqttListenerService implements MqttCallbackExtended {
     @Value("${mqtt.client.id:rigs-backend}")
     private String clientId;
 
+    @Value("${mqtt.username:}")
+    private String username;
+
+    @Value("${mqtt.password:}")
+    private String password;
+
     private MqttClient mqttClient;
     private final MachineService machineService;
     private final MachineRepository machineRepository;
@@ -44,6 +50,15 @@ public class MqttListenerService implements MqttCallbackExtended {
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(true);
             options.setCleanSession(true);
+
+            if (username != null && !username.isEmpty()) {
+                options.setUserName(username);
+                options.setPassword(password.toCharArray());
+            }
+            if (brokerUrl.startsWith("ssl://")) {
+                options.setSocketFactory(javax.net.ssl.SSLSocketFactory.getDefault());
+            }
+
             mqttClient.connect(options);
         } catch (MqttException e) {
             log.error("❌ MQTT Connection Error: {}", e.getMessage());
