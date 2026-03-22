@@ -24,7 +24,7 @@ const AlertsPage = () => {
     useEffect(() => {
         fetchAlerts();
         if (autoRefresh) {
-            const t = setInterval(fetchAlerts, 5000);
+            const t = setInterval(fetchAlerts, 10000);
             return () => clearInterval(t);
         }
     }, [filter, autoRefresh]);

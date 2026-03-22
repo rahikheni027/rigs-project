@@ -92,6 +92,53 @@ const MetricCard = ({ label, value, unit, icon: Icon, color, setpoint }) => {
     );
 };
 
+const VirtualMachineVisualizer = ({ status, type }) => {
+    const isRunning = status === 'RUNNING';
+    const isError = status === 'EMERGENCY';
+    const color = isError ? '#ef4444' : isRunning ? '#22c55e' : '#64748b';
+    const ringColor = isError ? 'rgba(239,68,68,0.2)' : isRunning ? 'rgba(34,197,94,0.2)' : 'rgba(100,116,139,0.1)';
+
+    return (
+        <div style={{
+            background: 'rgba(15,23,42,0.6)', border: `1px solid ${color}40`,
+            borderRadius: 12, padding: 24, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', height: 180, position: 'relative',
+            overflow: 'hidden'
+        }}>
+            {/* Background glow */}
+            <motion.div
+                animate={{ opacity: isRunning ? [0.3, 0.6, 0.3] : isError ? [0.4, 0.8, 0.4] : 0.1 }}
+                transition={{ duration: isError ? 0.5 : 2, repeat: Infinity }}
+                style={{ position: 'absolute', width: 150, height: 150, background: color, filter: 'blur(60px)', borderRadius: '50%' }}
+            />
+
+            {/* Spinning Element */}
+            <motion.div
+                animate={{ rotate: isRunning ? 360 : 0 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                style={{
+                    width: 70, height: 70, border: `3px dashed ${color}`, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1,
+                    background: 'rgba(15,23,42,0.8)', boxShadow: `0 0 20px ${ringColor}`
+                }}
+            >
+                <Cog size={28} color={color} />
+            </motion.div>
+
+            <div style={{ marginTop: 16, zIndex: 1, color: '#f8fafc', fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", letterSpacing: 2 }}>
+                {type || 'MACHINE'}
+            </div>
+            <motion.div
+                animate={isError ? { opacity: [1, 0, 1] } : {}}
+                transition={{ duration: 0.5, repeat: Infinity }}
+                style={{ zIndex: 1, color, fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", marginTop: 4 }}
+            >
+                {status}
+            </motion.div>
+        </div>
+    );
+};
+
 const MachineDetailPage = () => {
     const { machineId } = useParams();
     const [machine, setMachine] = useState(null);
@@ -118,7 +165,7 @@ const MachineDetailPage = () => {
 
     useEffect(() => {
         fetchData();
-        const t = setInterval(fetchData, 2000);
+        const t = setInterval(fetchData, 10000);
         return () => clearInterval(t);
     }, [machineId]);
 
@@ -194,28 +241,35 @@ const MachineDetailPage = () => {
                 </div>
             </div>
 
-            {/* Command Panel */}
-            <div style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}>
-                {COMMANDS.map(c => {
-                    const isActive = cmdLoading[c.cmd];
-                    return (
-                        <button key={c.cmd} onClick={() => handleCommand(c.cmd)} disabled={isActive}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px',
-                                borderRadius: 6, border: `1px solid ${c.color}20`, cursor: 'pointer',
-                                background: isActive ? `${c.color}10` : 'rgba(15,23,42,0.9)',
-                                color: c.color, fontSize: 10, fontWeight: 700,
-                                fontFamily: "'JetBrains Mono', monospace",
-                                transition: 'all 0.15s', opacity: isActive ? 0.6 : 1,
-                            }}
-                            onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = `${c.color}10`; e.currentTarget.style.borderColor = `${c.color}40`; } }}
-                            onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(15,23,42,0.9)'; e.currentTarget.style.borderColor = `${c.color}20`; } }}
-                        >
-                            <c.icon size={12} />
-                            {c.label}
-                        </button>
-                    );
-                })}
+            {/* Virtual Machine + Command Panel */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 1fr) 2fr', gap: 16, marginBottom: 16, alignItems: 'stretch' }}>
+                <VirtualMachineVisualizer status={machine.status} type={machine.machineType} />
+
+                <div style={{ ...S.card, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div style={{ ...S.label, marginBottom: 16 }}>CONTROL PANEL</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {COMMANDS.map(c => {
+                            const isActive = cmdLoading[c.cmd];
+                            return (
+                                <button key={c.cmd} onClick={() => handleCommand(c.cmd)} disabled={isActive}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px',
+                                        borderRadius: 8, border: `1px solid ${c.color}30`, cursor: 'pointer',
+                                        background: isActive ? `${c.color}15` : 'rgba(15,23,42,0.9)',
+                                        color: c.color, fontSize: 12, fontWeight: 700,
+                                        fontFamily: "'JetBrains Mono', monospace",
+                                        transition: 'all 0.15s', opacity: isActive ? 0.6 : 1,
+                                    }}
+                                    onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = `${c.color}10`; e.currentTarget.style.borderColor = `${c.color}50`; } }}
+                                    onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(15,23,42,0.9)'; e.currentTarget.style.borderColor = `${c.color}30`; } }}
+                                >
+                                    <c.icon size={14} />
+                                    {c.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
 
             {/* Live Metrics Grid */}

@@ -103,7 +103,7 @@ const WorkerDashboard = () => {
 
     useEffect(() => {
         fetchData();
-        const t = setInterval(fetchData, 2000);
+        const t = setInterval(fetchData, 10000);
         return () => clearInterval(t);
     }, []);
 
