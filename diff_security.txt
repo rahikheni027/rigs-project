@@ -1,0 +1,28 @@
+diff --git a/src/main/java/com/rigs/rigs/security/SecurityConfig.java b/src/main/java/com/rigs/rigs/security/SecurityConfig.java
+index 1e2b64a..f733681 100644
+--- a/src/main/java/com/rigs/rigs/security/SecurityConfig.java
++++ b/src/main/java/com/rigs/rigs/security/SecurityConfig.java
+@@ -3,6 +3,7 @@ package com.rigs.rigs.security;
+ import lombok.RequiredArgsConstructor;
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
++import org.springframework.beans.factory.annotation.Value;
+ import org.springframework.security.authentication.AuthenticationManager;
+ import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+ import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+@@ -65,10 +66,14 @@ public class SecurityConfig {
+         return http.build();
+     }
+ 
++    @Value("${rigs.frontend.url:http://localhost:5173}")
++    private String frontendUrl;
++
+     @Bean
+     public CorsConfigurationSource corsConfigurationSource() {
+         CorsConfiguration configuration = new CorsConfiguration();
+-        configuration.setAllowedOriginPatterns(List.of("*"));
++        // Allow localhost and the configured frontend URL
++        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://localhost:3000", frontendUrl));
+         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
+         configuration.setExposedHeaders(List.of("Authorization"));

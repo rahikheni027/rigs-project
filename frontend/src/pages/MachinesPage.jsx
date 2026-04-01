@@ -88,6 +88,17 @@ const MachinesPage = () => {
 
     const handleCommand = async (id, cmd) => {
         setCmdLoading(p => ({ ...p, [`${id}-${cmd}`]: true }));
+        
+        // Optimistic UI update
+        const targetStatus = cmd === 'START' || cmd === 'RESET' ? 'RUNNING' :
+                             cmd === 'STOP' ? 'STOPPED' :
+                             cmd === 'EMERGENCY_STOP' ? 'EMERGENCY' :
+                             cmd === 'MAINTENANCE_MODE' ? 'MAINTENANCE' :
+                             cmd === 'CALIBRATION' ? 'CALIBRATING' : null;
+        if (targetStatus) {
+            setMachines(prev => prev.map(m => m.machineId === id ? { ...m, status: targetStatus } : m));
+        }
+
         try {
             await api.post(`/machines/${id}/command?command=${cmd}&issuedBy=${user?.name || 'operator'}`);
             setTimeout(fetchMachines, 800);

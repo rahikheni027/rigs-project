@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
+import WorkerDashboard from './WorkerDashboard';
 import {
     Cpu, Shield, AlertTriangle, Users, UserCheck, UserX, Clock,
     CheckCircle, XCircle, Trash2, Bell, BarChart3, TrendingUp,
@@ -21,6 +22,7 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState(null);
     const [btnLoading, setBtnLoading] = useState({});
+    const [viewMode, setViewMode] = useState('ADMIN');
 
     const showToast = (msg, type = 'success') => {
         setToast({ msg, type });
@@ -98,6 +100,27 @@ const AdminDashboard = () => {
         </div>
     );
 
+    if (viewMode === 'OPERATOR') {
+        return (
+            <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#f1f5f9' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+                    <button 
+                        onClick={() => setViewMode('ADMIN')}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+                            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                            borderRadius: 6, color: '#f87171', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                            fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', transition: 'all 0.2s'
+                        }}
+                    >
+                        <Shield size={14} /> Exit Telemetry View
+                    </button>
+                </div>
+                <WorkerDashboard />
+            </div>
+        );
+    }
+
     return (
         <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#f1f5f9', position: 'relative' }}>
             {/* Pending Approval Banner */}
@@ -119,15 +142,29 @@ const AdminDashboard = () => {
             )}
 
             {/* Header */}
-            <div style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
-                    <h1 style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.5px', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>ADMIN CONSOLE</h1>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.12)', borderRadius: 4, padding: '3px 8px' }}>
-                        <Shield size={10} color="#0ea5e9" />
-                        <span style={{ fontSize: 9, fontWeight: 700, color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>ADMIN</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
+                        <h1 style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.5px', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>ADMIN CONSOLE</h1>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.12)', borderRadius: 4, padding: '3px 8px' }}>
+                            <Shield size={10} color="#0ea5e9" />
+                            <span style={{ fontSize: 9, fontWeight: 700, color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>ADMIN</span>
+                        </div>
                     </div>
+                    <p style={{ fontSize: 11, color: '#64748b', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>SYSTEM ADMINISTRATION & ACCESS MANAGEMENT</p>
                 </div>
-                <p style={{ fontSize: 11, color: '#64748b', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>SYSTEM ADMINISTRATION & ACCESS MANAGEMENT</p>
+                
+                <button 
+                    onClick={() => setViewMode('OPERATOR')}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+                        background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.3)',
+                        borderRadius: 6, color: '#38bdf8', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', transition: 'all 0.2s'
+                    }}
+                >
+                    <Activity size={14} /> View Telemetry
+                </button>
             </div>
 
             {/* KPIs */}

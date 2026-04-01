@@ -104,7 +104,7 @@ const MACHINE_SHAPES = {
 const DEFAULT_SHAPE = MACHINE_SHAPES.MOTOR;
 
 const ProcessFlowDiagram = ({ machines = [] }) => {
-    const width = 900;
+    const width = Math.max(900, machines.length * 120);
     const height = 280;
 
     const positions = useMemo(() => {
@@ -128,8 +128,9 @@ const ProcessFlowDiagram = ({ machines = [] }) => {
     }
 
     return (
-        <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible' }}>
-            <defs>
+        <div style={{ width: '100%', overflowX: 'auto', paddingBottom: '12px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(14,165,233,0.3) transparent' }}>
+            <svg width={width} viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible', minWidth: width }}>
+                <defs>
                 {/* Animated flow particles along pipes */}
                 <marker id="flowArrow" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
                     <path d="M0,0 L6,2 L0,4" fill="#0ea5e9" opacity="0.4" />
@@ -254,6 +255,7 @@ const ProcessFlowDiagram = ({ machines = [] }) => {
                 ))}
             </g>
         </svg>
+        </div>
     );
 };
 

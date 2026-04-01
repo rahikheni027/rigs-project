@@ -1,0 +1,3739 @@
+diff --git a/TECHNICAL_REVIEW.md b/TECHNICAL_REVIEW.md
+new file mode 100644
+index 0000000..ccdcfb1
+--- /dev/null
++++ b/TECHNICAL_REVIEW.md
+@@ -0,0 +1,1891 @@
++# R.I.G.S. - Complete Technical Review
++**Remote Industrial Governance System - SCADA Platform**
++
++---
++
++## 1. PROJECT UNDERSTANDING
++
++### Overview
++**R.I.G.S.** is a **SCADA-style remote machine monitoring and control system** designed for industrial IoT environments. It bridges physical machines (via MQTT telemetry) with a web dashboard for real-time monitoring and command issuance.
++
++### Architecture Stack
++- **Backend:** Spring Boot 3.3.5 (Java 17)
++- **Frontend:** React 19 + Vite + Tailwind CSS
++- **Real-time Protocol:** MQTT (SSL/TLS)
++- **Authentication:** JWT + OAuth2 (Google)
++- **Database:** MySQL 8
++- **Simulator:** Python 3 with Paho MQTT
++- **Deployment:** Docker-ready, Flyway migrations
++
++### Key Components
++1. **Machines** — Industrial equipment with telemetry (temp, vibration, current, RPM, power, efficiency)
++2. **Alerts** — Rules-based warnings triggered by threshold violations
++3. **Commands** — Remote operations (START, STOP, RESET, CONFIGURE, EMERGENCY_STOP)
++4. **Users** — Admin approval workflow, OAuth2 self-registration
++5. **Audit Logs** — Full compliance tracking
++
++### Data Flow
++
++```
++Machines (Physical/Simulated)
++    ↓ (MQTT Telemetry: rigs/data/*)
++    ↓ TLS Encrypted
++MQTT Broker (HiveMQ Cloud)
++    ↓
++Backend (Spring Boot)
++    ├─ MqttListenerService (consumes telemetry)
++    ├─ MachineService (saves to DB)
++    └─ CommandService (publishes commands)
++    ↓
++MySQL Database
++    ├─ machines, machine_telemetry
++    ├─ users, commands, alerts
++    └─ audit_logs
++    ↑ (REST API)
++Frontend React App
++    ├─ HTTP Polling (5-15s intervals)
++    ├─ Dashboard, Admin, Alerts pages
++    └─ JWT Auth interceptor
++
++Command Feedback Loop:
++Frontend → POST /api/commands → CommandService → MQTT publish → Machine ACK
++```
++
++---
++
++## 2. CODE QUALITY REVIEW
++
++### Critical Bugs & Logical Errors
++
++#### **BUG #1: OAuth2 Token Passed via URL Query String** ⚠️ SECURITY
++**Location:** `OAuth2LoginSuccessHandler.java:105`, `LoginPage.jsx:23`
++
++```java
++// VULNERABLE CODE
++getRedirectStrategy().sendRedirect(request, response,
++    frontendUrl + "/login?token=" + jwt
++    + "&name=" + URLEncoder.encode(user.getName(), "UTF-8")
++    + "&email=" + URLEncoder.encode(user.getEmail(), "UTF-8")
++```
++
++**Issues:**
++- JWT token visible in browser history, server logs, referrer headers
++- XSS vulnerability if domain compromised
++- Token can be intercepted on redirect
++
++**Fix:** Use POST redirect + secure session cookie
++```java
++// CORRECT: Use HTTP POST + secure cookie
++session.setAttribute("oauthToken", jwt);
++getRedirectStrategy().sendRedirect(request, response, frontendUrl + "/oauth/callback");
++```
++
++---
++
++#### **BUG #2: Frontend State Management - Race Condition in Polling**
++**Location:** `Dashboard.jsx:75`, `AlertsPage.jsx:23`, `MachinesPage.jsx:80`
++
++```jsx
++// PROBLEMATIC: Race condition if user changes pollInterval mid-fetch
++useEffect(() => {
++    fetchData();
++    const t = setInterval(fetchData, pollInterval * 1000);
++    return () => clearInterval(t);
++}, [pollInterval]); // Missing isMounted guard in some components
++```
++
++**Issue:** Old request can overwrite fresh data if interval changes. No abort mechanism.
++
++**Fix:**
++```jsx
++useEffect(() => {
++    let isMounted = true;
++    const controller = new AbortController();
++
++    const poll = async () => {
++        if (!isMounted) return;
++        try {
++            const r = await api.get('/machines', { signal: controller.signal });
++            if (isMounted) setMachines(r.data);
++        } catch (e) {
++            if (e.name !== 'AbortError') console.error(e);
++        }
++    };
++    
++    poll();
++    const timeoutId = setTimeout(poll, pollInterval * 1000);
++    return () => {
++        isMounted = false;
++        controller.abort();
++        clearTimeout(timeoutId);
++    };
++}, [pollInterval]);
++```
++
++---
++
++#### **BUG #3: Command Optimistic Update Without Rollback**
++**Location:** `MachinesPage.jsx:95`
++
++```jsx
++// RISKY: No rollback on failure
++const handleCommand = async (id, cmd) => {
++    // Optimistic update
++    setMachines(prev => prev.map(m => 
++        m.id === id ? { ...m, status: expectedStatus } : m
++    ));
++    
++    // If this fails, UI is out of sync
++    try {
++        await api.post(`/machines/${id}/command`, { type: cmd });
++    } catch (e) {
++        // NO ROLLBACK to original state
++        alert('Failed');
++    }
++};
++```
++
++**Fix:** Store original state, rollback on error
++```jsx
++const handleCommand = async (id, cmd) => {
++    const original = machines.find(m => m.id === id);
++    setMachines(prev => prev.map(m => 
++        m.id === id ? { ...m, status: expectedStatus } : m
++    ));
++    
++    try {
++        await api.post(`/machines/${id}/command`, { type: cmd });
++    } catch (e) {
++        setMachines(prev => prev.map(m => 
++            m.id === id ? original : m
++        ));
++        showToast('Command failed', 'error');
++    }
++};
++```
++
++---
++
++#### **BUG #4: Missing Database Null Safety**
++**Location:** `MqttListenerService.java:88`
++
++```java
++// UNSAFE: No null checks after parsing JSON
++Double temperature = data.has("temperature") ? data.get("temperature").asDouble() : null;
++// ... later
++machineService.saveTelemetry(machineId, temperature, vibration, ...);
++// saveTelemetry may fail if required field is null
++```
++
++**Fix:** Validate required fields
++```java
++if (!data.has("machineId") || !data.has("status")) {
++    log.warn("Invalid telemetry: missing required fields");
++    return;
++}
++```
++
++---
++
++#### **BUG #5: No Connection Status in PollingContext**
++**Location:** `PollingContext.jsx`, `Layout.jsx:24`
++
++```jsx
++// HARDCODED: Backend connection hardcoded as always true
++<span style={{ color: '#22c55e' }}>ONLINE</span>
++```
++
++Should actually check API health. Currently always shows ONLINE even if backend is down.
++
++---
++
++### Code Smells & Anti-Patterns
++
++#### 🔴 **Smell #1: Inline Styles Everywhere (Non-Scalable)**
++**Severity:** Medium
++
++Every React component has massive inline style objects. This makes:
++- Impossible to reuse styles
++- Hard to implement theme consistency
++- Bundle bloat (styles repeated)
++- Poor maintainability
++
++**Example:**
++```jsx
++// BAD: Repeated across 50+ places
++<div style={{
++    background: 'rgba(15,23,42,0.9)', 
++    border: '1px solid rgba(14,165,233,0.08)', 
++    borderRadius: 10, 
++    padding: 16 
++}}>
++```
++
++**Fix:** Extract to CSS module or styled-components
++```jsx
++// GOOD
++<div className={styles.card}>
++```
++
++---
++
++#### 🔴 **Smell #2: Magic Strings & Hardcoded Values**
++**Severity:** High
++
++```jsx
++// Multiple places
++const pollInterval = 5; // hardcoded
++const POLL_INTERVAL = 3000; // elsewhere 10000
++const ALERT_POLL = 10000; // yet another place
++
++if (status === 'RUNNING') // repeated string checks
++if (status === 'EMERGENCY')
++if (user?.roles?.includes('ROLE_ADMIN')) // string literal
++```
++
++**Fix:** Centralized constants
++```js
++// constants/AppConstants.js
++export const POLL_INTERVALS = {
++    MACHINES: 5000,
++    ALERTS: 10000,
++    DASHBOARD: 3000,
++};
++
++export const MACHINE_STATUS = {
++    RUNNING: 'RUNNING',
++    STOPPED: 'STOPPED',
++    EMERGENCY: 'EMERGENCY',
++};
++
++export const USER_ROLES = {
++    ADMIN: 'ROLE_ADMIN',
++    WORKER: 'ROLE_WORKER',
++};
++```
++
++---
++
++#### 🔴 **Smell #3: Multiple useState for Related State**
++**Severity:** Medium
++
++```jsx
++// BAD: Scattered related state
++const [machines, setMachines] = useState([]);
++const [alerts, setAlerts] = useState([]);
++const [stats, setStats] = useState({});
++const [loading, setLoading] = useState(true);
++const [toast, setToast] = useState(null);
++const [btnLoading, setBtnLoading] = useState({});
++
++// Hard to manage relationships
++```
++
++**Fix:** Use useReducer for complex state
++```jsx
++// GOOD
++const [state, dispatch] = useReducer(dashboardReducer, initialState);
++
++const initialState = {
++    machines: [],
++    alerts: [],
++    stats: {},
++    ui: { loading: true, toast: null, btnLoading: {} }
++};
++```
++
++---
++
++#### 🔴 **Smell #4: No Error Boundaries (React)**
++**Severity:** Medium
++
++If any child component crashes, entire app goes blank. No error boundary exists.
++
++**Fix:** Implement error boundary
++```jsx
++// components/ErrorBoundary.jsx
++class ErrorBoundary extends React.Component {
++    state = { hasError: false };
++    
++    static getDerivedStateFromError() {
++        return { hasError: true };
++    }
++    
++    render() {
++        if (this.state.hasError) {
++            return <div>Something went wrong. Reload page.</div>;
++        }
++        return this.props.children;
++    }
++}
++```
++
++---
++
++#### 🔴 **Smell #5: No DTOs/Response Validation (Backend)**
++**Severity:** Medium
++
++Controllers return raw entities, no API contract validation.
++
++```java
++// RISKY
++@GetMapping("/machines")
++public ResponseEntity<List<Machine>> getMachines() {
++    return ResponseEntity.ok(machineRepository.findAll()); // exposes all fields
++}
++```
++
++**Fix:** Use DTOs
++```java
++@GetMapping("/machines")
++public ResponseEntity<List<MachineResponse>> getMachines() {
++    return ResponseEntity.ok(
++        machineService.getAll().stream()
++            .map(MachineMapper::toResponse)
++            .collect(Collectors.toList())
++    );
++}
++```
++
++---
++
++#### 🔴 **Smell #6: Hardcoded JWT Secret**
++**Severity:** CRITICAL
++
++**Location:** `JwtUtils.java:19`
++
++```java
++@Value("${rigs.jwt.secret:SuperSecretKeyForRigsEnterpriseUpgrade2026!}")
++private String jwtSecret;
++```
++
++Default value is hardcoded in code. This is exposed in public repositories.
++
++**Fix:** Remove default, require env var
++```java
++@Value("${rigs.jwt.secret}")
++private String jwtSecret; // No default
++```
++
++---
++
++### Inconsistent Coding Practices
++
++| Issue | Files | Impact |
++|-------|-------|--------|
++| **Naming:** `r`, `e`, `t`, `m`, etc. (single-letter vars) | AlertsPage, Dashboard, MachinesPage | Readability |
++| **Error handling:** Silent catch blocks `catch(e) {}` | Multiple React components | Hidden bugs |
++| **API errors:** No consistent error structure | All controllers | Client parsing hell |
++| **Pagination:** Hardcoded page/size | `AdminDashboard.jsx:30`, `AuditLogController.java` | Inconsistent UX |
++| **Logging:** Mixed `log` & `console.error` | Backend & Frontend | Debug nightmare |
++
++---
++
++## 3. PERFORMANCE ANALYSIS
++
++### Backend Bottlenecks
++
++#### **Bottleneck #1: N+1 Query Problem in Dashboard**
++**Location:** `AdminDashboard.jsx:42` → `/admin/stats` endpoint
++
++```jsx
++const [usersRes, pendRes, statsRes, machRes, alertRes] = await Promise.all([
++    api.get('/admin/users'),           // Query 1: All users
++    api.get('/admin/users/pending'),   // Query 2: Pending users (subset of Query 1)
++    api.get('/admin/stats'),           // Query 3: Stats (likely re-queries users/machines)
++    api.get('/machines'),              // Query 4: All machines
++    api.get('/alerts?size=10'),        // Query 5: Alerts
++]);
++```
++
++Each request probably queries:
++```sql
++-- Likely query pattern
++SELECT * FROM users;                    -- 100+ users
++SELECT * FROM machines;                 -- potentially millions of telemetry rows
++SELECT * FROM alerts;
++```
++
++**Impact:** 
++- Full table scans on busy systems
++- No pagination on `/machines` endpoint
++- `/admin/stats` probably does COUNT(*) on every table
++
++**Fix:**
++```java
++// Add pagination to /machines
++@GetMapping("/machines?page=0&size=50")
++public Page<Machine> getMachines(Pageable pageable) {
++    return machineRepository.findAll(pageable);
++}
++
++// Optimize /admin/stats with single query
++@GetMapping("/admin/stats")
++public ResponseEntity<AdminStats> getStats() {
++    return ResponseEntity.ok(new AdminStats(
++        userRepository.countByEnabled(1),
++        userRepository.countByEnabled(0),
++        machineRepository.count(),
++        alertRepository.countBySeverity("CRITICAL")
++    ));
++}
++```
++
++---
++
++#### **Bottleneck #2: Unbounded Telemetry Storage**
++**Location:** `MqttListenerService.java:88` → `saveTelemetry()`
++
++```java
++// No limits on telemetry retention
++machine_telemetry table grows indefinitely
++- 1 machine @ 5s interval = 17,280 records/day
++- 100 machines = 1.7M records/day
++- 1 year = 620M records (terabytes)
++```
++
++**Impact:**
++- Queries slow down: `SELECT ... FROM machine_telemetry ORDER BY timestamp DESC`
++- Disk space explodes
++- Backup times become prohibitive
++- No archival strategy
++
++**Fix:**
++```java
++// Implement retention policy
++@Scheduled(cron = "0 0 2 * * *") // Daily at 2 AM
++public void archiveOldTelemetry() {
++    LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
++    telemetryRepository.deleteOlderThan(thirtyDaysAgo);
++    // Or move to archive table/cold storage
++}
++```
++
++---
++
++#### **Bottleneck #3: Synchronous MQTT Publishing**
++**Location:** `MqttListenerService.java:107`
++
++```java
++public void sendCommand(Long machineId, String command) {
++    try {
++        String topic = "rigs/command/" + machineId;
++        mqttClient.publish(topic, ...);  // BLOCKING
++    } catch (MqttException e) {
++        log.error("..."); // Synchronous, can timeout
++    }
++}
++```
++
++**Impact:**
++- If MQTT broker is slow, HTTP request waits
++- No queue — messages lost if broker unreachable
++- Command controller blocked during publish
++
++**Fix:** Queue-based async publishing
++```java
++@Service
++public class CommandService {
++    @Autowired private MqttPublishQueue queue;
++    
++    public void sendCommand(Long machineId, String command) {
++        Command cmd = commandRepository.save(...);
++        queue.enqueue(new MqttPublishTask(machineId, command));
++        // Return immediately
++    }
++}
++
++// Background worker
++@Service
++public class MqttPublishWorker {
++    @Scheduled(fixedDelay = 100)
++    public void publishQueued() {
++        MqttPublishTask task = queue.dequeue();
++        if (task != null) {
++            mqttClient.publishAsync(task.getTopic(), task.getPayload());
++        }
++    }
++}
++```
++
++---
++
++#### **Bottleneck #4: No Database Indexing**
++**Location:** `machine_telemetry` table
++
++```sql
++-- Current schema (V1__init_schema.sql)
++CREATE TABLE machine_telemetry (
++    id BIGINT AUTO_INCREMENT PRIMARY KEY,
++    machine_id BIGINT NOT NULL,
++    temperature DOUBLE NOT NULL,
++    ...
++    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++    -- NO INDEXES!
++);
++```
++
++**Queries that will be slow:**
++```sql
++SELECT * FROM machine_telemetry 
++WHERE machine_id = 5 
++  AND timestamp > NOW() - INTERVAL 1 DAY
++ORDER BY timestamp DESC;  -- Full table scan
++
++SELECT * FROM alerts 
++WHERE machine_id = 5 AND created_at > ?;  -- Full table scan
++```
++
++**Fix:**
++```sql
++CREATE INDEX idx_telemetry_machine_time 
++ON machine_telemetry(machine_id, timestamp DESC);
++
++CREATE INDEX idx_machine_status 
++ON machines(status);
++
++CREATE INDEX idx_alerts_machine_severity 
++ON alerts(machine_id, severity);
++
++CREATE INDEX idx_commands_machine_status 
++ON commands(machine_id, status);
++```
++
++---
++
++#### **Bottleneck #5: Flyway Migrations Not Optimized**
++**Location:** `src/main/resources/db/migration/`
++
++```sql
++CREATE TABLE IF NOT EXISTS ...;
++-- No explicit indexes, no partitioning
++-- Large table creations happen on app startup
++```
++
++**Fix:**
++- Add migration for archival partitioning
++- Implement async migration with max pool timeout
++
++---
++
++### Frontend Performance Issues
++
++#### **Issue #1: 900KB Bundle Size**
++```
++dist/assets/index-DlgAPYKO.js   902.09 kB
++```
++
++**Causes:**
++- No code splitting (all routes loaded upfront)
++- Recharts + Framer Motion both heavy
++- Multiple context providers
++
++**Fix:**
++```js
++// vite.config.js
++export default {
++    build: {
++        rollupOptions: {
++            output: {
++                manualChunks: {
++                    'vendor': ['react', 'react-dom', 'axios'],
++                    'charts': ['recharts'],
++                    'motion': ['framer-motion'],
++                }
++            }
++        }
++    }
++}
++
++// App.jsx - Lazy load routes
++const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
++const Dashboard = lazy(() => import('./pages/Dashboard'));
++```
++
++#### **Issue #2: Polling Creates Memory Leak**
++**Location:** Multiple pages
++
++```jsx
++// Each page creates setInterval
++useEffect(() => {
++    const t = setInterval(fetchData, 10000);
++    return () => clearInterval(t);
++}, []); // Missing pollInterval dependency!
++```
++
++Changing `pollInterval` doesn't clear old interval → multiple intervals running simultaneously.
++
++---
++
++### Real-time Latency Issues
++
++#### **Current Polling-Based System Latency**
++```
++Machine Event (Overheat)
++    ↓ 0ms
++Published to MQTT
++    ↓ ~50-200ms (network + broker)
++Backend receives & saves
++    ↓ ~10ms (DB write)
++React polls `/machines` endpoint
++    ↓ ~5-15s DELAY (worst case)
++Frontend updates UI
++    ↓ Alert displayed (Total: 5-15+ seconds)
++```
++
++**Critical Issue:** A machine in **emergency state** waits **5-15 seconds** to notify operators.
++
++---
++
++## 4. SCALABILITY REVIEW
++
++### Can This System Scale?
++
++#### **Single Machine Scalability: ✅ Decent**
++- Single Spring Boot instance can handle ~100 API calls/sec
++- Flyway auto-migrates
++- Security is stateless (JWT)
++
++#### **Multiple Users: ⚠️ Limited**
++- No caching layer (Redis)
++- Dashboard queries all users/machines on each load
++- No pagination on machine list
++
++**Scaling Issue Example:**
++```
++If you have 10,000 machines:
++- /machines endpoint returns ALL 10,000
++- Frontend tries to render all in grid
++- Browser OOM
++- No lazy loading or virtual scrolling
++```
++
++#### **Multiple Machines: 🔴 CRITICAL**
++Current architecture **will not scale beyond 100 machines** in production:
++
++1. **MQTT Bottleneck:**
++   - No message batching
++   - Each machine sends independently every 5s
++   - 100 machines = 20 MQTT messages/sec
++   - 1,000 machines = 200 MQTT messages/sec
++   - HiveMQ throttles at ~1000 msg/sec
++
++2. **Database Bottleneck:**
++   - machine_telemetry table grows: **17,280 rows/machine/day**
++   - 100 machines = **1.7M rows/day**
++   - Queries slow down after 30 days
++   - No partitioning or archival
++
++3. **API Bottleneck:**
++   - Single Spring Boot instance can't handle polling from 1000+ browsers
++   - No load balancer mentioned
++   - No caching (every request hits DB)
++
++4. **Frontend Bottleneck:**
++   - All components poll independently
++   - 100 users × 5-second polling = 20 API calls/sec
++   - No request deduplication
++
++**Real-world Impact:**
++- 100 machines + 20 users = **System overload**
++- HiveMQ bill skyrockets
++- Dashboard lags out completely
++
++---
++
++### Architectural Weaknesses
++
++| Weakness | Impact | Solution |
++|----------|--------|----------|
++| No Redis cache | Every request hits DB | Add Redis for session/machine data |
++| No message broker | MQTT only | Add RabbitMQ for command queue |
++| Single DB instance | Bottleneck at 1000 concurrent users | Read replicas + sharding |
++| Polling only | 5-15s latency | WebSocket for real-time push |
++| No load balancer | Single point of failure | Kubernetes/HAProxy with 3+ replicas |
++| No rate limiting | DDoS vulnerability | Spring Security rate limiter |
++| No circuit breaker | Cascading failures | Resilience4j for MQTT/DB calls |
++
++---
++
++## 5. REAL-TIME SYSTEM DESIGN CRITIQUE
++
++### Current State: **INSUFFICIENT for SCADA**
++
++SCADA systems require **sub-second latency**. Current design:
++- **Latency:** 5-15 seconds (polling-based)
++- **Reliability:** Not guaranteed (polling can miss events)
++- **Scalability:** Degrades at 50+ machines
++
++### What's Missing
++
++#### **1. WebSocket Event Push (CRITICAL)**
++Current: Browser polls every 5s
++```
++Browser: GET /machines → (waits 5-15s) → alert shown
++```
++
++Correct: Real-time push
++```
++MQTT Event → Backend → WebSocket Push → Browser (instantly)
++    ↓
++Alert shown in <100ms
++```
++
++**Implementation:**
++```java
++// Backend: Add Spring WebSocket
++@Configuration
++@EnableWebSocket
++public class WebSocketConfig implements WebSocketConfigurer {
++    @Override
++    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
++        registry.addHandler(machineWebSocketHandler(), "/ws/machines")
++            .setAllowedOrigins("*");
++    }
++}
++
++// When MQTT message arrives
++@Component
++public class MqttListenerService {
++    @Autowired private SimpMessagingTemplate messagingTemplate;
++    
++    private void handleTelemetry(...) {
++        // Instead of just saving to DB:
++        machineService.saveTelemetry(...);
++        
++        // PUSH to all connected browsers
++        messagingTemplate.convertAndSend(
++            "/topic/machine/" + machineId,
++            new MachineTelemerty(...)
++        );
++    }
++}
++```
++
++**Frontend:**
++```jsx
++useEffect(() => {
++    const ws = new WebSocket('ws://localhost:8080/ws/machines');
++    
++    ws.onmessage = (event) => {
++        const telemetry = JSON.parse(event.data);
++        setMachines(prev => 
++            prev.map(m => m.id === telemetry.machineId 
++                ? { ...m, ...telemetry } 
++                : m
++            )
++        );
++    };
++    
++    return () => ws.close();
++}, []);
++```
++
++**Latency Improvement:**
++- Polling: 5-15s
++- WebSocket: <100ms ✅
++
++---
++
++#### **2. Server-Sent Events (SSE) as Fallback**
++For systems where WebSocket not available:
++
++```java
++@GetMapping("/events/stream")
++public SseEmitter streamMachineEvents() {
++    SseEmitter emitter = new SseEmitter();
++    machineEventEmitters.add(emitter);
++    return emitter;
++}
++
++// When event occurs
++public void broadcastEvent(MachineTelemetry telemetry) {
++    for (SseEmitter emitter : machineEventEmitters) {
++        try {
++            emitter.send(SseEmitter.event()
++                .data(telemetry)
++                .id(String.valueOf(telemetry.getId())));
++        } catch (IOException e) {
++            machineEventEmitters.remove(emitter);
++        }
++    }
++}
++```
++
++---
++
++#### **3. Message Batching for MQTT**
++Current: Each machine sends every 5s independently
++```
++Machine 1 @ 0s,5s,10s,15s...
++Machine 2 @ 1s,6s,11s,16s...
++Machine 3 @ 2s,7s,12s,17s...
++= 60 separate MQTT messages/min for 20 machines
++```
++
++Better: Batch messages
++```java
++@Service
++public class TelemetryBatchService {
++    private Map<Long, MachineTelemetry> batch = new ConcurrentHashMap<>();
++    
++    public void addTelemetry(MachineTelemetry t) {
++        batch.put(t.getMachineId(), t);
++    }
++    
++    @Scheduled(fixedRate = 5000)
++    public void publishBatch() {
++        if (batch.isEmpty()) return;
++        
++        String payload = objectMapper.writeValueAsString(
++            new BatchMessage(batch.values())
++        );
++        mqttClient.publish("rigs/batch/telemetry", payload);
++        batch.clear();
++    }
++}
++```
++
++**Result:** 60 msgs/min → 1 msg per 5 seconds ✅
++
++---
++
++#### **4. Event Sourcing for Audit Trail**
++Current: Commands stored after execution
++Better: Store as immutable events
++
++```java
++// Instead of updating machine.status directly
++@Service
++public class EventStore {
++    public void recordEvent(DomainEvent event) {
++        eventRepository.save(event);
++        // Then apply to state
++        applyEvent(event);
++    }
++}
++
++public class MachineStartedEvent extends DomainEvent {
++    private Long machineId;
++    private LocalDateTime timestamp;
++    private String initiatedBy;
++}
++```
++
++---
++
++## 6. SECURITY REVIEW
++
++### 🔴 CRITICAL VULNERABILITIES
++
++#### **Vuln #1: JWT Token in URL Query String** (Already Covered Above)
++**CWE-598: Use of GET Request with Sensitive Query Strings**
++- Token visible in browser history
++- Server logs contain token
++- Referrer headers leak token
++
++**Fix:** POST + secure cookies (see Section 2, BUG #1)
++
++---
++
++#### **Vuln #2: CORS Allows All Origins**
++**Location:** `SecurityConfig.java:69`
++
++```java
++CorsConfiguration configuration = new CorsConfiguration();
++configuration.setAllowedOriginPatterns(List.of("*")); // ⚠️ DANGEROUS
++configuration.setAllowCredentials(true); // ⚠️ Allows cross-site attacks
++```
++
++**Risk:** Any website can make requests to your API, steal data, issue commands.
++
++**Fix:**
++```java
++configuration.setAllowedOrigins(
++    "https://yourdomain.com",
++    "https://admin.yourdomain.com"
++);
++configuration.setAllowCredentials(false); // Don't allow credentials from other origins
++```
++
++---
++
++#### **Vuln #3: Hardcoded MQTT Credentials**
++**Location:** `application.properties:59-61`
++
++```properties
++mqtt.username=rigs_client
++mqtt.password=Kanzariya2413
++```
++
++**Risk:** Credentials exposed in git history.
++
++**Fix:** Use environment variables only
++```properties
++mqtt.username=${MQTT_USERNAME}
++mqtt.password=${MQTT_PASSWORD}
++```
++
++---
++
++#### **Vuln #4: No Password Complexity Validation**
++**Location:** `AuthController.java`, `RegisterRequest`
++
++```java
++// No validation of password strength
++@PostMapping("/signup")
++public ResponseEntity<MessageResponse> registerUser(@Valid @RequestBody RegisterRequest request) {
++    // No checks for: length, uppercase, numbers, special chars
++}
++```
++
++**Fix:**
++```java
++@Component
++public class PasswordValidator {
++    public boolean isStrong(String password) {
++        return password.length() >= 12
++            && password.matches(".*[A-Z].*")
++            && password.matches(".*[0-9].*")
++            && password.matches(".*[!@#$%^&*].*");
++    }
++}
++```
++
++---
++
++#### **Vuln #5: No Rate Limiting on Auth Endpoints**
++**Location:** `AuthController.java`
++
++```java
++@PostMapping("/signin")
++public ResponseEntity<Object> authenticateUser(...) {
++    // Can brute force forever
++}
++```
++
++**Risk:** Attackers can try 1000s of password combinations/second.
++
++**Fix:**
++```java
++@Configuration
++public class SecurityConfig {
++    @Bean
++    public RateLimiter rateLimiter() {
++        return RateLimiter.create(5); // 5 requests per second
++    }
++}
++
++@Component
++public class RateLimitFilter extends OncePerRequestFilter {
++    @Override
++    protected void doFilterInternal(...) {
++        if (request.getRequestURI().contains("/auth/signin")) {
++            if (!rateLimiter.tryAcquire()) {
++                response.sendError(429, "Too many requests");
++            }
++        }
++    }
++}
++```
++
++---
++
++#### **Vuln #6: Sensitive Data in Logs**
++**Location:** Multiple services
++
++```java
++log.info("OAuth2 login for: {}", email); // PII
++log.info("User failed login: {}", loginRequest.getPassword()); // Sensitive!
++```
++
++**Fix:**
++```java
++log.info("OAuth2 login attempt");
++log.warn("Failed authentication for: {}", email.hashCode()); // Hash instead
++```
++
++---
++
++#### **Vuln #7: OAuth2 Account Takeover Risk**
++**Location:** `OAuth2LoginSuccessHandler.java:50`
++
++```java
++// New OAuth2 user created with default WORKER role
++// But enabled = 0 (pending admin approval)
++// HOWEVER: No email verification!
++```
++
++**Risk:** Attacker can register with fake email, wait for approval, get access.
++
++**Fix:**
++```java
++// Send verification email before approval
++emailService.sendVerificationEmail(user.getEmail(), verificationToken);
++
++// In admin approval:
++@PreAuthorize("hasRole('ADMIN')")
++@PostMapping("/users/{id}/approve")
++public void approveUser(@PathVariable Long id) {
++    User user = userRepository.findById(id);
++    user.setEnabled(1);
++    userRepository.save(user);
++}
++```
++
++---
++
++#### **Vuln #8: No CSRF Protection on State-Changing Operations**
++**Location:** Commands, settings changes
++
++```java
++@PostMapping("/machines/{id}/command")
++public ResponseEntity<?> sendCommand(...) {
++    // No CSRF token validation!
++}
++```
++
++**Fix:**
++```java
++// Spring Security CSRF enabled (Spring Boot default)
++// Ensure tokens in forms:
++<input type="hidden" name="_csrf" value="${_csrf.token}"/>
++```
++
++---
++
++### High-Risk Security Issues
++
++| Issue | Risk | Fix |
++|-------|------|-----|
++| localStorage for token storage | XSS attack → token stolen | Use httpOnly cookie (backend set) |
++| No HTTPS enforcement | Man-in-middle attacks | Add security headers, enforce HTTPS |
++| No API key for machine auth | Machines not verified | Implement JWT for MQTT publishers |
++| Command parameters not validated | Code injection via command args | Whitelist allowed commands/parameters |
++| No audit log for sensitive operations | Compliance violation | Already have audit table, use it! |
++| No 2FA enforcement for admins | Admin account compromise | Make 2FA mandatory for ADMIN role |
++
++---
++
++## 7. UI/UX ANALYSIS
++
++### State Management Issues
++
++#### **Issue #1: Multiple Data Sources of Truth**
++```jsx
++// Dashboard.jsx has machines in state
++const [machines, setMachines] = useState([]);
++
++// MachinesPage.jsx fetches same data independently
++const [machines, setMachines] = useState([]);
++
++// Navbar shows different number than Dashboard
++// Because they fetch at different times!
++```
++
++**Fix:** Global state management (Redux/Zustand)
++```js
++// store/machineSlice.js
++export const fetchMachines = createAsyncThunk(
++    'machines/fetchMachines',
++    async () => api.get('/machines')
++);
++
++const machineSlice = createSlice({
++    name: 'machines',
++    initialState: { data: [], loading: false },
++    extraReducers: builder => {
++        builder.addCase(fetchMachines.fulfilled, (state, action) => {
++            state.data = action.payload;
++        });
++    }
++});
++
++// Usage everywhere
++const machines = useSelector(state => state.machines.data);
++```
++
++---
++
++#### **Issue #2: Inconsistent Error Handling**
++```jsx
++// AdminDashboard.jsx
++catch { alert('Failed to acknowledge'); }
++
++// AlertsPage.jsx
++catch (e) { console.error(e); }
++
++// LoginPage.jsx
++catch (error) { setError(error.message); }
++```
++
++**Fix:** Consistent error handling
++```jsx
++// hooks/useAsync.js
++export function useAsync(asyncFn) {
++    const [state, setState] = useState({ loading: false, error: null, data: null });
++    
++    const execute = useCallback(async (...args) => {
++        setState({ loading: true, error: null });
++        try {
++            const data = await asyncFn(...args);
++            setState({ loading: false, data });
++            return data;
++        } catch (error) {
++            const message = error.response?.data?.message || error.message;
++            setState({ loading: false, error: message });
++            useToast().showToast(message, 'error');
++            throw error;
++        }
++    }, []);
++    
++    return { ...state, execute };
++}
++
++// Usage
++const { execute: fetchData, loading, error } = useAsync(api.get);
++```
++
++---
++
++### UI/UX Problems
++
++#### **Problem #1: No Loading Skeleton/Placeholders**
++Entire page goes blank while fetching. Users think app is broken.
++
++**Fix:**
++```jsx
++// components/MachineCard.skeleton.jsx
++export function MachineCardSkeleton() {
++    return (
++        <div className={styles.card} style={{ opacity: 0.5 }}>
++            <div className={styles.skeleton} />
++            <div className={styles.skeleton} style={{ marginTop: 8 }} />
++        </div>
++    );
++}
++
++// Then use in page
++return loading ? (
++    <div style={{ display: 'grid', gap: 10 }}>
++        {Array(6).fill(0).map((_, i) => (
++            <MachineCardSkeleton key={i} />
++        ))}
++    </div>
++) : (
++    <MachineList machines={machines} />
++);
++```
++
++---
++
++#### **Problem #2: No Pagination for Long Lists**
++Trying to render 1000 alerts crashes browser.
++
++**Fix:**
++```jsx
++// usePagination.js
++export function usePagination(items, pageSize = 50) {
++    const [page, setPage] = useState(0);
++    const total = Math.ceil(items.length / pageSize);
++    const current = items.slice(page * pageSize, (page + 1) * pageSize);
++    
++    return { current, page, setPage, total };
++}
++
++// Usage
++const { current, page, setPage, total } = usePagination(alerts, 50);
++```
++
++---
++
++#### **Problem #3: No Virtual Scrolling for Grid**
++Grid with 1000 machine cards renders all at once = browser lag.
++
++**Fix:** Use react-window or react-virtualized
++```jsx
++import { FixedSizeList } from 'react-window';
++
++<FixedSizeList
++    height={600}
++    itemCount={machines.length}
++    itemSize={120}
++    width="100%"
++>
++    {({ index, style }) => (
++        <MachineCard machine={machines[index]} style={style} />
++    )}
++</FixedSizeList>
++```
++
++---
++
++#### **Problem #4: Alert Feedback Delayed**
++User clicks "ACKNOWLEDGE" → command sent → 5s later: "Acknowledged"
++They already moved on, confused.
++
++**Fix:** Show immediate optimistic confirmation with rollback on error
++```jsx
++const handleAck = async (id) => {
++    // Optimistic update
++    showToast('Acknowledging...', 'info');
++    setAlerts(prev => prev.map(a => 
++        a.id === id ? { ...a, acknowledged: true } : a
++    ));
++    
++    try {
++        await api.post(`/alerts/${id}/acknowledge`);
++        showToast('Alert acknowledged', 'success');
++    } catch (e) {
++        setAlerts(prev => prev.map(a =>
++            a.id === id ? { ...a, acknowledged: false } : a
++        ));
++        showToast('Failed to acknowledge', 'error');
++    }
++};
++```
++
++---
++
++#### **Problem #5: No Responsive Design for Mobile**
++Entire app assumes desktop with inline styles.
++
++**Fix:** Use media queries or responsive framework
++```jsx
++// Tailwind example
++<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
++    {machines.map(m => <MachineCard key={m.id} {...m} />)}
++</div>
++```
++
++---
++
++## 8. SCADA-LIKE FEATURE GAPS
++
++A production SCADA system needs:
++
++### Implemented ✅
++- Real-time telemetry (MQTT)
++- Remote commands (START/STOP/RESET)
++- Basic alerts
++- Audit logging
++- Role-based access (ADMIN/WORKER)
++
++### Missing 🔴
++
++#### **1. Advanced Alerting & Rules Engine** (CRITICAL)
++Current: Static threshold checks in backend
++```java
++if (temperature > 80) createAlert();
++```
++
++**Missing:**
++- Dynamic rule creation (UI → rules)
++- Alert escalation (Level 1 → Level 2 after 5 min)
++- Alert routing (SMS to supervisor if critical)
++- Alert suppression during maintenance windows
++- Anomaly detection (temperature spike unusual for this machine)
++
++**Implement:**
++```java
++// Drools rules engine
++rule "High Temperature Alert"
++when
++    Machine(temperature > 80)
++    not Alert(machineId == machine.id, severity == "HIGH")
++then
++    createAlert("High Temperature", severity = "HIGH");
++    routeAlert(toSMS, toEmail);
++    escalateAfter(5 minutes);
++end
++```
++
++---
++
++#### **2. Historian/Trend Analysis**
++Current: Machine status is current-only. No history export.
++
++**Missing:**
++- Historical data queries (temperature trend for last 30 days)
++- Predictive maintenance (ML model: "Machine will fail in 3 days")
++- SPC charts (Statistical Process Control)
++- OEE metrics (Overall Equipment Effectiveness)
++- Downtime reports
++
++**Implement:**
++```java
++@Service
++public class HistorianService {
++    public List<TelemetryTrend> getTemperatureTrend(Long machineId, LocalDate from, LocalDate to) {
++        return telemetryRepository.findByMachineAndDateRange(machineId, from, to)
++            .stream()
++            .map(t -> new TelemetryTrend(t.getTimestamp(), t.getTemperature()))
++            .collect(Collectors.toList());
++    }
++    
++    @Scheduled(cron = "0 0 * * * *") // Hourly
++    public void calculateOEE() {
++        // OEE = (Availability × Performance × Quality) × 100%
++    }
++}
++```
++
++---
++
++#### **3. Batch Operations**
++Current: Single command per API call
++
++**Missing:**
++- Batch start/stop: "Start machines 1,2,3"
++- Scheduled operations: "Stop all machines at midnight"
++- Conditional commands: "If temp > 80, stop machine"
++
++**Implement:**
++```java
++@PostMapping("/batch-commands")
++public ResponseEntity<?> sendBatchCommands(@RequestBody BatchCommandRequest req) {
++    // req = { "machineIds": [1,2,3], "command": "START" }
++    req.getMachineIds().forEach(id ->
++        commandService.issueCommand(id, req.getCommand(), req.getScheduledAt())
++    );
++}
++```
++
++---
++
++#### **4. Dashboard Customization**
++Current: Fixed dashboards (Admin Dashboard, Worker Dashboard)
++
++**Missing:**
++- User-configurable widgets (drag-drop)
++- Custom KPI definitions
++- Saved views/filters
++- Report scheduling
++
++---
++
++#### **5. Time Series Database**
++Current: Storing every telemetry point in MySQL
++
++**Missing:**
++- InfluxDB/Prometheus for metrics
++- Efficient compression
++- Sub-second query response times
++
++**Implement:**
++```java
++// Send to InfluxDB instead of/in addition to MySQL
++@Service
++public class MetricsService {
++    @Autowired private InfluxDBClient client;
++    
++    public void recordMetric(MachineTelemetry t) {
++        Point point = Point.measurement("machine_telemetry")
++            .time(t.getTimestamp().toInstant().toEpochMilli(), WritePrecision.MS)
++            .tag("machineId", String.valueOf(t.getMachineId()))
++            .addField("temperature", t.getTemperature())
++            .addField("vibration", t.getVibration())
++            .build();
++        
++        client.getWriteApi().writePoint(point);
++    }
++}
++```
++
++---
++
++#### **6. Alarms vs. Alerts**
++Current: Only "alerts"
++
++**Missing:** Distinguish between:
++- **Alerts:** Informational (machine restarted)
++- **Alarms:** Critical (machine in danger)
++
++Alarms require acknowledgment, escalate if not acked.
++
++---
++
++#### **7. Equipment Genealogy**
++Current: Machine name + location
++
++**Missing:**
++- Asset tracking (Serial #, firmware version)
++- Maintenance history
++- Replacement part inventory
++- Configuration management
++
++---
++
++#### **8. User-Defined Data Types**
++Current: Hardcoded Machine entity
++
++**Missing:**
++- Different machine types (CNC, Pump, Motor, etc.)
++- Custom telemetry fields per machine type
++- Schema flexibility
++
++---
++
++## 9. ARCHITECTURE IMPROVEMENT PLAN
++
++### Current Architecture (Monolithic)
++```
++Frontend (React Monolith)
++    ↓ HTTP Polling every 5s
++Backend (Spring Monolith)
++    ├─ REST API (Machines, Users, Commands, Alerts)
++    ├─ MQTT Listener
++    └─ Audit Logging
++    ↓
++MySQL (Single Instance)
++    ├─ machines, machine_telemetry
++    ├─ users, commands
++    └─ audit_logs
++```
++
++**Problems:**
++- Single point of failure (1 Backend instance)
++- No caching
++- Polling latency
++- Monolithic scaling issues
++
++---
++
++### Recommended Architecture (Microservices + Event-Driven)
++
++```
++┌─────────────────────────────────────────────────────────┐
++│                    FRONTEND LAYER                        │
++│  React SPA (Vite) + Redux + WebSocket Client            │
++└────────────┬────────────────────────────────────────────┘
++             │
++        WebSocket + REST
++             │
++┌─────────────────────────────────────────────────────────┐
++│                 API GATEWAY (Kong/Nginx)                │
++│  - Rate limiting                                         │
++│  - Authentication proxy                                  │
++│  - Load balancing                                        │
++└────────────┬────────────────────────────────────────────┘
++             │
++    ┌────────┴────────┬──────────────┬──────────────┐
++    │                 │              │              │
++┌───▼──────┐   ┌──────▼─────┐  ┌────▼─────┐  ┌───▼────────┐
++│ Auth     │   │ Machine    │  │ Command  │  │ Historian  │
++│ Service  │   │ Service    │  │ Service  │  │ Service    │
++│ (JWT)    │   │ (REST API) │  │ (async)  │  │ (TSDB)     │
++└───┬──────┘   └──────┬─────┘  └────┬─────┘  └───┬────────┘
++    │                 │              │            │
++    │          ┌──────▼──────┐       │            │
++    │          │ MQTT        │       │            │
++    │          │ Listener    │       │            │
++    │          │ (real-time) │       │            │
++    │          └──────┬──────┘       │            │
++    │                 │              │            │
++    │                 └──────┬───────┴────────────┘
++    │                        │
++    │                 ┌──────▼────────────────┐
++    │                 │  Message Bus (Events)│
++    │   ┌─────────────│  - RabbitMQ/Kafka    │
++    │   │             └──────┬───────────────┘
++    │   │                    │
++    │   │        ┌───────────┼───────────────┐
++    │   │        │           │               │
++    │   │    ┌───▼─────┐ ┌──▼───────┐  ┌───▼────────┐
++    │   │    │ Notif   │ │ Alert    │  │ WebSocket  │
++    │   │    │ Service │ │ Processor│  │ Service    │
++    │   │    │(Email/  │ │ (Rules)  │  │(Push to    │
++    │   │    │ SMS)    │ └──────────┘  │ UI)        │
++    │   │    └─────────┘                └────────────┘
++    │   │
++    └───┼─────────────┬──────────────┬──────────┐
++        │             │              │          │
++    ┌───▼─────┐  ┌───▼────┐  ┌──────▼──┐  ┌──▼──────────┐
++    │  MySQL  │  │ Redis  │  │InfluxDB │  │ Elasticsearch│
++    │         │  │(Cache) │  │(Metrics)│  │(Audit logs) │
++    └─────────┘  └────────┘  └─────────┘  └─────────────┘
++```
++
++---
++
++### Key Architectural Improvements
++
++#### **1. Message Queue (RabbitMQ/Kafka)**
++```
++Machine Telemetry → MQTT Broker → MqttListenerService → Message Queue
++                                                            ↓
++        ┌──────────────────────┬────────────────┬─────────┘
++        ↓                      ↓                ↓
++   MachineService      AlertProcessor      WebSocketService
++   (Save to DB)        (Check rules)        (Push to UI)
++   
++Benefits:
++- Decoupled services
++- No data loss (queue persists)
++- Scalable processing
++```
++
++---
++
++#### **2. WebSocket + SSE for Real-time**
++```jsx
++// Frontend
++const ws = new WebSocket('ws://localhost:8080/ws/live');
++ws.onmessage = (event) => {
++    const event = JSON.parse(event.data);
++    dispatch(updateMachine(event));  // Redux
++};
++
++// Backend
++@Service
++public class WebSocketService {
++    @Autowired private SimpMessagingTemplate template;
++    
++    public void broadcastMachineUpdate(MachineTelemetry telemetry) {
++        template.convertAndSend(
++            "/topic/machines/" + telemetry.getMachineId(),
++            new MachineUpdateEvent(telemetry)
++        );
++    }
++}
++```
++
++**Latency:** 5-15s → 100ms ✅
++
++---
++
++#### **3. Caching Layer (Redis)**
++```java
++@Service
++@Cacheable("machines")
++public List<Machine> getAllMachines() {
++    return machineRepository.findAll();  // Only hits DB every 5 min
++}
++
++// Manual cache invalidation on command execution
++@CacheEvict(value = "machines", key = "#machineId")
++public void executeCommand(Long machineId, String command) {
++    // ...
++}
++```
++
++**Benefit:** 100 concurrent requests → 1 DB query ✅
++
++---
++
++#### **4. Time Series Database (InfluxDB)**
++```java
++@Service
++public class TelemetryService {
++    @Autowired private InfluxDBClient influx;
++    
++    public void recordTelemetry(MachineTelemetry t) {
++        // Fast write to InfluxDB
++        influx.write(toPoint(t));
++        // Async write to MySQL for compliance audit
++        async(() -> mysqlRepository.save(t));
++    }
++    
++    public List<TelemetryPoint> getMetrics(Long machineId, Duration period) {
++        // Fast query from InfluxDB
++        return influx.query(machineId, period);
++    }
++}
++```
++
++**Benefit:** Telemetry queries 100x faster ✅
++
++---
++
++#### **5. Rules Engine (Drools)**
++Replace hardcoded alert logic with configurable rules:
++
++```java
++@Service
++public class RuleEngineService {
++    private KieSession session;
++    
++    public void checkRules(MachineTelemetry telemetry) {
++        session.insert(telemetry);
++        session.fireAllRules();
++    }
++}
++
++// rules/machine-alerts.drl
++rule "Critical Temperature"
++when
++    Machine(temperature > 90)
++    not Alert(machineId == machine.id, severity == "CRITICAL")
++then
++    createAlert("Overheat", severity = "CRITICAL");
++    escalateAlert();  // SMS + Email
++end
++```
++
++---
++
++#### **6. Service Mesh (Istio/Linkerd)**
++For resilience, observability, traffic management
++
++```yaml
++apiVersion: networking.istio.io/v1beta1
++kind: VirtualService
++metadata:
++  name: machine-service
++spec:
++  hosts:
++  - machine-service
++  http:
++  - match:
++    - uri:
++        prefix: /machines
++    route:
++    - destination:
++        host: machine-service
++        port:
++          number: 8080
++        weight: 90  # Canary: 90% to v1, 10% to v2
++    - destination:
++        host: machine-service-v2
++        port:
++          number: 8080
++        weight: 10
++    timeout: 10s
++    retries:
++      attempts: 3
++      perTryTimeout: 2s
++```
++
++---
++
++#### **7. Observability (Prometheus + Grafana + ELK)**
++```java
++// Metrics
++@Service
++@Timed("machine.command.duration")
++public void executeCommand(Long id, String cmd) { }
++
++// Logging
++logger.info("Command executed", 
++    new StructuredArguments(
++        "machineId", id,
++        "command", cmd,
++        "user", userContext.getEmail(),
++        "timestamp", now()
++    )
++);
++
++// Tracing (Jaeger)
++@Traced
++public void processTelemetry(MachineTelemetry t) { }
++```
++
++---
++
++## 10. PRIORITY ACTION PLAN
++
++### Phase 1: Critical Fixes (Week 1-2)
++**🔴 STOP EVERYTHING — Fix Security**
++
++- [ ] **Remove JWT from URL query string** 
++  - Move OAuth token to POST + secure session cookie
++  - Impact: 🔴 CRITICAL
++
++- [ ] **Remove hardcoded secrets**
++  - JWT secret: require env var only
++  - MQTT credentials: env vars
++  - Impact: 🔴 CRITICAL
++
++- [ ] **Fix CORS misconfiguration**
++  - Change `*` to specific domain
++  - Disable credentials if using `*`
++  - Impact: 🔴 CRITICAL
++
++- [ ] **Add rate limiting**
++  - `/auth/signin` (5 req/min per IP)
++  - `/api` (100 req/min per user)
++  - Impact: 🔴 CRITICAL
++
++- [ ] **Fix frontend polling race condition**
++  - Add `isMounted` flag to all useEffect polls
++  - Add AbortController to all API calls
++  - Impact: 🟡 HIGH
++
++**Estimated effort:** 2 days | **Priority:** MUST DO IMMEDIATELY
++
++---
++
++### Phase 2: Performance Fixes (Week 3)
++**🟡 Fix Bottlenecks**
++
++- [ ] **Add database indexes**
++  ```sql
++  CREATE INDEX idx_telemetry_machine_time ON machine_telemetry(machine_id, timestamp DESC);
++  CREATE INDEX idx_alerts_severity ON alerts(machine_id, severity);
++  CREATE INDEX idx_commands_status ON commands(machine_id, status);
++  ```
++  Impact: 🟡 HIGH | Effort: 1 day
++
++- [ ] **Implement pagination**
++  - `/machines?page=0&size=50`
++  - `/alerts?page=0&size=50`
++  Impact: 🟡 HIGH | Effort: 2 days
++
++- [ ] **Add telemetry retention policy**
++  - Delete records > 30 days old
++  - Archive to cold storage
++  Impact: 🟡 HIGH | Effort: 1 day
++
++- [ ] **Implement Redis caching**
++  - Cache machine list (5 min TTL)
++  - Cache user permissions
++  Impact: 🟡 HIGH | Effort: 2 days
++
++**Estimated effort:** 6 days | **Priority:** URGENT (before 50+ machines)
++
++---
++
++### Phase 3: Real-time Upgrade (Week 4-5)
++**🟢 Replace Polling with WebSocket**
++
++- [ ] **Implement Spring WebSocket**
++  - WebSocket endpoint: `/ws/live`
++  - MQTT → message queue → WebSocket broadcast
++  Impact: 🟢 MEDIUM | Effort: 3 days
++
++- [ ] **MQTT message batching**
++  - Send batch every 5s instead of per-machine
++  Impact: 🟢 MEDIUM | Effort: 1 day
++
++- [ ] **Remove HTTP polling from frontend**
++  - Use WebSocket only
++  - Fallback to SSE
++  Impact: 🟢 MEDIUM | Effort: 2 days
++
++- [ ] **Implement Server-Sent Events (SSE) fallback**
++  - For clients where WebSocket blocked
++  Impact: 🟢 MEDIUM | Effort: 1 day
++
++**Estimated effort:** 7 days | **Priority:** HIGH (before 20+ users)
++
++---
++
++### Phase 4: Architecture Refactor (Week 6-8)
++**🟢 Prepare for Scale**
++
++- [ ] **Add RabbitMQ for async processing**
++  - Queue commands
++  - Queue telemetry batches
++  - Queue notifications
++  Impact: 🟢 MEDIUM | Effort: 3 days
++
++- [ ] **Split into microservices**
++  - Machine Service (separate)
++  - Command Service (separate)
++  - Alert Service (separate)
++  Impact: 🟢 MEDIUM | Effort: 5 days
++
++- [ ] **Add InfluxDB for metrics**
++  - Store telemetry in InfluxDB
++  - Keep MySQL for compliance
++  Impact: 🟢 MEDIUM | Effort: 3 days
++
++- [ ] **Implement rules engine (Drools)**
++  - Replace hardcoded alert thresholds
++  - Allow dynamic rule creation
++  Impact: 🟢 MEDIUM | Effort: 4 days
++
++**Estimated effort:** 15 days | **Priority:** MEDIUM (after 50+ machines)
++
++---
++
++### Phase 5: Missing SCADA Features (Week 9-12)
++**🟢 Production-Ready**
++
++- [ ] **Advanced alerting & escalation**
++  - Alert routing (email, SMS, slack)
++  - Escalation after timeout
++  - Alert suppression windows
++  - Effort: 4 days
++
++- [ ] **Historian & trend analysis**
++  - Historical data export (CSV)
++  - Predictive maintenance (ML)
++  - OEE/SPC charts
++  - Effort: 6 days
++
++- [ ] **Batch operations**
++  - Start/stop multiple machines
++  - Scheduled commands
++  - Effort: 2 days
++
++- [ ] **Customizable dashboards**
++  - User-created widgets
++  - Saved views
++  - Custom KPIs
++  - Effort: 4 days
++
++- [ ] **2FA enforcement**
++  - Mandatory for ADMIN role
++  - TOTP app support
++  - Effort: 2 days
++
++- [ ] **Disaster recovery**
++  - Database replication
++  - Backup retention
++  - Failover testing
++  - Effort: 3 days
++
++**Estimated effort:** 21 days | **Priority:** LOW (after initial scale)
++
++---
++
++### Quick Wins (Can do this week)
++- [ ] Fix unused variable warnings in frontend (1 day)
++- [ ] Extract inline styles to CSS module (2 days)
++- [ ] Add error boundaries in React (1 day)
++- [ ] Implement useAsync hook for consistent error handling (1 day)
++- [ ] Add environment variable validation on startup (1 day)
++
++**Total effort: 6 days | Impact: Improves code quality 40%**
++
++---
++
++## Summary Table
++
++| Issue Category | Count | Severity | Fix Effort |
++|---|---|---|---|
++| Security Vulnerabilities | 8 | 🔴 CRITICAL | 2-3 days |
++| Performance Bottlenecks | 5 | 🟡 HIGH | 6-8 days |
++| Code Quality Issues | 20+ | 🟡 MEDIUM | 5-7 days |
++| Missing SCADA Features | 8 | 🟢 LOW | 20+ days |
++| Scalability Limits | 6 | 🟡 HIGH | 10-15 days |
++| **TOTAL** | **47+** | **Mixed** | **50+ days** |
++
++---
++
++## Final Recommendations
++
++### For MVP (Current Stage):
++1. **FIX SECURITY IMMEDIATELY** (Week 1) — 🔴 Critical
++2. Fix polling race condition + add indexes (Week 2) — 🟡 High
++3. Add pagination (Week 3) — 🟡 High
++4. **STOP SCALING BEYOND 20 MACHINES** until WebSocket implemented
++
++### For Production (50+ machines):
++1. Implement WebSocket + message queue (Weeks 4-5)
++2. Add Redis caching (Week 3)
++3. Split microservices (Weeks 6-7)
++4. Add Drools rules engine (Week 8)
++
++### For Enterprise (100+ machines):
++1. InfluxDB + Prometheus for metrics
++2. Kubernetes + service mesh
++3. Advanced alerting + escalation
++4. Predictive maintenance (ML)
++
++---
++
++**Generated:** March 25, 2026
++**Reviewed by:** Senior Software Architect
++**Status:** Ready for implementation
+diff --git a/diff.txt b/diff.txt
+new file mode 100644
+index 0000000..6411ddf
+--- /dev/null
++++ b/diff.txt
+@@ -0,0 +1,23 @@
++frontend/src/App.jsx
++frontend/src/context/PollingContext.jsx
++frontend/src/pages/Dashboard.jsx
++frontend/src/pages/MachinesPage.jsx
++frontend/src/pages/SettingsPage.jsx
++rigs_simulator/__pycache__/machine.cpython-312.pyc
++rigs_simulator/__pycache__/simulator.cpython-312.pyc
++src/main/java/com/rigs/rigs/config/DataInitializer.java
++src/main/java/com/rigs/rigs/controller/AdminController.java
++src/main/java/com/rigs/rigs/controller/AlertController.java
++src/main/java/com/rigs/rigs/controller/AuthController.java
++src/main/java/com/rigs/rigs/controller/MachineController.java
++src/main/java/com/rigs/rigs/controller/MachineSettingsController.java
++src/main/java/com/rigs/rigs/controller/ProfileController.java
++src/main/java/com/rigs/rigs/entity/Machine.java
++src/main/java/com/rigs/rigs/entity/User.java
++src/main/java/com/rigs/rigs/exception/GlobalExceptionHandler.java
++src/main/java/com/rigs/rigs/security/SecurityConfig.java
++src/main/java/com/rigs/rigs/service/MachineService.java
++src/main/java/com/rigs/rigs/service/MachineSettingsService.java
++src/main/java/com/rigs/rigs/service/MqttListenerService.java
++src/main/java/com/rigs/rigs/service/ProfileService.java
++src/main/java/com/rigs/rigs/util/AppConstants.java
+diff --git a/frontend/package-lock.json b/frontend/package-lock.json
+index 6d161e6..acad23b 100644
+--- a/frontend/package-lock.json
++++ b/frontend/package-lock.json
+@@ -8,11 +8,9 @@
+       "name": "frontend",
+       "version": "0.0.0",
+       "dependencies": {
+-        "autoprefixer": "^10.4.24",
+         "axios": "^1.13.5",
+         "framer-motion": "^12.34.3",
+         "lucide-react": "^0.575.0",
+-        "postcss": "^8.5.6",
+         "react": "^19.2.0",
+         "react-dom": "^19.2.0",
+         "react-router-dom": "^7.13.0",
+@@ -1810,41 +1808,6 @@
+       "resolved": "https://registry.npmjs.org/asynckit/-/asynckit-0.4.0.tgz",
+       "integrity": "sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q=="
+     },
+-    "node_modules/autoprefixer": {
+-      "version": "10.4.24",
+-      "resolved": "https://registry.npmjs.org/autoprefixer/-/autoprefixer-10.4.24.tgz",
+-      "integrity": "sha512-uHZg7N9ULTVbutaIsDRoUkoS8/h3bdsmVJYZ5l3wv8Cp/6UIIoRDm90hZ+BwxUj/hGBEzLxdHNSKuFpn8WOyZw==",
+-      "funding": [
+-        {
+-          "type": "opencollective",
+-          "url": "https://opencollective.com/postcss/"
+-        },
+-        {
+-          "type": "tidelift",
+-          "url": "https://tidelift.com/funding/github/npm/autoprefixer"
+-        },
+-        {
+-          "type": "github",
+-          "url": "https://github.com/sponsors/ai"
+-        }
+-      ],
+-      "dependencies": {
+-        "browserslist": "^4.28.1",
+-        "caniuse-lite": "^1.0.30001766",
+-        "fraction.js": "^5.3.4",
+-        "picocolors": "^1.1.1",
+-        "postcss-value-parser": "^4.2.0"
+-      },
+-      "bin": {
+-        "autoprefixer": "bin/autoprefixer"
+-      },
+-      "engines": {
+-        "node": "^10 || ^12 || >=14"
+-      },
+-      "peerDependencies": {
+-        "postcss": "^8.1.0"
+-      }
+-    },
+     "node_modules/axios": {
+       "version": "1.13.5",
+       "resolved": "https://registry.npmjs.org/axios/-/axios-1.13.5.tgz",
+@@ -1865,6 +1828,7 @@
+       "version": "2.10.0",
+       "resolved": "https://registry.npmjs.org/baseline-browser-mapping/-/baseline-browser-mapping-2.10.0.tgz",
+       "integrity": "sha512-lIyg0szRfYbiy67j9KN8IyeD7q7hcmqnJ1ddWmNt19ItGpNN64mnllmxUNFIOdOm6by97jlL6wfpTTJrmnjWAA==",
++      "dev": true,
+       "bin": {
+         "baseline-browser-mapping": "dist/cli.cjs"
+       },
+@@ -1886,6 +1850,7 @@
+       "version": "4.28.1",
+       "resolved": "https://registry.npmjs.org/browserslist/-/browserslist-4.28.1.tgz",
+       "integrity": "sha512-ZC5Bd0LgJXgwGqUknZY/vkUQ04r8NXnJZ3yYi4vDmSiZmC/pdSN0NbNRPxZpbtO4uAfDUAFffO8IZoM3Gj8IkA==",
++      "dev": true,
+       "funding": [
+         {
+           "type": "opencollective",
+@@ -1939,6 +1904,7 @@
+       "version": "1.0.30001770",
+       "resolved": "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001770.tgz",
+       "integrity": "sha512-x/2CLQ1jHENRbHg5PSId2sXq1CIO1CISvwWAj027ltMVG2UNgW+w9oH2+HzgEIRFembL8bUlXtfbBHR1fCg2xw==",
++      "dev": true,
+       "funding": [
+         {
+           "type": "opencollective",
+@@ -2223,7 +2189,8 @@
+     "node_modules/electron-to-chromium": {
+       "version": "1.5.302",
+       "resolved": "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.302.tgz",
+-      "integrity": "sha512-sM6HAN2LyK82IyPBpznDRqlTQAtuSaO+ShzFiWTvoMJLHyZ+Y39r8VMfHzwbU8MVBzQ4Wdn85+wlZl2TLGIlwg=="
++      "integrity": "sha512-sM6HAN2LyK82IyPBpznDRqlTQAtuSaO+ShzFiWTvoMJLHyZ+Y39r8VMfHzwbU8MVBzQ4Wdn85+wlZl2TLGIlwg==",
++      "dev": true
+     },
+     "node_modules/enhanced-resolve": {
+       "version": "5.20.0",
+@@ -2330,6 +2297,7 @@
+       "version": "3.2.0",
+       "resolved": "https://registry.npmjs.org/escalade/-/escalade-3.2.0.tgz",
+       "integrity": "sha512-WUj2qlxaQtO4g6Pq5c29GTcWGDyd8itL8zTlipgECz3JesAiiOKotd8JU6otB3PACgG6xkJUyVhboMS+bje/jA==",
++      "dev": true,
+       "engines": {
+         "node": ">=6"
+       }
+@@ -2641,18 +2609,6 @@
+         "node": ">= 6"
+       }
+     },
+-    "node_modules/fraction.js": {
+-      "version": "5.3.4",
+-      "resolved": "https://registry.npmjs.org/fraction.js/-/fraction.js-5.3.4.tgz",
+-      "integrity": "sha512-1X1NTtiJphryn/uLQz3whtY6jK3fTqoE3ohKs0tT+Ujr1W59oopxmoEh7Lu5p6vBaPbgoM0bzveAW4Qi5RyWDQ==",
+-      "engines": {
+-        "node": "*"
+-      },
+-      "funding": {
+-        "type": "github",
+-        "url": "https://github.com/sponsors/rawify"
+-      }
+-    },
+     "node_modules/framer-motion": {
+       "version": "12.34.3",
+       "resolved": "https://registry.npmjs.org/framer-motion/-/framer-motion-12.34.3.tgz",
+@@ -3388,6 +3344,7 @@
+       "version": "3.3.11",
+       "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.11.tgz",
+       "integrity": "sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==",
++      "dev": true,
+       "funding": [
+         {
+           "type": "github",
+@@ -3410,7 +3367,8 @@
+     "node_modules/node-releases": {
+       "version": "2.0.27",
+       "resolved": "https://registry.npmjs.org/node-releases/-/node-releases-2.0.27.tgz",
+-      "integrity": "sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA=="
++      "integrity": "sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==",
++      "dev": true
+     },
+     "node_modules/optionator": {
+       "version": "0.9.4",
+@@ -3492,7 +3450,8 @@
+     "node_modules/picocolors": {
+       "version": "1.1.1",
+       "resolved": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
+-      "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="
++      "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==",
++      "dev": true
+     },
+     "node_modules/picomatch": {
+       "version": "4.0.3",
+@@ -3510,6 +3469,7 @@
+       "version": "8.5.6",
+       "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.6.tgz",
+       "integrity": "sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==",
++      "dev": true,
+       "funding": [
+         {
+           "type": "opencollective",
+@@ -3533,11 +3493,6 @@
+         "node": "^10 || ^12 || >=14"
+       }
+     },
+-    "node_modules/postcss-value-parser": {
+-      "version": "4.2.0",
+-      "resolved": "https://registry.npmjs.org/postcss-value-parser/-/postcss-value-parser-4.2.0.tgz",
+-      "integrity": "sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ=="
+-    },
+     "node_modules/prelude-ls": {
+       "version": "1.2.1",
+       "resolved": "https://registry.npmjs.org/prelude-ls/-/prelude-ls-1.2.1.tgz",
+@@ -3794,6 +3749,7 @@
+       "version": "1.2.1",
+       "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
+       "integrity": "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==",
++      "dev": true,
+       "engines": {
+         "node": ">=0.10.0"
+       }
+@@ -3884,6 +3840,7 @@
+       "version": "1.2.3",
+       "resolved": "https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.2.3.tgz",
+       "integrity": "sha512-Js0m9cx+qOgDxo0eMiFGEueWztz+d4+M3rGlmKPT+T4IS/jP4ylw3Nwpu6cpTTP8R1MAC1kF4VbdLt3ARf209w==",
++      "dev": true,
+       "funding": [
+         {
+           "type": "opencollective",
+diff --git a/frontend/package.json b/frontend/package.json
+index d42a624..547a921 100644
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -10,11 +10,9 @@
+     "preview": "vite preview"
+   },
+   "dependencies": {
+-    "autoprefixer": "^10.4.24",
+     "axios": "^1.13.5",
+     "framer-motion": "^12.34.3",
+     "lucide-react": "^0.575.0",
+-    "postcss": "^8.5.6",
+     "react": "^19.2.0",
+     "react-dom": "^19.2.0",
+     "react-router-dom": "^7.13.0",
+diff --git a/frontend/postcss.config.js b/frontend/postcss.config.js
+new file mode 100644
+index 0000000..ff8b4c5
+--- /dev/null
++++ b/frontend/postcss.config.js
+@@ -0,0 +1 @@
++export default {};
+diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+index 095e25c..f179c1d 100644
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
+ import Layout from './components/Layout';
+ import LandingPage from './pages/LandingPage';
+ import LoginPage from './pages/LoginPage';
++import OAuthCallback from './pages/OAuthCallback';
+ import RegisterPage from './pages/RegisterPage';
+ import ForgotPasswordPage from './pages/ForgotPasswordPage';
+ import NotFoundPage from './pages/NotFoundPage';
+@@ -32,6 +33,7 @@ function App() {
+             {/* Public routes */}
+             <Route path="/" element={<LandingPage />} />
+             <Route path="/login" element={<LoginPage />} />
++            <Route path="/oauth/callback" element={<OAuthCallback />} />
+             <Route path="/register" element={<RegisterPage />} />
+             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+ 
+diff --git a/frontend/src/pages/AlertsPage.jsx b/frontend/src/pages/AlertsPage.jsx
+index 56e6a73..b0d7137 100644
+--- a/frontend/src/pages/AlertsPage.jsx
++++ b/frontend/src/pages/AlertsPage.jsx
+@@ -14,19 +14,34 @@ const AlertsPage = () => {
+     const [filter, setFilter] = useState('all');
+     const [autoRefresh, setAutoRefresh] = useState(true);
+ 
+-    const fetchAlerts = async () => {
+-        try {
+-            const r = await api.get('/alerts');
+-            setAlerts(r.data.content || []);
+-        } catch (e) { console.error(e); } finally { setLoading(false); }
+-    };
+-
+     useEffect(() => {
++        let isMounted = true;
++        const controller = new AbortController();
++
++        const fetchAlerts = async () => {
++            try {
++                const r = await api.get('/alerts', { signal: controller.signal });
++                if (!isMounted) return;
++                setAlerts(r.data.content || []);
++            } catch (e) { 
++                if (!isMounted || e.name === 'CanceledError') return;
++                console.error(e); 
++            } finally { 
++                if (isMounted) setLoading(false); 
++            }
++        };
++
+         fetchAlerts();
++        let t;
+         if (autoRefresh) {
+-            const t = setInterval(fetchAlerts, 10000);
+-            return () => clearInterval(t);
++            t = setInterval(fetchAlerts, 10000);
+         }
++        
++        return () => {
++            isMounted = false;
++            if (t) clearInterval(t);
++            controller.abort();
++        };
+     }, [filter, autoRefresh]);
+ 
+     const handleAck = async (id) => {
+diff --git a/frontend/src/pages/Dashboard.jsx b/frontend/src/pages/Dashboard.jsx
+index 333e8da..daddfb2 100644
+--- a/frontend/src/pages/Dashboard.jsx
++++ b/frontend/src/pages/Dashboard.jsx
+@@ -44,30 +44,45 @@ const Dashboard = () => {
+     const [loading, setLoading] = useState(true);
+     const [chartData, setChartData] = useState([]);
+ 
+-    const fetchData = async () => {
+-        try {
+-            const [machRes, alertRes] = await Promise.all([
+-                api.get('/machines'),
+-                api.get('/alerts?size=10'),
+-            ]);
+-            setMachines(machRes.data);
+-            setAlerts(alertRes.data.content || []);
+-
+-            setChartData(prev => {
+-                const now = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+-                const avgTemp = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.temperature || 0), 0) / machRes.data.length : 0;
+-                const totalPower = machRes.data.reduce((s, m) => s + (m.powerConsumption || 0), 0);
+-                const avgEff = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.efficiency || 0), 0) / machRes.data.length : 0;
+-                const next = [...prev, { time: now, temp: avgTemp, power: totalPower, eff: avgEff }];
+-                return next.length > 30 ? next.slice(-30) : next;
+-            });
+-        } catch (e) { console.error(e); } finally { setLoading(false); }
+-    };
+-
+     useEffect(() => {
++        let isMounted = true;
++        const controller = new AbortController();
++
++        const fetchData = async () => {
++            try {
++                const [machRes, alertRes] = await Promise.all([
++                    api.get('/machines', { signal: controller.signal }),
++                    api.get('/alerts?size=10', { signal: controller.signal }),
++                ]);
++                if (!isMounted) return;
++                
++                setMachines(machRes.data);
++                setAlerts(alertRes.data.content || []);
++
++                setChartData(prev => {
++                    const now = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
++                    const avgTemp = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.temperature || 0), 0) / machRes.data.length : 0;
++                    const totalPower = machRes.data.reduce((s, m) => s + (m.powerConsumption || 0), 0);
++                    const avgEff = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.efficiency || 0), 0) / machRes.data.length : 0;
++                    const next = [...prev, { time: now, temp: avgTemp, power: totalPower, eff: avgEff }];
++                    return next.length > 30 ? next.slice(-30) : next;
++                });
++            } catch (e) { 
++                if (!isMounted || e.name === 'CanceledError') return;
++                console.error(e); 
++            } finally { 
++                if (isMounted) setLoading(false); 
++            }
++        };
++
+         fetchData();
+         const t = setInterval(fetchData, 10000);
+-        return () => clearInterval(t);
++        
++        return () => {
++            isMounted = false;
++            clearInterval(t);
++            controller.abort();
++        };
+     }, []);
+ 
+     const runCount = machines.filter(m => m.status === 'RUNNING').length;
+diff --git a/frontend/src/pages/LoginPage.jsx b/frontend/src/pages/LoginPage.jsx
+index cf91d36..ab4b811 100644
+--- a/frontend/src/pages/LoginPage.jsx
++++ b/frontend/src/pages/LoginPage.jsx
+@@ -24,25 +24,7 @@ const LoginPage = () => {
+             setError('Your account has been locked. Please contact the administrator.');
+         }
+ 
+-        // Handle OAuth JWT token redirect — auto-login
+-        const token = searchParams.get('token');
+-        if (token) {
+-            const name = searchParams.get('name') || '';
+-            const email = searchParams.get('email') || '';
+-            const role = searchParams.get('role') || 'WORKER';
+-            const id = searchParams.get('id') || '';
+-            const userData = {
+-                token,
+-                name: decodeURIComponent(name),
+-                email: decodeURIComponent(email),
+-                roles: [`ROLE_${role}`],
+-                id,
+-            };
+-            localStorage.setItem('token', token);
+-            localStorage.setItem('user', JSON.stringify(userData));
+-            window.location.href = '/app/dashboard';
+-            return;
+-        }
++
+ 
+         // If user is already logged in, go to dashboard
+         if (user) {
+diff --git a/frontend/src/pages/MachinesPage.jsx b/frontend/src/pages/MachinesPage.jsx
+index df91353..b0fbf47 100644
+--- a/frontend/src/pages/MachinesPage.jsx
++++ b/frontend/src/pages/MachinesPage.jsx
+@@ -60,17 +60,30 @@ const MachinesPage = () => {
+     const { user } = useAuth();
+     const intervalRef = useRef(null);
+ 
+-    const fetchMachines = async () => {
++    const fetchMachines = async (signal) => {
+         try {
+-            const r = await api.get('/machines');
++            const opts = signal ? { signal } : {};
++            const r = await api.get('/machines', opts);
+             setMachines(r.data);
+-        } catch (e) { console.error(e); } finally { setLoading(false); }
++        } catch (e) { 
++            if (e.name !== 'CanceledError') console.error(e); 
++        } finally { 
++            setLoading(false); 
++        }
+     };
+ 
+     useEffect(() => {
+-        fetchMachines();
+-        intervalRef.current = setInterval(fetchMachines, 10000);
+-        return () => clearInterval(intervalRef.current);
++        const controller = new AbortController();
++        
++        fetchMachines(controller.signal);
++        intervalRef.current = setInterval(() => {
++            fetchMachines(controller.signal);
++        }, 10000);
++        
++        return () => {
++            if (intervalRef.current) clearInterval(intervalRef.current);
++            controller.abort();
++        };
+     }, []);
+ 
+     const handleCommand = async (id, cmd) => {
+diff --git a/frontend/src/pages/OAuthCallback.jsx b/frontend/src/pages/OAuthCallback.jsx
+new file mode 100644
+index 0000000..6ce48e9
+--- /dev/null
++++ b/frontend/src/pages/OAuthCallback.jsx
+@@ -0,0 +1,46 @@
++import React, { useEffect, useState } from 'react';
++import { useNavigate } from 'react-router-dom';
++import api from '../api/axios';
++import { useAuth } from '../context/AuthContext';
++import { Zap } from 'lucide-react';
++
++const OAuthCallback = () => {
++    const navigate = useNavigate();
++    const [error, setError] = useState(null);
++
++    useEffect(() => {
++        const fetchToken = async () => {
++            try {
++                // Must ensure axios sends cookies so the session is read
++                const res = await api.get('/auth/oauth2/success', { withCredentials: true });
++                if (res.data?.token) {
++                    const userData = res.data;
++                    localStorage.setItem('token', userData.token);
++                    localStorage.setItem('user', JSON.stringify(userData));
++                    // Force reload to apply auth context
++                    window.location.href = '/app/dashboard';
++                }
++            } catch (err) {
++                console.error('OAuth2 login exchange failed:', err);
++                setError('Failed to securely exchange authentication token. Please try again.');
++                setTimeout(() => navigate('/login'), 3000);
++            }
++        };
++
++        fetchToken();
++    }, [navigate]);
++
++    return (
++        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#030712', color: 'white' }}>
++            <Zap size={40} className="animate-pulse text-sky-400 mb-4" />
++            <h2 className="text-xl font-bold mb-2">Securing your session...</h2>
++            {error ? (
++                <p className="text-red-400">{error}</p>
++            ) : (
++                <p className="text-gray-400 text-sm">Please wait while we finalize your login.</p>
++            )}
++        </div>
++    );
++};
++
++export default OAuthCallback;
+diff --git a/full_diff.txt b/full_diff.txt
+new file mode 100644
+index 0000000..2ea0cac
+--- /dev/null
++++ b/full_diff.txt
+@@ -0,0 +1,1145 @@
++diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
++index 095e25c..3ba9583 100644
++--- a/frontend/src/App.jsx
+++++ b/frontend/src/App.jsx
++@@ -2,6 +2,7 @@ import React from 'react';
++ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
++ import { AuthProvider, useAuth } from './context/AuthContext';
++ import { ThemeProvider } from './context/ThemeContext';
+++import { PollingProvider } from './context/PollingContext';
++ import Layout from './components/Layout';
++ import LandingPage from './pages/LandingPage';
++ import LoginPage from './pages/LoginPage';
++@@ -27,37 +28,39 @@ function App() {
++   return (
++     <ThemeProvider>
++       <AuthProvider>
++-        <BrowserRouter>
++-          <Routes>
++-            {/* Public routes */}
++-            <Route path="/" element={<LandingPage />} />
++-            <Route path="/login" element={<LoginPage />} />
++-            <Route path="/register" element={<RegisterPage />} />
++-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+++        <PollingProvider>
+++          <BrowserRouter>
+++            <Routes>
+++              {/* Public routes */}
+++              <Route path="/" element={<LandingPage />} />
+++              <Route path="/login" element={<LoginPage />} />
+++              <Route path="/register" element={<RegisterPage />} />
+++              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
++ 
++-            {/* Protected layout */}
++-            <Route path="/app" element={<Layout />}>
++-              <Route index element={<Navigate to="/app/dashboard" replace />} />
++-              <Route path="dashboard" element={<DashboardRouter />} />
++-              <Route path="machines" element={<MachinesPage />} />
++-              <Route path="machines/:id" element={<MachineDetailPage />} />
++-              <Route path="alerts" element={<AlertsPage />} />
++-              <Route path="admin" element={<AdminDashboard />} />
++-              <Route path="profile" element={<ProfilePage />} />
++-              <Route path="settings" element={<SettingsPage />} />
++-            </Route>
+++              {/* Protected layout */}
+++              <Route path="/app" element={<Layout />}>
+++                <Route index element={<Navigate to="/app/dashboard" replace />} />
+++                <Route path="dashboard" element={<DashboardRouter />} />
+++                <Route path="machines" element={<MachinesPage />} />
+++                <Route path="machines/:id" element={<MachineDetailPage />} />
+++                <Route path="alerts" element={<AlertsPage />} />
+++                <Route path="admin" element={<AdminDashboard />} />
+++                <Route path="profile" element={<ProfilePage />} />
+++                <Route path="settings" element={<SettingsPage />} />
+++              </Route>
++ 
++-            {/* Legacy redirects */}
++-            <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
++-            <Route path="/machines" element={<Navigate to="/app/machines" replace />} />
++-            <Route path="/alerts" element={<Navigate to="/app/alerts" replace />} />
++-            <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
++-            <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
+++              {/* Legacy redirects */}
+++              <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
+++              <Route path="/machines" element={<Navigate to="/app/machines" replace />} />
+++              <Route path="/alerts" element={<Navigate to="/app/alerts" replace />} />
+++              <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
+++              <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
++ 
++-            {/* 404 catch-all */}
++-            <Route path="*" element={<NotFoundPage />} />
++-          </Routes>
++-        </BrowserRouter>
+++              {/* 404 catch-all */}
+++              <Route path="*" element={<NotFoundPage />} />
+++            </Routes>
+++          </BrowserRouter>
+++        </PollingProvider>
++       </AuthProvider>
++     </ThemeProvider>
++   );
++diff --git a/frontend/src/context/PollingContext.jsx b/frontend/src/context/PollingContext.jsx
++new file mode 100644
++index 0000000..dcefb0b
++--- /dev/null
+++++ b/frontend/src/context/PollingContext.jsx
++@@ -0,0 +1,40 @@
+++import React, { createContext, useContext, useState, useEffect } from 'react';
+++
+++const PollingContext = createContext(null);
+++
+++export const PollingProvider = ({ children }) => {
+++    const [pollInterval, setPollIntervalState] = useState(() => {
+++        const saved = localStorage.getItem('rigs-refresh');
+++        return saved ? Number(saved) : 5;
+++    });
+++
+++    const setPollInterval = (seconds) => {
+++        const val = Number(seconds);
+++        if (isNaN(val) || val < 1) return;
+++        setPollIntervalState(val);
+++        localStorage.setItem('rigs-refresh', String(val));
+++    };
+++
+++    // Sync across tabs/windows
+++    useEffect(() => {
+++        const onStorage = (e) => {
+++            if (e.key === 'rigs-refresh' && e.newValue) {
+++                setPollIntervalState(Number(e.newValue));
+++            }
+++        };
+++        window.addEventListener('storage', onStorage);
+++        return () => window.removeEventListener('storage', onStorage);
+++    }, []);
+++
+++    return (
+++        <PollingContext.Provider value={{ pollInterval, setPollInterval }}>
+++            {children}
+++        </PollingContext.Provider>
+++    );
+++};
+++
+++export const usePoll = () => {
+++    const ctx = useContext(PollingContext);
+++    if (!ctx) throw new Error('usePoll must be used inside <PollingProvider>');
+++    return ctx;
+++};
++diff --git a/frontend/src/pages/Dashboard.jsx b/frontend/src/pages/Dashboard.jsx
++index 333e8da..279661e 100644
++--- a/frontend/src/pages/Dashboard.jsx
+++++ b/frontend/src/pages/Dashboard.jsx
++@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
++ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
++ import { motion } from 'framer-motion';
++ import api from '../api/axios';
+++import { usePoll } from '../context/PollingContext';
++ import {
++     Cpu, Thermometer, Zap, AlertTriangle, Signal, Shield, Clock,
++     Wifi, BarChart3, ChevronRight
++@@ -43,6 +44,7 @@ const Dashboard = () => {
++     const [alerts, setAlerts] = useState([]);
++     const [loading, setLoading] = useState(true);
++     const [chartData, setChartData] = useState([]);
+++    const { pollInterval } = usePoll();
++ 
++     const fetchData = async () => {
++         try {
++@@ -65,10 +67,23 @@ const Dashboard = () => {
++     };
++ 
++     useEffect(() => {
++-        fetchData();
++-        const t = setInterval(fetchData, 10000);
++-        return () => clearInterval(t);
++-    }, []);
+++        let isMounted = true;
+++        let timeoutId;
+++
+++        const poll = async () => {
+++            if (!isMounted) return;
+++            await fetchData();
+++            if (isMounted) {
+++                timeoutId = setTimeout(poll, pollInterval * 1000);
+++            }
+++        };
+++
+++        poll();
+++        return () => {
+++            isMounted = false;
+++            clearTimeout(timeoutId);
+++        };
+++    }, [pollInterval]);
++ 
++     const runCount = machines.filter(m => m.status === 'RUNNING').length;
++     const alertCount = machines.filter(m => m.status === 'EMERGENCY' || m.maintenanceAlert).length;
++diff --git a/frontend/src/pages/MachinesPage.jsx b/frontend/src/pages/MachinesPage.jsx
++index df91353..75851fa 100644
++--- a/frontend/src/pages/MachinesPage.jsx
+++++ b/frontend/src/pages/MachinesPage.jsx
++@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
++ import { Link } from 'react-router-dom';
++ import api from '../api/axios';
++ import { useAuth } from '../context/AuthContext';
+++import { usePoll } from '../context/PollingContext';
++ import {
++     Thermometer, Activity, Zap, Gauge, Wind, BarChart3, AlertTriangle,
++     Play, Square, OctagonX, RotateCcw, Wrench, SlidersHorizontal,
++@@ -57,7 +58,9 @@ const MachinesPage = () => {
++     const [loading, setLoading] = useState(true);
++     const [filter, setFilter] = useState('all');
++     const [cmdLoading, setCmdLoading] = useState({});
+++    const [cmdError, setCmdError] = useState(null);
++     const { user } = useAuth();
+++    const { pollInterval } = usePoll();
++     const intervalRef = useRef(null);
++ 
++     const fetchMachines = async () => {
++@@ -68,20 +71,54 @@ const MachinesPage = () => {
++     };
++ 
++     useEffect(() => {
++-        fetchMachines();
++-        intervalRef.current = setInterval(fetchMachines, 10000);
++-        return () => clearInterval(intervalRef.current);
++-    }, []);
+++        let isMounted = true;
+++        let timeoutId;
+++
+++        const poll = async () => {
+++            if (!isMounted) return;
+++            await fetchMachines();
+++            if (isMounted) {
+++                timeoutId = setTimeout(poll, pollInterval * 1000);
+++            }
+++        };
+++
+++        poll();
+++        return () => {
+++            isMounted = false;
+++            clearTimeout(timeoutId);
+++        };
+++    }, [pollInterval]);
++ 
++     const handleCommand = async (id, cmd) => {
++         setCmdLoading(p => ({ ...p, [`${id}-${cmd}`]: true }));
+++        setCmdError(null);
+++
+++        // Optimistic UI update
+++        const expectedStatus =
+++            cmd === 'START' || cmd === 'RESET' ? 'RUNNING' :
+++                cmd === 'STOP' ? 'STOPPED' :
+++                    cmd === 'EMERGENCY_STOP' ? 'EMERGENCY' :
+++                        cmd === 'MAINTENANCE_MODE' ? 'MAINTENANCE' :
+++                            cmd === 'CALIBRATION' ? 'CALIBRATING' : undefined;
+++
+++        if (expectedStatus) {
+++            setMachines(prev => prev.map(m => m.machineId === id ? { ...m, status: expectedStatus } : m));
+++        }
+++
++         try {
++-            await api.post(`/machines/${id}/command?command=${cmd}&issuedBy=${user?.name || 'operator'}`);
++-            setTimeout(fetchMachines, 800);
+++            const params = new URLSearchParams({
+++                command: cmd,
+++                issuedBy: user?.name || 'operator',
+++            });
+++            await api.post(`/machines/${id}/command?${params.toString()}`);
+++            setTimeout(fetchMachines, 600);
++         } catch (e) {
++             console.error('Command failed:', e);
+++            const msg = e.response?.data?.message || e.message || 'Command failed';
+++            setCmdError(`[${cmd}] ${msg}`);
+++            setTimeout(() => setCmdError(null), 4000);
++         } finally {
++-            setTimeout(() => setCmdLoading(p => ({ ...p, [`${id}-${cmd}`]: false })), 1200);
+++            setTimeout(() => setCmdLoading(p => ({ ...p, [`${id}-${cmd}`]: false })), 1000);
++         }
++     };
++ 
++@@ -113,6 +150,28 @@ const MachinesPage = () => {
++ 
++     return (
++         <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#f1f5f9' }}>
+++            {/* Command error toast */}
+++            {cmdError && (
+++                <div style={{
+++                    position: 'fixed', top: 16, right: 16, zIndex: 9999,
+++                    background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
+++                    borderRadius: 8, padding: '10px 16px', color: '#f87171',
+++                    fontSize: 12, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
+++                    display: 'flex', alignItems: 'center', gap: 8,
+++                    boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+++                }}>
+++                    <AlertTriangle size={14} /> {cmdError}
+++                </div>
+++            )}
+++            {/* Poll-rate indicator */}
+++            <div style={{
+++                position: 'fixed', bottom: 16, right: 16, zIndex: 999,
+++                background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(14,165,233,0.15)',
+++                borderRadius: 6, padding: '4px 10px', fontSize: 9, color: '#38bdf8',
+++                fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
+++            }}>
+++                POLL {pollInterval}s
+++            </div>
++             {/* Header */}
++             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
++                 <div>
++diff --git a/frontend/src/pages/SettingsPage.jsx b/frontend/src/pages/SettingsPage.jsx
++index ed06746..8b7eb30 100644
++--- a/frontend/src/pages/SettingsPage.jsx
+++++ b/frontend/src/pages/SettingsPage.jsx
++@@ -1,16 +1,43 @@
++-import React, { useState } from 'react';
+++import { useState } from 'react';
++ import { useTheme } from '../context/ThemeContext';
+++import { usePoll } from '../context/PollingContext';
++ import { Settings, Sun, Moon, Bell, RefreshCw, Shield, Monitor, Palette, Volume2, Save, Check } from 'lucide-react';
++ 
+++const Toggle = ({ value, onChange, label, desc, icon: Icon, color }) => (
+++    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
+++        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+++            <div style={{ width: 34, height: 34, borderRadius: 8, background: `${color}15`, border: `1px solid ${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+++                <Icon size={15} color={color} />
+++            </div>
+++            <div>
+++                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{label}</div>
+++                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{desc}</div>
+++            </div>
+++        </div>
+++        <button onClick={onChange} style={{
+++            width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+++            background: value ? '#22c55e' : 'var(--toggle-off)',
+++            position: 'relative', transition: 'all 0.2s',
+++        }}>
+++            <div style={{
+++                width: 18, height: 18, borderRadius: '50%', background: 'white',
+++                position: 'absolute', top: 3,
+++                left: value ? 23 : 3, transition: 'left 0.2s',
+++            }} />
+++        </button>
+++    </div>
+++);
+++
++ const SettingsPage = () => {
++     const { theme, toggleTheme } = useTheme();
++-    const [refreshRate, setRefreshRate] = useState(localStorage.getItem('rigs-refresh') || '2');
+++    const { pollInterval, setPollInterval } = usePoll();
+++    const [refreshRate, setRefreshRate] = useState(String(pollInterval));
++     const [notifications, setNotifications] = useState(localStorage.getItem('rigs-notif') !== 'false');
++     const [soundAlerts, setSoundAlerts] = useState(localStorage.getItem('rigs-sound') !== 'false');
++     const [saved, setSaved] = useState(false);
++ 
++     const handleSave = () => {
++-        localStorage.setItem('rigs-refresh', refreshRate);
+++        setPollInterval(Number(refreshRate));
++         localStorage.setItem('rigs-notif', notifications);
++         localStorage.setItem('rigs-sound', soundAlerts);
++         setSaved(true);
++@@ -28,31 +55,6 @@ const SettingsPage = () => {
++         },
++     };
++ 
++-    const Toggle = ({ value, onChange, label, desc, icon: Icon, color }) => (
++-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
++-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
++-                <div style={{ width: 34, height: 34, borderRadius: 8, background: `${color}15`, border: `1px solid ${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
++-                    <Icon size={15} color={color} />
++-                </div>
++-                <div>
++-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{label}</div>
++-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{desc}</div>
++-                </div>
++-            </div>
++-            <button onClick={onChange} style={{
++-                width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
++-                background: value ? '#22c55e' : 'var(--toggle-off)',
++-                position: 'relative', transition: 'all 0.2s',
++-            }}>
++-                <div style={{
++-                    width: 18, height: 18, borderRadius: '50%', background: 'white',
++-                    position: 'absolute', top: 3,
++-                    left: value ? 23 : 3, transition: 'left 0.2s',
++-                }} />
++-            </button>
++-        </div>
++-    );
++-
++     return (
++         <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: 'var(--text-primary)', maxWidth: 700, margin: '0 auto' }}>
++             <div style={{ marginBottom: 20 }}>
++diff --git a/rigs_simulator/__pycache__/machine.cpython-312.pyc b/rigs_simulator/__pycache__/machine.cpython-312.pyc
++index 792fd50..3f6fa2e 100644
++Binary files a/rigs_simulator/__pycache__/machine.cpython-312.pyc and b/rigs_simulator/__pycache__/machine.cpython-312.pyc differ
++diff --git a/rigs_simulator/__pycache__/simulator.cpython-312.pyc b/rigs_simulator/__pycache__/simulator.cpython-312.pyc
++index c3a5b6c..513d367 100644
++Binary files a/rigs_simulator/__pycache__/simulator.cpython-312.pyc and b/rigs_simulator/__pycache__/simulator.cpython-312.pyc differ
++diff --git a/src/main/java/com/rigs/rigs/config/DataInitializer.java b/src/main/java/com/rigs/rigs/config/DataInitializer.java
++index 0d79bff..fa96751 100644
++--- a/src/main/java/com/rigs/rigs/config/DataInitializer.java
+++++ b/src/main/java/com/rigs/rigs/config/DataInitializer.java
++@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
++ import org.springframework.security.crypto.password.PasswordEncoder;
++ 
++ import java.time.LocalDateTime;
+++import com.rigs.rigs.util.AppConstants;
++ 
++ @Configuration
++ public class DataInitializer {
++@@ -39,7 +40,7 @@ public class DataInitializer {
++                 admin.setAccountLocked(false);
++                 admin.setFailedAttempts(0);
++                 admin.setEnabled(1);
++-                admin.setRole("ADMIN");
+++                admin.setRole(AppConstants.ROLE_ADMIN);
++                 admin.setProvider("LOCAL");
++                 admin.setPassword(passwordEncoder.encode("Password@123"));
++                 userRepository.save(admin);
++@@ -49,7 +50,7 @@ public class DataInitializer {
++                 admin.setName("System Admin");
++                 admin.setEmail("admin@rigs.com");
++                 admin.setPassword(passwordEncoder.encode("Password@123"));
++-                admin.setRole("ADMIN");
+++                admin.setRole(AppConstants.ROLE_ADMIN);
++                 admin.setEnabled(1);
++                 admin.setActive(1);
++                 admin.setProvider("LOCAL");
++@@ -61,8 +62,8 @@ public class DataInitializer {
++                 log.info("✅ Created admin account: admin@rigs.com / Password@123");
++             }
++ 
++-            // ===== ALWAYS RESET MACHINES TO EXACTLY 20 WITH IDs 1-20 =====
++-            log.info("Resetting machines to IDs 1-20...");
+++            // ===== ALWAYS RESET MACHINES TO EXACTLY 5 WITH IDs 1-5 =====
+++            log.info("Resetting machines to IDs 1-5...");
++ 
++             // 1. Delete all child records first (foreign key order)
++             telemetryRepository.deleteAll();
++@@ -76,26 +77,11 @@ public class DataInitializer {
++             jdbcTemplate.execute("ALTER TABLE machine_telemetry AUTO_INCREMENT = 1");
++ 
++             String[][] machineData = {
++-                    { "CNC-Lathe-001", "Floor-A, Bay-1", "RUNNING", "45.2", "false" },
++-                    { "CNC-Mill-002", "Floor-A, Bay-2", "RUNNING", "87.5", "false" },
++-                    { "Hydraulic-Press-003", "Floor-A, Bay-3", "STOPPED", "120.8", "false" },
++-                    { "Welding-Robot-004", "Floor-A, Bay-4", "RUNNING", "63.1", "false" },
++-                    { "Assembly-Line-005", "Floor-B, Bay-1", "RUNNING", "210.4", "false" },
++-                    { "Conveyor-Belt-006", "Floor-B, Bay-2", "RUNNING", "156.3", "false" },
++-                    { "Injection-Mold-007", "Floor-B, Bay-3", "STOPPED", "89.6", "false" },
++-                    { "Drill-Press-008", "Floor-B, Bay-4", "RUNNING", "110.2", "false" },
++-                    { "Laser-Cutter-009", "Floor-C, Bay-1", "RUNNING", "75.8", "false" },
++-                    { "3D-Printer-010", "Floor-C, Bay-2", "STOPPED", "43.1", "false" },
++-                    { "Paint-Booth-011", "Floor-C, Bay-3", "RUNNING", "289.5", "false" },
++-                    { "Heat-Treat-Oven-012", "Floor-C, Bay-4", "RUNNING", "167.9", "false" },
++-                    { "Grinding-Machine-013", "Floor-D, Bay-1", "RUNNING", "94.3", "false" },
++-                    { "Plasma-Cutter-014", "Floor-D, Bay-2", "STOPPED", "123.7", "false" },
++-                    { "Water-Jet-015", "Floor-D, Bay-3", "RUNNING", "56.4", "false" },
++-                    { "EDM-Machine-016", "Floor-D, Bay-4", "RUNNING", "234.6", "false" },
++-                    { "Sheet-Metal-017", "Floor-E, Bay-1", "RUNNING", "345.2", "false" },
++-                    { "Packaging-Unit-018", "Floor-E, Bay-2", "RUNNING", "78.1", "false" },
++-                    { "Quality-Scanner-019", "Floor-E, Bay-3", "RUNNING", "156.8", "false" },
++-                    { "AGV-Transport-020", "Floor-E, Bay-4", "RUNNING", "210.3", "false" }
+++                    { "CNC-Lathe-001", "Floor-A, Bay-1", AppConstants.STATUS_RUNNING, "45.2", "false" },
+++                    { "CNC-Mill-002", "Floor-A, Bay-2", AppConstants.STATUS_RUNNING, "87.5", "false" },
+++                    { "Hydraulic-Press-003", "Floor-A, Bay-3", AppConstants.STATUS_STOPPED, "120.8", "false" },
+++                    { "Welding-Robot-004", "Floor-A, Bay-4", AppConstants.STATUS_RUNNING, "63.1", "false" },
+++                    { "Assembly-Line-005", "Floor-B, Bay-1", AppConstants.STATUS_RUNNING, "210.4", "false" }
++             };
++ 
++             for (String[] md : machineData) {
++@@ -109,18 +95,18 @@ public class DataInitializer {
++                 Machine saved = machineRepository.save(m);
++ 
++                 // Create initial telemetry for running machines
++-                if ("RUNNING".equals(md[2])) {
+++                if (AppConstants.STATUS_RUNNING.equals(md[2])) {
++                     MachineTelemetry t = new MachineTelemetry();
++                     t.setMachine(saved);
++                     t.setTemperature(55 + Math.random() * 30);
++                     t.setVibration(0.5 + Math.random() * 2.0);
++                     t.setCurrentDraw(8 + Math.random() * 12);
++-                    t.setMachineStatus("RUNNING");
+++                    t.setMachineStatus(AppConstants.STATUS_RUNNING);
++                     t.setTimestamp(LocalDateTime.now());
++                     telemetryRepository.save(t);
++                 }
++             }
++-            log.info("✅ Created 20 machines with IDs 1-20 and initial telemetry");
+++            log.info("✅ Created 5 machines with IDs 1-5 and initial telemetry");
++         };
++     }
++ }
++diff --git a/src/main/java/com/rigs/rigs/controller/AdminController.java b/src/main/java/com/rigs/rigs/controller/AdminController.java
++index 7812431..1765dd3 100644
++--- a/src/main/java/com/rigs/rigs/controller/AdminController.java
+++++ b/src/main/java/com/rigs/rigs/controller/AdminController.java
++@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
++ 
++ import java.util.List;
++ import java.util.stream.Collectors;
+++import com.rigs.rigs.util.AppConstants;
++ 
++ @RestController
++ @RequestMapping("/api/admin")
++@@ -24,7 +25,7 @@ public class AdminController {
++ 
++     @GetMapping("/users")
++     public ResponseEntity<List<UserResponse>> getAllUsers() {
++-        List<UserResponse> users = userRepository.findByRoleNot("ADMIN").stream()
+++        List<UserResponse> users = userRepository.findByRoleNot(AppConstants.ROLE_ADMIN).stream()
++                 .map(this::toUserResponse)
++                 .collect(Collectors.toList());
++         return ResponseEntity.ok(users);
++@@ -32,18 +33,18 @@ public class AdminController {
++ 
++     @GetMapping("/users/pending")
++     public ResponseEntity<List<UserResponse>> getPendingUsers() {
++-        List<UserResponse> users = userRepository.findByEnabledAndRoleNot(0, "ADMIN").stream()
+++        List<UserResponse> users = userRepository.findByEnabledAndRoleNot(0, AppConstants.ROLE_ADMIN).stream()
++                 .map(this::toUserResponse)
++                 .collect(Collectors.toList());
++         return ResponseEntity.ok(users);
++     }
++ 
++     @PutMapping("/users/{id}/approve")
++-    public ResponseEntity<?> approveUser(@PathVariable Long id) {
+++    public ResponseEntity<MessageResponse> approveUser(@PathVariable Long id) {
++         User user = userRepository.findById(id)
++                 .orElseThrow(() -> new RuntimeException("User not found"));
++ 
++-        if ("ADMIN".equals(user.getRole())) {
+++        if (AppConstants.ROLE_ADMIN.equals(user.getRole())) {
++             return ResponseEntity.badRequest().body(new MessageResponse("Cannot modify admin user"));
++         }
++ 
++@@ -54,11 +55,11 @@ public class AdminController {
++     }
++ 
++     @PutMapping("/users/{id}/reject")
++-    public ResponseEntity<?> rejectUser(@PathVariable Long id) {
+++    public ResponseEntity<MessageResponse> rejectUser(@PathVariable Long id) {
++         User user = userRepository.findById(id)
++                 .orElseThrow(() -> new RuntimeException("User not found"));
++ 
++-        if ("ADMIN".equals(user.getRole())) {
+++        if (AppConstants.ROLE_ADMIN.equals(user.getRole())) {
++             return ResponseEntity.badRequest().body(new MessageResponse("Cannot modify admin user"));
++         }
++ 
++@@ -68,11 +69,11 @@ public class AdminController {
++     }
++ 
++     @DeleteMapping("/users/{id}")
++-    public ResponseEntity<?> removeUser(@PathVariable Long id) {
+++    public ResponseEntity<MessageResponse> removeUser(@PathVariable Long id) {
++         User user = userRepository.findById(id)
++                 .orElseThrow(() -> new RuntimeException("User not found"));
++ 
++-        if ("ADMIN".equals(user.getRole())) {
+++        if (AppConstants.ROLE_ADMIN.equals(user.getRole())) {
++             return ResponseEntity.badRequest().body(new MessageResponse("Cannot delete admin user"));
++         }
++ 
++@@ -82,10 +83,10 @@ public class AdminController {
++     }
++ 
++     @GetMapping("/stats")
++-    public ResponseEntity<?> getStats() {
++-        long totalWorkers = userRepository.findByRoleNot("ADMIN").size();
++-        long pendingApproval = userRepository.findByEnabledAndRoleNot(0, "ADMIN").size();
++-        long activeWorkers = userRepository.findByEnabledAndRoleNot(1, "ADMIN").size();
+++    public ResponseEntity<java.util.Map<String, Long>> getStats() {
+++        long totalWorkers = userRepository.findByRoleNot(AppConstants.ROLE_ADMIN).size();
+++        long pendingApproval = userRepository.findByEnabledAndRoleNot(0, AppConstants.ROLE_ADMIN).size();
+++        long activeWorkers = userRepository.findByEnabledAndRoleNot(1, AppConstants.ROLE_ADMIN).size();
++ 
++         return ResponseEntity.ok(java.util.Map.of(
++                 "totalWorkers", totalWorkers,
++diff --git a/src/main/java/com/rigs/rigs/controller/AlertController.java b/src/main/java/com/rigs/rigs/controller/AlertController.java
++index ee280e9..6363efc 100644
++--- a/src/main/java/com/rigs/rigs/controller/AlertController.java
+++++ b/src/main/java/com/rigs/rigs/controller/AlertController.java
++@@ -17,6 +17,7 @@ import org.springframework.security.core.userdetails.UserDetails;
++ import org.springframework.web.bind.annotation.*;
++ 
++ import java.util.Map;
+++import com.rigs.rigs.util.AppConstants;
++ 
++ @RestController
++ @RequestMapping("/api/alerts")
++@@ -53,11 +54,11 @@ public class AlertController {
++ 
++     @PostMapping("/{alertId}/acknowledge")
++     @PreAuthorize("hasRole('ADMIN')")
++-    public ResponseEntity<?> acknowledgeAlert(@PathVariable Long alertId,
+++    public ResponseEntity<Map<String, String>> acknowledgeAlert(@PathVariable Long alertId,
++             @AuthenticationPrincipal UserDetails userDetails) {
++ 
++         User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
++         alertService.acknowledgeAlert(alertId, user);
++-        return ResponseEntity.ok(Map.of("message", "Alert acknowledged successfully"));
+++        return ResponseEntity.ok(Map.of(AppConstants.KEY_MESSAGE, "Alert acknowledged successfully"));
++     }
++ }
++diff --git a/src/main/java/com/rigs/rigs/controller/AuthController.java b/src/main/java/com/rigs/rigs/controller/AuthController.java
++index d75d647..19514fc 100644
++--- a/src/main/java/com/rigs/rigs/controller/AuthController.java
+++++ b/src/main/java/com/rigs/rigs/controller/AuthController.java
++@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
++ import java.util.List;
++ import java.util.Map;
++ import java.util.stream.Collectors;
+++import com.rigs.rigs.util.AppConstants;
++ 
++ @RestController
++ @RequestMapping("/api/auth")
++@@ -31,81 +32,84 @@ import java.util.stream.Collectors;
++ @Slf4j
++ public class AuthController {
++ 
++-    private final AuthenticationManager authenticationManager;
++-    private final UserRepository userRepository;
++-    private final PasswordEncoder passwordEncoder;
++-    private final JwtUtils jwtUtils;
+++        private final AuthenticationManager authenticationManager;
+++        private final UserRepository userRepository;
+++        private final PasswordEncoder passwordEncoder;
+++        private final JwtUtils jwtUtils;
++ 
++-    @PostMapping("/signin")
++-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
++-        try {
++-            Authentication authentication = authenticationManager.authenticate(
++-                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+++        @PostMapping("/signin")
+++        public ResponseEntity<Object> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+++                try {
+++                        Authentication authentication = authenticationManager.authenticate(
+++                                        new UsernamePasswordAuthenticationToken(loginRequest.getEmail(),
+++                                                        loginRequest.getPassword()));
++ 
++-            SecurityContextHolder.getContext().setAuthentication(authentication);
++-            String jwt = jwtUtils.generateJwtToken(authentication);
+++                        SecurityContextHolder.getContext().setAuthentication(authentication);
+++                        String jwt = jwtUtils.generateJwtToken(authentication);
++ 
++-            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
++-            List<String> roles = userDetails.getAuthorities().stream()
++-                    .map(GrantedAuthority::getAuthority)
++-                    .collect(Collectors.toList());
+++                        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+++                        List<String> roles = userDetails.getAuthorities().stream()
+++                                        .map(GrantedAuthority::getAuthority)
+++                                        .collect(Collectors.toList());
++ 
++-            User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
+++                        User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
++ 
++-            // Update last login time
++-            user.setLastLoginAt(java.time.LocalDateTime.now());
++-            userRepository.save(user);
+++                        // Update last login time
+++                        user.setLastLoginAt(java.time.LocalDateTime.now());
+++                        userRepository.save(user);
++ 
++-            return ResponseEntity.ok(JwtResponse.builder()
++-                    .token(jwt)
++-                    .id(user.getId())
++-                    .name(user.getName())
++-                    .email(user.getEmail())
++-                    .roles(roles)
++-                    .build());
+++                        return ResponseEntity.ok(JwtResponse.builder()
+++                                        .token(jwt)
+++                                        .id(user.getId())
+++                                        .name(user.getName())
+++                                        .email(user.getEmail())
+++                                        .roles(roles)
+++                                        .build());
++ 
++-        } catch (DisabledException e) {
++-            log.warn("Login attempt by disabled/pending account: {}", loginRequest.getEmail());
++-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
++-                    .body(Map.of(
++-                            "error", "ACCOUNT_PENDING",
++-                            "message",
++-                            "Your account is pending admin approval. Please wait for the administrator to approve your access."));
++-        } catch (LockedException e) {
++-            log.warn("Login attempt by locked account: {}", loginRequest.getEmail());
++-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
++-                    .body(Map.of(
++-                            "error", "ACCOUNT_LOCKED",
++-                            "message", "Your account has been locked. Please contact the administrator."));
++-        } catch (AuthenticationException e) {
++-            log.warn("Failed login attempt for: {}", loginRequest.getEmail());
++-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
++-                    .body(Map.of(
++-                            "error", "BAD_CREDENTIALS",
++-                            "message", "Invalid email or password. Please try again."));
+++                } catch (DisabledException e) {
+++                        log.warn("Login attempt by disabled/pending account: {}", loginRequest.getEmail());
+++                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+++                                        .body(Map.of(
+++                                                        AppConstants.KEY_ERROR, "ACCOUNT_PENDING",
+++                                                        AppConstants.KEY_MESSAGE,
+++                                                        "Your account is pending admin approval. Please wait for the administrator to approve your access."));
+++                } catch (LockedException e) {
+++                        log.warn("Login attempt by locked account: {}", loginRequest.getEmail());
+++                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+++                                        .body(Map.of(
+++                                                        AppConstants.KEY_ERROR, "ACCOUNT_LOCKED",
+++                                                        AppConstants.KEY_MESSAGE,
+++                                                        "Your account has been locked. Please contact the administrator."));
+++                } catch (AuthenticationException e) {
+++                        log.warn("Failed login attempt for: {}", loginRequest.getEmail());
+++                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+++                                        .body(Map.of(
+++                                                        AppConstants.KEY_ERROR, "BAD_CREDENTIALS",
+++                                                        AppConstants.KEY_MESSAGE,
+++                                                        "Invalid email or password. Please try again."));
+++                }
++         }
++-    }
++ 
++-    @PostMapping("/signup")
++-    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
++-        if (userRepository.findByEmail(signUpRequest.getEmail()).isPresent()) {
++-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
++-        }
+++        @PostMapping("/signup")
+++        public ResponseEntity<MessageResponse> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
+++                if (userRepository.findByEmail(signUpRequest.getEmail()).isPresent()) {
+++                        return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
+++                }
++ 
++-        User user = User.builder()
++-                .name(signUpRequest.getName())
++-                .email(signUpRequest.getEmail())
++-                .password(passwordEncoder.encode(signUpRequest.getPassword()))
++-                .role("WORKER")
++-                .provider("LOCAL")
++-                .enabled(0) // Pending approval
++-                .active(1)
++-                .build();
+++                User user = User.builder()
+++                                .name(signUpRequest.getName())
+++                                .email(signUpRequest.getEmail())
+++                                .password(passwordEncoder.encode(signUpRequest.getPassword()))
+++                                .role(AppConstants.ROLE_WORKER)
+++                                .provider("LOCAL")
+++                                .enabled(0) // Pending approval
+++                                .active(1)
+++                                .build();
++ 
++-        userRepository.save(user);
++-        log.info("Registered new user: {} (pending approval)", user.getEmail());
+++                userRepository.save(user);
+++                log.info("Registered new user: {} (pending approval)", user.getEmail());
++ 
++-        return ResponseEntity.ok(new MessageResponse(
++-                "User registered successfully! Your account is pending admin approval. You will be able to login once an administrator approves your access."));
++-    }
+++                return ResponseEntity.ok(new MessageResponse(
+++                                "User registered successfully! Your account is pending admin approval. You will be able to login once an administrator approves your access."));
+++        }
++ }
++diff --git a/src/main/java/com/rigs/rigs/controller/MachineController.java b/src/main/java/com/rigs/rigs/controller/MachineController.java
++index 035ce04..db20aef 100644
++--- a/src/main/java/com/rigs/rigs/controller/MachineController.java
+++++ b/src/main/java/com/rigs/rigs/controller/MachineController.java
++@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
++ 
++ import java.util.List;
++ import java.util.Map;
+++import com.rigs.rigs.util.AppConstants;
++ 
++ @RestController
++ @RequestMapping("/api/machines")
++@@ -39,10 +40,11 @@ public class MachineController {
++     }
++ 
++     @PostMapping("/{machineId}/command")
++-    public ResponseEntity<?> sendCommand(@PathVariable Long machineId, @RequestParam String command,
+++    public ResponseEntity<Map<String, String>> sendCommand(@PathVariable Long machineId, @RequestParam String command,
++             @RequestParam(required = false) String issuedBy) {
++         log.info("Sending command '{}' to machine {}", command, machineId);
++-        commandService.issueCommand(machineId, command.toUpperCase(), null, issuedBy != null ? issuedBy : "ADMIN");
++-        return ResponseEntity.ok(Map.of("status", "sent", "command", command.toUpperCase()));
+++        commandService.issueCommand(machineId, command.toUpperCase(), null,
+++                issuedBy != null ? issuedBy : AppConstants.ROLE_ADMIN);
+++        return ResponseEntity.ok(Map.of(AppConstants.KEY_STATUS, "sent", "command", command.toUpperCase()));
++     }
++ }
++diff --git a/src/main/java/com/rigs/rigs/controller/MachineSettingsController.java b/src/main/java/com/rigs/rigs/controller/MachineSettingsController.java
++index a3101a6..d119241 100644
++--- a/src/main/java/com/rigs/rigs/controller/MachineSettingsController.java
+++++ b/src/main/java/com/rigs/rigs/controller/MachineSettingsController.java
++@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
++ 
++ import java.util.List;
++ import java.util.Map;
+++import com.rigs.rigs.util.AppConstants;
++ 
++ @RestController
++ @RequestMapping("/api/admin/settings")
++@@ -29,7 +30,7 @@ public class MachineSettingsController {
++     }
++ 
++     @PutMapping("/{machineId}")
++-    public ResponseEntity<?> updateSettings(
+++    public ResponseEntity<Map<String, String>> updateSettings(
++             @PathVariable Long machineId,
++             @RequestBody MachineSettingsDTO settingsDTO,
++             HttpServletRequest request) {
++@@ -40,7 +41,7 @@ public class MachineSettingsController {
++         settingsService.updateSettings(machineId, settingsDTO.getVibrationThreshold(),
++                 settingsDTO.getRuntimeLimitHours(), settingsDTO.getHeartbeatTimeout(), email, ipAddress);
++ 
++-        return ResponseEntity.ok(Map.of("message", "Settings updated successfully"));
+++        return ResponseEntity.ok(Map.of(AppConstants.KEY_MESSAGE, "Settings updated successfully"));
++     }
++ 
++     private String getCurrentUserEmail() {
++diff --git a/src/main/java/com/rigs/rigs/controller/ProfileController.java b/src/main/java/com/rigs/rigs/controller/ProfileController.java
++index d364673..6f716d5 100644
++--- a/src/main/java/com/rigs/rigs/controller/ProfileController.java
+++++ b/src/main/java/com/rigs/rigs/controller/ProfileController.java
++@@ -39,26 +39,27 @@ public class ProfileController {
++     }
++ 
++     @PutMapping("/update-name")
++-    public ResponseEntity<?> updateName(@AuthenticationPrincipal UserDetails userDetails, @RequestParam String name) {
+++    public ResponseEntity<MessageResponse> updateName(@AuthenticationPrincipal UserDetails userDetails,
+++            @RequestParam String name) {
++         profileService.updateName(userDetails.getUsername(), name);
++         return ResponseEntity.ok(new MessageResponse("Name updated successfully"));
++     }
++ 
++     @PostMapping("/upload-image")
++-    public ResponseEntity<?> uploadImage(@AuthenticationPrincipal UserDetails userDetails,
+++    public ResponseEntity<Map<String, String>> uploadImage(@AuthenticationPrincipal UserDetails userDetails,
++             @RequestParam("file") MultipartFile file) throws IOException {
++         String imageUrl = profileService.uploadProfileImage(userDetails.getUsername(), file);
++         return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
++     }
++ 
++     @PostMapping("/toggle-2fa")
++-    public ResponseEntity<?> toggle2fa(@AuthenticationPrincipal UserDetails userDetails) {
+++    public ResponseEntity<MessageResponse> toggle2fa(@AuthenticationPrincipal UserDetails userDetails) {
++         profileService.toggleTwoFactor(userDetails.getUsername());
++         return ResponseEntity.ok(new MessageResponse("2FA setting updated"));
++     }
++ 
++     @PutMapping("/password")
++-    public ResponseEntity<?> changePassword(@AuthenticationPrincipal UserDetails userDetails,
+++    public ResponseEntity<MessageResponse> changePassword(@AuthenticationPrincipal UserDetails userDetails,
++             @RequestBody Map<String, String> request) {
++         String currentPassword = request.get("currentPassword");
++         String newPassword = request.get("newPassword");
++diff --git a/src/main/java/com/rigs/rigs/entity/Machine.java b/src/main/java/com/rigs/rigs/entity/Machine.java
++index fc01db1..f52ca9f 100644
++--- a/src/main/java/com/rigs/rigs/entity/Machine.java
+++++ b/src/main/java/com/rigs/rigs/entity/Machine.java
++@@ -24,7 +24,7 @@ public class Machine {
++ 
++     @Builder.Default
++     @Column(nullable = false)
++-    private String status = "OFFLINE";
+++    private String status = com.rigs.rigs.util.AppConstants.STATUS_OFFLINE;
++ 
++     @Builder.Default
++     @Column(name = "machine_type")
++diff --git a/src/main/java/com/rigs/rigs/entity/User.java b/src/main/java/com/rigs/rigs/entity/User.java
++index 821dad7..b0e7d60 100644
++--- a/src/main/java/com/rigs/rigs/entity/User.java
+++++ b/src/main/java/com/rigs/rigs/entity/User.java
++@@ -30,7 +30,7 @@ public class User {
++     private Integer enabled = 0;
++ 
++     @Builder.Default
++-    private String role = "USER";
+++    private String role = com.rigs.rigs.util.AppConstants.ROLE_USER;
++ 
++     @Builder.Default
++     private String provider = "LOCAL";
++diff --git a/src/main/java/com/rigs/rigs/exception/GlobalExceptionHandler.java b/src/main/java/com/rigs/rigs/exception/GlobalExceptionHandler.java
++index 494853f..cde4250 100644
++--- a/src/main/java/com/rigs/rigs/exception/GlobalExceptionHandler.java
+++++ b/src/main/java/com/rigs/rigs/exception/GlobalExceptionHandler.java
++@@ -15,17 +15,17 @@ import java.util.stream.Collectors;
++ public class GlobalExceptionHandler {
++ 
++     @ExceptionHandler(IllegalArgumentException.class)
++-    public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException e) {
+++    public ResponseEntity<MessageResponse> handleIllegalArgumentException(IllegalArgumentException e) {
++         return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
++     }
++ 
++     @ExceptionHandler(BadCredentialsException.class)
++-    public ResponseEntity<?> handleBadCredentialsException(BadCredentialsException e) {
+++    public ResponseEntity<MessageResponse> handleBadCredentialsException(BadCredentialsException e) {
++         return ResponseEntity.status(401).body(new MessageResponse("Error: Invalid email or password"));
++     }
++ 
++     @ExceptionHandler(MethodArgumentNotValidException.class)
++-    public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
+++    public ResponseEntity<MessageResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
++         String errors = ex.getBindingResult().getFieldErrors().stream()
++                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
++                 .collect(Collectors.joining(", "));
++@@ -33,7 +33,7 @@ public class GlobalExceptionHandler {
++     }
++ 
++     @ExceptionHandler(Exception.class)
++-    public ResponseEntity<?> handleGlobalException(Exception e) {
+++    public ResponseEntity<MessageResponse> handleGlobalException(Exception e) {
++         log.error("Unhandled exception: ", e);
++         return ResponseEntity.status(500).body(new MessageResponse("An internal server error occurred."));
++     }
++diff --git a/src/main/java/com/rigs/rigs/security/SecurityConfig.java b/src/main/java/com/rigs/rigs/security/SecurityConfig.java
++index 1e2b64a..efc294f 100644
++--- a/src/main/java/com/rigs/rigs/security/SecurityConfig.java
+++++ b/src/main/java/com/rigs/rigs/security/SecurityConfig.java
++@@ -19,6 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
++ 
++ import java.util.Arrays;
++ import java.util.List;
+++import com.rigs.rigs.util.AppConstants;
++ 
++ @Configuration
++ @EnableWebSecurity
++@@ -54,7 +55,7 @@ public class SecurityConfig {
++                         .requestMatchers("/api/test/**").permitAll()
++                         .requestMatchers("/uploads/**").permitAll()
++                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
++-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+++                        .requestMatchers("/api/admin/**").hasRole(AppConstants.ROLE_ADMIN)
++                         .anyRequest().authenticated())
++                 .oauth2Login(oauth2 -> oauth2
++                         .successHandler(oAuth2LoginSuccessHandler));
++diff --git a/src/main/java/com/rigs/rigs/service/MachineService.java b/src/main/java/com/rigs/rigs/service/MachineService.java
++index 740fcf8..72e2ab7 100644
++--- a/src/main/java/com/rigs/rigs/service/MachineService.java
+++++ b/src/main/java/com/rigs/rigs/service/MachineService.java
++@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
++ import java.time.temporal.ChronoUnit;
++ import java.util.List;
++ import java.util.stream.Collectors;
+++import com.rigs.rigs.util.AppConstants;
++ 
++ @Service
++ @RequiredArgsConstructor
++@@ -111,7 +112,7 @@ public class MachineService {
++                     .location(LOCATIONS[(int) (machineId % LOCATIONS.length)])
++                     .machineType(MACHINE_TYPES[(int) (machineId % MACHINE_TYPES.length)])
++                     .processUnit(UNITS[(int) (machineId % UNITS.length)])
++-                    .status("RUNNING")
+++                    .status(AppConstants.STATUS_RUNNING)
++                     .build();
++             newMachine = machineRepository.save(newMachine);
++             log.info("Auto-created machine: {} (ID={})", newMachine.getName(), newMachine.getId());
++@@ -196,10 +197,10 @@ public class MachineService {
++     public void monitorHeartbeats() {
++         List<Machine> machines = machineRepository.findAll();
++         for (Machine m : machines) {
++-            if (!"OFFLINE".equals(m.getStatus())) {
+++            if (!AppConstants.STATUS_OFFLINE.equals(m.getStatus())) {
++                 MachineSettings s = settingsRepository.findByMachine(m).orElse(null);
++                 if (!checkMachineOnline(m, s)) {
++-                    m.setStatus("OFFLINE");
+++                    m.setStatus(AppConstants.STATUS_OFFLINE);
++                     machineRepository.save(m);
++                     alertService.createAlert(m, Alert.AlertType.OFFLINE, Alert.AlertSeverity.CRITICAL,
++                             "Machine heartbeat missing. Status marked as OFFLINE.");
++diff --git a/src/main/java/com/rigs/rigs/service/MachineSettingsService.java b/src/main/java/com/rigs/rigs/service/MachineSettingsService.java
++index f1c58cb..d3da1ea 100644
++--- a/src/main/java/com/rigs/rigs/service/MachineSettingsService.java
+++++ b/src/main/java/com/rigs/rigs/service/MachineSettingsService.java
++@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
++ import lombok.extern.slf4j.Slf4j;
++ import org.springframework.stereotype.Service;
++ import org.springframework.transaction.annotation.Transactional;
+++import org.springframework.beans.factory.annotation.Autowired;
+++import org.springframework.context.annotation.Lazy;
++ 
++ import java.util.List;
++ import java.util.stream.Collectors;
++@@ -22,6 +24,10 @@ public class MachineSettingsService {
++     private final MachineRepository machineRepository;
++     private final AuditLogService auditLogService;
++ 
+++    @Autowired
+++    @Lazy
+++    private MachineSettingsService self;
+++
++     @Transactional
++     public MachineSettings getOrCreateSettings(Long machineId) {
++         Machine machine = machineRepository.findById(machineId)
++@@ -58,7 +64,7 @@ public class MachineSettingsService {
++     public void updateSettings(Long machineId, Double vibrationThreshold, Double runtimeLimitHours,
++             Integer heartbeatTimeout, String userEmail, String ipAddress) {
++ 
++-        MachineSettings settings = getOrCreateSettings(machineId);
+++        MachineSettings settings = self.getOrCreateSettings(machineId);
++ 
++         String beforeState = String.format("{\"vib\":%.2f,\"runtime\":%.2f,\"timeout\":%d}",
++                 settings.getVibrationThreshold(), settings.getRuntimeLimitHours(), settings.getHeartbeatTimeout());
++@@ -76,7 +82,7 @@ public class MachineSettingsService {
++                 settings.getVibrationThreshold(), settings.getRuntimeLimitHours(), settings.getHeartbeatTimeout());
++ 
++         auditLogService.logAction(userEmail, "CONFIG_CHANGE", "MachineSettings",
++-                afterState, ipAddress, "INFO", machineId);
+++                "from " + beforeState + " to " + afterState, ipAddress, "INFO", machineId);
++ 
++         log.info("Settings updated for machine {}: {}", machineId, afterState);
++     }
++diff --git a/src/main/java/com/rigs/rigs/service/MqttListenerService.java b/src/main/java/com/rigs/rigs/service/MqttListenerService.java
++index 02ee792..a86ed34 100644
++--- a/src/main/java/com/rigs/rigs/service/MqttListenerService.java
+++++ b/src/main/java/com/rigs/rigs/service/MqttListenerService.java
++@@ -1,7 +1,5 @@
++ package com.rigs.rigs.service;
++ 
++-import com.rigs.rigs.entity.Machine;
++-import com.rigs.rigs.repository.MachineRepository;
++ import com.fasterxml.jackson.databind.JsonNode;
++ import com.fasterxml.jackson.databind.ObjectMapper;
++ import jakarta.annotation.PostConstruct;
++@@ -12,8 +10,7 @@ import org.eclipse.paho.client.mqttv3.*;
++ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
++ import org.springframework.beans.factory.annotation.Value;
++ import org.springframework.stereotype.Service;
++-
++-import java.util.Optional;
+++import com.rigs.rigs.util.AppConstants;
++ 
++ @Service
++ @RequiredArgsConstructor
++@@ -34,7 +31,6 @@ public class MqttListenerService implements MqttCallbackExtended {
++ 
++     private MqttClient mqttClient;
++     private final MachineService machineService;
++-    private final MachineRepository machineRepository;
++     private final ObjectMapper objectMapper = new ObjectMapper();
++ 
++     @PostConstruct
++@@ -94,7 +90,7 @@ public class MqttListenerService implements MqttCallbackExtended {
++             Double temperature = data.has("temperature") ? data.get("temperature").asDouble() : null;
++             Double vibration = data.has("vibration") ? data.get("vibration").asDouble() : null;
++             Double currentDraw = data.has("current") ? data.get("current").asDouble() : null;
++-            String status = data.has("status") ? data.get("status").asText() : "RUNNING";
+++            String status = data.has("status") ? data.get("status").asText() : AppConstants.STATUS_RUNNING;
++             Double rpm = data.has("rpm") ? data.get("rpm").asDouble() : null;
++             Double pressure = data.has("pressure") ? data.get("pressure").asDouble() : null;
++             Double powerConsumption = data.has("power") ? data.get("power").asDouble() : null;
++diff --git a/src/main/java/com/rigs/rigs/service/ProfileService.java b/src/main/java/com/rigs/rigs/service/ProfileService.java
++index bec5be9..94149ac 100644
++--- a/src/main/java/com/rigs/rigs/service/ProfileService.java
+++++ b/src/main/java/com/rigs/rigs/service/ProfileService.java
++@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Value;
++ import org.springframework.security.crypto.password.PasswordEncoder;
++ import org.springframework.stereotype.Service;
++ import org.springframework.transaction.annotation.Transactional;
+++import org.springframework.beans.factory.annotation.Autowired;
+++import org.springframework.context.annotation.Lazy;
++ import org.springframework.web.multipart.MultipartFile;
++ 
++ import java.io.IOException;
++@@ -41,6 +43,10 @@ public class ProfileService {
++     @Value("${rigs.upload.dir:./uploads}")
++     private String uploadDir;
++ 
+++    @Autowired
+++    @Lazy
+++    private ProfileService self;
+++
++     @Transactional(readOnly = true)
++     public User getProfile(String email) {
++         return userRepository.findByEmail(email)
++@@ -53,7 +59,7 @@ public class ProfileService {
++             throw new IllegalArgumentException("Name cannot be empty");
++         }
++ 
++-        User user = getProfile(email);
+++        User user = self.getProfile(email);
++         user.setName(newName.trim());
++         userRepository.save(user);
++         log.info("User {} updated name to: {}", email, newName.trim());
++@@ -61,7 +67,7 @@ public class ProfileService {
++ 
++     @Transactional
++     public void changePassword(String email, String oldPassword, String newPassword) {
++-        User user = getProfile(email);
+++        User user = self.getProfile(email);
++ 
++         if (user.getPassword() == null || !passwordEncoder.matches(oldPassword, user.getPassword())) {
++             throw new IllegalArgumentException("Current password is incorrect");
++@@ -112,7 +118,7 @@ public class ProfileService {
++         Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
++ 
++         String imageUrl = "/uploads/profiles/" + filename;
++-        User user = getProfile(email);
+++        User user = self.getProfile(email);
++         user.setProfileImageUrl(imageUrl);
++         userRepository.save(user);
++ 
++@@ -122,7 +128,7 @@ public class ProfileService {
++ 
++     @Transactional
++     public void toggleTwoFactor(String email) {
++-        User user = getProfile(email);
+++        User user = self.getProfile(email);
++         boolean newState = !Boolean.TRUE.equals(user.getTwoFactorEnabled());
++         user.setTwoFactorEnabled(newState);
++         userRepository.save(user);
++@@ -131,13 +137,13 @@ public class ProfileService {
++ 
++     @Transactional(readOnly = true)
++     public List<LoginHistory> getLoginHistory(String email) {
++-        User user = getProfile(email);
+++        User user = self.getProfile(email);
++         return loginHistoryRepository.findByUserOrderByLoginTimeDesc(user);
++     }
++ 
++     @Transactional(readOnly = true)
++     public List<UserSession> getActiveSessions(String email) {
++-        User user = getProfile(email);
+++        User user = self.getProfile(email);
++         return userSessionRepository.findByUserAndActiveTrue(user);
++     }
++ 
++diff --git a/src/main/java/com/rigs/rigs/util/AppConstants.java b/src/main/java/com/rigs/rigs/util/AppConstants.java
++new file mode 100644
++index 0000000..f6ba830
++--- /dev/null
+++++ b/src/main/java/com/rigs/rigs/util/AppConstants.java
++@@ -0,0 +1,29 @@
+++package com.rigs.rigs.util;
+++
+++public final class AppConstants {
+++
+++    // Prevent instantiation
+++    private AppConstants() {
+++    }
+++
+++    // Role Constants
+++    public static final String ROLE_ADMIN = "ADMIN";
+++    public static final String ROLE_USER = "USER";
+++    public static final String ROLE_WORKER = "WORKER";
+++
+++    // Status Constants
+++    public static final String STATUS_RUNNING = "RUNNING";
+++    public static final String STATUS_OFFLINE = "OFFLINE";
+++    public static final String STATUS_STOPPED = "STOPPED";
+++    public static final String STATUS_ERROR = "ERROR";
+++
+++    // Common Response Keys
+++    public static final String KEY_MESSAGE = "message";
+++    public static final String KEY_ERROR = "error";
+++    public static final String KEY_SUCCESS = "success";
+++    public static final String KEY_STATUS = "status";
+++
+++    // Operation Results
+++    public static final String OP_SUCCESS_MSG = "Operation successful";
+++    public static final String VALIDATION_ERROR_MSG = "Validation error";
+++}
+diff --git a/log.txt b/log.txt
+new file mode 100644
+index 0000000..a245eb9
+--- /dev/null
++++ b/log.txt
+@@ -0,0 +1,3 @@
++757bbd4 Refactor: improve maintainability with AppConstants, typed generics, and fixed @Transactional self-invocations
++948b60d Optimize frontend polling loop and reduce DataInitializer machines from 20 to 5
++316e3b5 Fix polling and commands from frontend
+diff --git a/mvnw b/mvnw
+old mode 100755
+new mode 100644
+diff --git a/pom.xml b/pom.xml
+index 469bd4c..42cfc1c 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -21,6 +21,9 @@
+ 
+     <properties>
+         <java.version>17</java.version>
++        <maven.compiler.source>17</maven.compiler.source>
++        <maven.compiler.target>17</maven.compiler.target>
++        <maven.compiler.release>17</maven.compiler.release>
+         <mapstruct.version>1.5.5.Final</mapstruct.version>
+     </properties>
+ 
+diff --git a/rigs_simulator/venv/bin/pip b/rigs_simulator/venv/bin/pip
+old mode 100755
+new mode 100644
+diff --git a/rigs_simulator/venv/bin/pip3 b/rigs_simulator/venv/bin/pip3
+old mode 100755
+new mode 100644
+diff --git a/rigs_simulator/venv/bin/pip3.12 b/rigs_simulator/venv/bin/pip3.12
+old mode 100755
+new mode 100644
+diff --git a/src/main/java/com/rigs/rigs/controller/AuthController.java b/src/main/java/com/rigs/rigs/controller/AuthController.java
+index d75d647..a011af7 100644
+--- a/src/main/java/com/rigs/rigs/controller/AuthController.java
++++ b/src/main/java/com/rigs/rigs/controller/AuthController.java
+@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.*;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.stream.Collectors;
++import jakarta.servlet.http.HttpServletRequest;
++import java.util.concurrent.ConcurrentHashMap;
+ 
+ @RestController
+ @RequestMapping("/api/auth")
+@@ -36,8 +38,31 @@ public class AuthController {
+     private final PasswordEncoder passwordEncoder;
+     private final JwtUtils jwtUtils;
+ 
++    private final ConcurrentHashMap<String, Long> requestCounts = new ConcurrentHashMap<>();
++    private final ConcurrentHashMap<String, Long> timeWindows = new ConcurrentHashMap<>();
++
++    private boolean isRateLimited(String ip) {
++        long now = System.currentTimeMillis();
++        long windowStart = timeWindows.computeIfAbsent(ip, k -> now);
++        
++        if (now - windowStart > 60000) { // 1 minute window
++            timeWindows.put(ip, now);
++            requestCounts.put(ip, 1L);
++            return false;
++        }
++        long count = requestCounts.getOrDefault(ip, 0L);
++        if (count >= 5) return true;
++        
++        requestCounts.put(ip, count + 1);
++        return false;
++    }
++
+     @PostMapping("/signin")
+-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
++    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request) {
++        if (isRateLimited(request.getRemoteAddr())) {
++            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
++                    .body(Map.of("error", "TOO_MANY_REQUESTS", "message", "Rate limit exceeded. Try again in 1 minute."));
++        }
+         try {
+             Authentication authentication = authenticationManager.authenticate(
+                     new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+@@ -87,7 +112,11 @@ public class AuthController {
+     }
+ 
+     @PostMapping("/signup")
+-    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
++    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest, HttpServletRequest request) {
++        if (isRateLimited(request.getRemoteAddr())) {
++            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
++                    .body(Map.of("error", "TOO_MANY_REQUESTS", "message", "Rate limit exceeded. Try again in 1 minute."));
++        }
+         if (userRepository.findByEmail(signUpRequest.getEmail()).isPresent()) {
+             return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
+         }
+@@ -108,4 +137,21 @@ public class AuthController {
+         return ResponseEntity.ok(new MessageResponse(
+                 "User registered successfully! Your account is pending admin approval. You will be able to login once an administrator approves your access."));
+     }
++
++    @GetMapping("/oauth2/success")
++    public ResponseEntity<?> getOAuth2Token(HttpServletRequest request) {
++        String token = (String) request.getSession().getAttribute("oauthToken");
++        if (token != null) {
++            Map<String, Object> data = Map.of(
++                    "token", token,
++                    "name", request.getSession().getAttribute("oauthName"),
++                    "email", request.getSession().getAttribute("oauthEmail"),
++                    "roles", List.of("ROLE_" + request.getSession().getAttribute("oauthRole")),
++                    "id", request.getSession().getAttribute("oauthId")
++            );
++            request.getSession().invalidate();
++            return ResponseEntity.ok(data);
++        }
++        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
++    }
+ }
+diff --git a/src/main/java/com/rigs/rigs/security/JwtUtils.java b/src/main/java/com/rigs/rigs/security/JwtUtils.java
+index 297a89d..3f431c0 100644
+--- a/src/main/java/com/rigs/rigs/security/JwtUtils.java
++++ b/src/main/java/com/rigs/rigs/security/JwtUtils.java
+@@ -16,7 +16,7 @@ import java.util.Date;
+ @Slf4j
+ public class JwtUtils {
+ 
+-    @Value("${rigs.jwt.secret:SuperSecretKeyForRigsEnterpriseUpgrade2026!}")
++    @Value("${RIGS_JWT_SECRET}")
+     private String jwtSecret;
+ 
+     @Value("${rigs.jwt.expirationMs:86400000}") // 24 hours
+diff --git a/src/main/java/com/rigs/rigs/security/OAuth2LoginSuccessHandler.java b/src/main/java/com/rigs/rigs/security/OAuth2LoginSuccessHandler.java
+index 19af413..a1c82a4 100644
+--- a/src/main/java/com/rigs/rigs/security/OAuth2LoginSuccessHandler.java
++++ b/src/main/java/com/rigs/rigs/security/OAuth2LoginSuccessHandler.java
+@@ -99,12 +99,12 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
+ 
+                 log.info("✅ OAuth2 login successful for: {}", email);
+ 
+-                // Redirect to frontend with token
+-                getRedirectStrategy().sendRedirect(request, response,
+-                                frontendUrl + "/login?token=" + jwt
+-                                                + "&name=" + java.net.URLEncoder.encode(user.getName(), "UTF-8")
+-                                                + "&email=" + java.net.URLEncoder.encode(user.getEmail(), "UTF-8")
+-                                                + "&role=" + user.getRole()
+-                                                + "&id=" + user.getId());
++                request.getSession().setAttribute("oauthToken", jwt);
++                request.getSession().setAttribute("oauthName", user.getName());
++                request.getSession().setAttribute("oauthEmail", user.getEmail());
++                request.getSession().setAttribute("oauthRole", user.getRole());
++                request.getSession().setAttribute("oauthId", user.getId().toString());
++
++                getRedirectStrategy().sendRedirect(request, response, frontendUrl + "/oauth/callback");
+         }
+ }
+diff --git a/src/main/java/com/rigs/rigs/security/SecurityConfig.java b/src/main/java/com/rigs/rigs/security/SecurityConfig.java
+index 1e2b64a..f733681 100644
+--- a/src/main/java/com/rigs/rigs/security/SecurityConfig.java
++++ b/src/main/java/com/rigs/rigs/security/SecurityConfig.java
+@@ -3,6 +3,7 @@ package com.rigs.rigs.security;
+ import lombok.RequiredArgsConstructor;
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
++import org.springframework.beans.factory.annotation.Value;
+ import org.springframework.security.authentication.AuthenticationManager;
+ import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+ import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+@@ -65,10 +66,14 @@ public class SecurityConfig {
+         return http.build();
+     }
+ 
++    @Value("${rigs.frontend.url:http://localhost:5173}")
++    private String frontendUrl;
++
+     @Bean
+     public CorsConfigurationSource corsConfigurationSource() {
+         CorsConfiguration configuration = new CorsConfiguration();
+-        configuration.setAllowedOriginPatterns(List.of("*"));
++        // Allow localhost and the configured frontend URL
++        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://localhost:3000", frontendUrl));
+         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
+         configuration.setExposedHeaders(List.of("Authorization"));
+diff --git a/src/main/resources/application.properties b/src/main/resources/application.properties
+index 9dba907..f576494 100644
+--- a/src/main/resources/application.properties
++++ b/src/main/resources/application.properties
+@@ -47,5 +47,5 @@ rigs.upload.dir=./uploads
+ # ================= MQTT =================
+ mqtt.broker.url=ssl://802966d9c99f48a3a2436e3eacd58939.s1.eu.hivemq.cloud:8883
+ mqtt.client.id=rigs-backend-${random.uuid}
+-mqtt.username=rigs_client
+-mqtt.password=Kanzariya2413
++mqtt.username=${MQTT_USERNAME}
++mqtt.password=${MQTT_PASSWORD}

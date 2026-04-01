@@ -1,0 +1,12 @@
+diff --git a/src/main/resources/application.properties b/src/main/resources/application.properties
+index 9dba907..f576494 100644
+--- a/src/main/resources/application.properties
++++ b/src/main/resources/application.properties
+@@ -47,5 +47,5 @@ rigs.upload.dir=./uploads
+ # ================= MQTT =================
+ mqtt.broker.url=ssl://802966d9c99f48a3a2436e3eacd58939.s1.eu.hivemq.cloud:8883
+ mqtt.client.id=rigs-backend-${random.uuid}
+-mqtt.username=rigs_client
+-mqtt.password=Kanzariya2413
++mqtt.username=${MQTT_USERNAME}
++mqtt.password=${MQTT_PASSWORD}

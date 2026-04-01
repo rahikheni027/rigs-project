@@ -1,0 +1,15 @@
+TECHNICAL_REVIEW.md
+diff.txt
+frontend/package-lock.json
+frontend/package.json
+frontend/postcss.config.js
+frontend/src/pages/AlertsPage.jsx
+frontend/src/pages/Dashboard.jsx
+frontend/src/pages/MachinesPage.jsx
+full_diff.txt
+log.txt
+mvnw
+pom.xml
+rigs_simulator/venv/bin/pip
+rigs_simulator/venv/bin/pip3
+rigs_simulator/venv/bin/pip3.12

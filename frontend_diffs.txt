@@ -1,0 +1,286 @@
+diff --git a/frontend/package.json b/frontend/package.json
+index d42a624..547a921 100644
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -10,11 +10,9 @@
+     "preview": "vite preview"
+   },
+   "dependencies": {
+-    "autoprefixer": "^10.4.24",
+     "axios": "^1.13.5",
+     "framer-motion": "^12.34.3",
+     "lucide-react": "^0.575.0",
+-    "postcss": "^8.5.6",
+     "react": "^19.2.0",
+     "react-dom": "^19.2.0",
+     "react-router-dom": "^7.13.0",
+diff --git a/frontend/postcss.config.js b/frontend/postcss.config.js
+new file mode 100644
+index 0000000..ff8b4c5
+--- /dev/null
++++ b/frontend/postcss.config.js
+@@ -0,0 +1 @@
++export default {};
+diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+index 095e25c..f179c1d 100644
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
+ import Layout from './components/Layout';
+ import LandingPage from './pages/LandingPage';
+ import LoginPage from './pages/LoginPage';
++import OAuthCallback from './pages/OAuthCallback';
+ import RegisterPage from './pages/RegisterPage';
+ import ForgotPasswordPage from './pages/ForgotPasswordPage';
+ import NotFoundPage from './pages/NotFoundPage';
+@@ -32,6 +33,7 @@ function App() {
+             {/* Public routes */}
+             <Route path="/" element={<LandingPage />} />
+             <Route path="/login" element={<LoginPage />} />
++            <Route path="/oauth/callback" element={<OAuthCallback />} />
+             <Route path="/register" element={<RegisterPage />} />
+             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+ 
+diff --git a/frontend/src/pages/AlertsPage.jsx b/frontend/src/pages/AlertsPage.jsx
+index 56e6a73..b0d7137 100644
+--- a/frontend/src/pages/AlertsPage.jsx
++++ b/frontend/src/pages/AlertsPage.jsx
+@@ -14,19 +14,34 @@ const AlertsPage = () => {
+     const [filter, setFilter] = useState('all');
+     const [autoRefresh, setAutoRefresh] = useState(true);
+ 
+-    const fetchAlerts = async () => {
+-        try {
+-            const r = await api.get('/alerts');
+-            setAlerts(r.data.content || []);
+-        } catch (e) { console.error(e); } finally { setLoading(false); }
+-    };
+-
+     useEffect(() => {
++        let isMounted = true;
++        const controller = new AbortController();
++
++        const fetchAlerts = async () => {
++            try {
++                const r = await api.get('/alerts', { signal: controller.signal });
++                if (!isMounted) return;
++                setAlerts(r.data.content || []);
++            } catch (e) { 
++                if (!isMounted || e.name === 'CanceledError') return;
++                console.error(e); 
++            } finally { 
++                if (isMounted) setLoading(false); 
++            }
++        };
++
+         fetchAlerts();
++        let t;
+         if (autoRefresh) {
+-            const t = setInterval(fetchAlerts, 10000);
+-            return () => clearInterval(t);
++            t = setInterval(fetchAlerts, 10000);
+         }
++        
++        return () => {
++            isMounted = false;
++            if (t) clearInterval(t);
++            controller.abort();
++        };
+     }, [filter, autoRefresh]);
+ 
+     const handleAck = async (id) => {
+diff --git a/frontend/src/pages/Dashboard.jsx b/frontend/src/pages/Dashboard.jsx
+index 333e8da..daddfb2 100644
+--- a/frontend/src/pages/Dashboard.jsx
++++ b/frontend/src/pages/Dashboard.jsx
+@@ -44,30 +44,45 @@ const Dashboard = () => {
+     const [loading, setLoading] = useState(true);
+     const [chartData, setChartData] = useState([]);
+ 
+-    const fetchData = async () => {
+-        try {
+-            const [machRes, alertRes] = await Promise.all([
+-                api.get('/machines'),
+-                api.get('/alerts?size=10'),
+-            ]);
+-            setMachines(machRes.data);
+-            setAlerts(alertRes.data.content || []);
+-
+-            setChartData(prev => {
+-                const now = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+-                const avgTemp = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.temperature || 0), 0) / machRes.data.length : 0;
+-                const totalPower = machRes.data.reduce((s, m) => s + (m.powerConsumption || 0), 0);
+-                const avgEff = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.efficiency || 0), 0) / machRes.data.length : 0;
+-                const next = [...prev, { time: now, temp: avgTemp, power: totalPower, eff: avgEff }];
+-                return next.length > 30 ? next.slice(-30) : next;
+-            });
+-        } catch (e) { console.error(e); } finally { setLoading(false); }
+-    };
+-
+     useEffect(() => {
++        let isMounted = true;
++        const controller = new AbortController();
++
++        const fetchData = async () => {
++            try {
++                const [machRes, alertRes] = await Promise.all([
++                    api.get('/machines', { signal: controller.signal }),
++                    api.get('/alerts?size=10', { signal: controller.signal }),
++                ]);
++                if (!isMounted) return;
++                
++                setMachines(machRes.data);
++                setAlerts(alertRes.data.content || []);
++
++                setChartData(prev => {
++                    const now = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
++                    const avgTemp = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.temperature || 0), 0) / machRes.data.length : 0;
++                    const totalPower = machRes.data.reduce((s, m) => s + (m.powerConsumption || 0), 0);
++                    const avgEff = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.efficiency || 0), 0) / machRes.data.length : 0;
++                    const next = [...prev, { time: now, temp: avgTemp, power: totalPower, eff: avgEff }];
++                    return next.length > 30 ? next.slice(-30) : next;
++                });
++            } catch (e) { 
++                if (!isMounted || e.name === 'CanceledError') return;
++                console.error(e); 
++            } finally { 
++                if (isMounted) setLoading(false); 
++            }
++        };
++
+         fetchData();
+         const t = setInterval(fetchData, 10000);
+-        return () => clearInterval(t);
++        
++        return () => {
++            isMounted = false;
++            clearInterval(t);
++            controller.abort();
++        };
+     }, []);
+ 
+     const runCount = machines.filter(m => m.status === 'RUNNING').length;
+diff --git a/frontend/src/pages/LoginPage.jsx b/frontend/src/pages/LoginPage.jsx
+index cf91d36..ab4b811 100644
+--- a/frontend/src/pages/LoginPage.jsx
++++ b/frontend/src/pages/LoginPage.jsx
+@@ -24,25 +24,7 @@ const LoginPage = () => {
+             setError('Your account has been locked. Please contact the administrator.');
+         }
+ 
+-        // Handle OAuth JWT token redirect — auto-login
+-        const token = searchParams.get('token');
+-        if (token) {
+-            const name = searchParams.get('name') || '';
+-            const email = searchParams.get('email') || '';
+-            const role = searchParams.get('role') || 'WORKER';
+-            const id = searchParams.get('id') || '';
+-            const userData = {
+-                token,
+-                name: decodeURIComponent(name),
+-                email: decodeURIComponent(email),
+-                roles: [`ROLE_${role}`],
+-                id,
+-            };
+-            localStorage.setItem('token', token);
+-            localStorage.setItem('user', JSON.stringify(userData));
+-            window.location.href = '/app/dashboard';
+-            return;
+-        }
++
+ 
+         // If user is already logged in, go to dashboard
+         if (user) {
+diff --git a/frontend/src/pages/MachinesPage.jsx b/frontend/src/pages/MachinesPage.jsx
+index df91353..b0fbf47 100644
+--- a/frontend/src/pages/MachinesPage.jsx
++++ b/frontend/src/pages/MachinesPage.jsx
+@@ -60,17 +60,30 @@ const MachinesPage = () => {
+     const { user } = useAuth();
+     const intervalRef = useRef(null);
+ 
+-    const fetchMachines = async () => {
++    const fetchMachines = async (signal) => {
+         try {
+-            const r = await api.get('/machines');
++            const opts = signal ? { signal } : {};
++            const r = await api.get('/machines', opts);
+             setMachines(r.data);
+-        } catch (e) { console.error(e); } finally { setLoading(false); }
++        } catch (e) { 
++            if (e.name !== 'CanceledError') console.error(e); 
++        } finally { 
++            setLoading(false); 
++        }
+     };
+ 
+     useEffect(() => {
+-        fetchMachines();
+-        intervalRef.current = setInterval(fetchMachines, 10000);
+-        return () => clearInterval(intervalRef.current);
++        const controller = new AbortController();
++        
++        fetchMachines(controller.signal);
++        intervalRef.current = setInterval(() => {
++            fetchMachines(controller.signal);
++        }, 10000);
++        
++        return () => {
++            if (intervalRef.current) clearInterval(intervalRef.current);
++            controller.abort();
++        };
+     }, []);
+ 
+     const handleCommand = async (id, cmd) => {
+diff --git a/frontend/src/pages/OAuthCallback.jsx b/frontend/src/pages/OAuthCallback.jsx
+new file mode 100644
+index 0000000..6ce48e9
+--- /dev/null
++++ b/frontend/src/pages/OAuthCallback.jsx
+@@ -0,0 +1,46 @@
++import React, { useEffect, useState } from 'react';
++import { useNavigate } from 'react-router-dom';
++import api from '../api/axios';
++import { useAuth } from '../context/AuthContext';
++import { Zap } from 'lucide-react';
++
++const OAuthCallback = () => {
++    const navigate = useNavigate();
++    const [error, setError] = useState(null);
++
++    useEffect(() => {
++        const fetchToken = async () => {
++            try {
++                // Must ensure axios sends cookies so the session is read
++                const res = await api.get('/auth/oauth2/success', { withCredentials: true });
++                if (res.data?.token) {
++                    const userData = res.data;
++                    localStorage.setItem('token', userData.token);
++                    localStorage.setItem('user', JSON.stringify(userData));
++                    // Force reload to apply auth context
++                    window.location.href = '/app/dashboard';
++                }
++            } catch (err) {
++                console.error('OAuth2 login exchange failed:', err);
++                setError('Failed to securely exchange authentication token. Please try again.');
++                setTimeout(() => navigate('/login'), 3000);
++            }
++        };
++
++        fetchToken();
++    }, [navigate]);
++
++    return (
++        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#030712', color: 'white' }}>
++            <Zap size={40} className="animate-pulse text-sky-400 mb-4" />
++            <h2 className="text-xl font-bold mb-2">Securing your session...</h2>
++            {error ? (
++                <p className="text-red-400">{error}</p>
++            ) : (
++                <p className="text-gray-400 text-sm">Please wait while we finalize your login.</p>
++            )}
++        </div>
++    );
++};
++
++export default OAuthCallback;

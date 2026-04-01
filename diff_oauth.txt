@@ -1,0 +1,24 @@
+diff --git a/src/main/java/com/rigs/rigs/security/OAuth2LoginSuccessHandler.java b/src/main/java/com/rigs/rigs/security/OAuth2LoginSuccessHandler.java
+index 19af413..a1c82a4 100644
+--- a/src/main/java/com/rigs/rigs/security/OAuth2LoginSuccessHandler.java
++++ b/src/main/java/com/rigs/rigs/security/OAuth2LoginSuccessHandler.java
+@@ -99,12 +99,12 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
+ 
+                 log.info("✅ OAuth2 login successful for: {}", email);
+ 
+-                // Redirect to frontend with token
+-                getRedirectStrategy().sendRedirect(request, response,
+-                                frontendUrl + "/login?token=" + jwt
+-                                                + "&name=" + java.net.URLEncoder.encode(user.getName(), "UTF-8")
+-                                                + "&email=" + java.net.URLEncoder.encode(user.getEmail(), "UTF-8")
+-                                                + "&role=" + user.getRole()
+-                                                + "&id=" + user.getId());
++                request.getSession().setAttribute("oauthToken", jwt);
++                request.getSession().setAttribute("oauthName", user.getName());
++                request.getSession().setAttribute("oauthEmail", user.getEmail());
++                request.getSession().setAttribute("oauthRole", user.getRole());
++                request.getSession().setAttribute("oauthId", user.getId().toString());
++
++                getRedirectStrategy().sendRedirect(request, response, frontendUrl + "/oauth/callback");
+         }
+ }

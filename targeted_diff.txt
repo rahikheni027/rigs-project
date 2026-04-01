@@ -1,0 +1,196 @@
+diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+index 095e25c..f179c1d 100644
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
+ import Layout from './components/Layout';
+ import LandingPage from './pages/LandingPage';
+ import LoginPage from './pages/LoginPage';
++import OAuthCallback from './pages/OAuthCallback';
+ import RegisterPage from './pages/RegisterPage';
+ import ForgotPasswordPage from './pages/ForgotPasswordPage';
+ import NotFoundPage from './pages/NotFoundPage';
+@@ -32,6 +33,7 @@ function App() {
+             {/* Public routes */}
+             <Route path="/" element={<LandingPage />} />
+             <Route path="/login" element={<LoginPage />} />
++            <Route path="/oauth/callback" element={<OAuthCallback />} />
+             <Route path="/register" element={<RegisterPage />} />
+             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+ 
+diff --git a/frontend/src/pages/LoginPage.jsx b/frontend/src/pages/LoginPage.jsx
+index cf91d36..ab4b811 100644
+--- a/frontend/src/pages/LoginPage.jsx
++++ b/frontend/src/pages/LoginPage.jsx
+@@ -24,25 +24,7 @@ const LoginPage = () => {
+             setError('Your account has been locked. Please contact the administrator.');
+         }
+ 
+-        // Handle OAuth JWT token redirect — auto-login
+-        const token = searchParams.get('token');
+-        if (token) {
+-            const name = searchParams.get('name') || '';
+-            const email = searchParams.get('email') || '';
+-            const role = searchParams.get('role') || 'WORKER';
+-            const id = searchParams.get('id') || '';
+-            const userData = {
+-                token,
+-                name: decodeURIComponent(name),
+-                email: decodeURIComponent(email),
+-                roles: [`ROLE_${role}`],
+-                id,
+-            };
+-            localStorage.setItem('token', token);
+-            localStorage.setItem('user', JSON.stringify(userData));
+-            window.location.href = '/app/dashboard';
+-            return;
+-        }
++
+ 
+         // If user is already logged in, go to dashboard
+         if (user) {
+diff --git a/src/main/java/com/rigs/rigs/controller/AuthController.java b/src/main/java/com/rigs/rigs/controller/AuthController.java
+index d75d647..a011af7 100644
+--- a/src/main/java/com/rigs/rigs/controller/AuthController.java
++++ b/src/main/java/com/rigs/rigs/controller/AuthController.java
+@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.*;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.stream.Collectors;
++import jakarta.servlet.http.HttpServletRequest;
++import java.util.concurrent.ConcurrentHashMap;
+ 
+ @RestController
+ @RequestMapping("/api/auth")
+@@ -36,8 +38,31 @@ public class AuthController {
+     private final PasswordEncoder passwordEncoder;
+     private final JwtUtils jwtUtils;
+ 
++    private final ConcurrentHashMap<String, Long> requestCounts = new ConcurrentHashMap<>();
++    private final ConcurrentHashMap<String, Long> timeWindows = new ConcurrentHashMap<>();
++
++    private boolean isRateLimited(String ip) {
++        long now = System.currentTimeMillis();
++        long windowStart = timeWindows.computeIfAbsent(ip, k -> now);
++        
++        if (now - windowStart > 60000) { // 1 minute window
++            timeWindows.put(ip, now);
++            requestCounts.put(ip, 1L);
++            return false;
++        }
++        long count = requestCounts.getOrDefault(ip, 0L);
++        if (count >= 5) return true;
++        
++        requestCounts.put(ip, count + 1);
++        return false;
++    }
++
+     @PostMapping("/signin")
+-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
++    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request) {
++        if (isRateLimited(request.getRemoteAddr())) {
++            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
++                    .body(Map.of("error", "TOO_MANY_REQUESTS", "message", "Rate limit exceeded. Try again in 1 minute."));
++        }
+         try {
+             Authentication authentication = authenticationManager.authenticate(
+                     new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+@@ -87,7 +112,11 @@ public class AuthController {
+     }
+ 
+     @PostMapping("/signup")
+-    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
++    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest, HttpServletRequest request) {
++        if (isRateLimited(request.getRemoteAddr())) {
++            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
++                    .body(Map.of("error", "TOO_MANY_REQUESTS", "message", "Rate limit exceeded. Try again in 1 minute."));
++        }
+         if (userRepository.findByEmail(signUpRequest.getEmail()).isPresent()) {
+             return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
+         }
+@@ -108,4 +137,21 @@ public class AuthController {
+         return ResponseEntity.ok(new MessageResponse(
+                 "User registered successfully! Your account is pending admin approval. You will be able to login once an administrator approves your access."));
+     }
++
++    @GetMapping("/oauth2/success")
++    public ResponseEntity<?> getOAuth2Token(HttpServletRequest request) {
++        String token = (String) request.getSession().getAttribute("oauthToken");
++        if (token != null) {
++            Map<String, Object> data = Map.of(
++                    "token", token,
++                    "name", request.getSession().getAttribute("oauthName"),
++                    "email", request.getSession().getAttribute("oauthEmail"),
++                    "roles", List.of("ROLE_" + request.getSession().getAttribute("oauthRole")),
++                    "id", request.getSession().getAttribute("oauthId")
++            );
++            request.getSession().invalidate();
++            return ResponseEntity.ok(data);
++        }
++        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
++    }
+ }
+diff --git a/src/main/java/com/rigs/rigs/security/OAuth2LoginSuccessHandler.java b/src/main/java/com/rigs/rigs/security/OAuth2LoginSuccessHandler.java
+index 19af413..a1c82a4 100644
+--- a/src/main/java/com/rigs/rigs/security/OAuth2LoginSuccessHandler.java
++++ b/src/main/java/com/rigs/rigs/security/OAuth2LoginSuccessHandler.java
+@@ -99,12 +99,12 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
+ 
+                 log.info("✅ OAuth2 login successful for: {}", email);
+ 
+-                // Redirect to frontend with token
+-                getRedirectStrategy().sendRedirect(request, response,
+-                                frontendUrl + "/login?token=" + jwt
+-                                                + "&name=" + java.net.URLEncoder.encode(user.getName(), "UTF-8")
+-                                                + "&email=" + java.net.URLEncoder.encode(user.getEmail(), "UTF-8")
+-                                                + "&role=" + user.getRole()
+-                                                + "&id=" + user.getId());
++                request.getSession().setAttribute("oauthToken", jwt);
++                request.getSession().setAttribute("oauthName", user.getName());
++                request.getSession().setAttribute("oauthEmail", user.getEmail());
++                request.getSession().setAttribute("oauthRole", user.getRole());
++                request.getSession().setAttribute("oauthId", user.getId().toString());
++
++                getRedirectStrategy().sendRedirect(request, response, frontendUrl + "/oauth/callback");
+         }
+ }
+diff --git a/src/main/java/com/rigs/rigs/security/SecurityConfig.java b/src/main/java/com/rigs/rigs/security/SecurityConfig.java
+index 1e2b64a..f733681 100644
+--- a/src/main/java/com/rigs/rigs/security/SecurityConfig.java
++++ b/src/main/java/com/rigs/rigs/security/SecurityConfig.java
+@@ -3,6 +3,7 @@ package com.rigs.rigs.security;
+ import lombok.RequiredArgsConstructor;
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
++import org.springframework.beans.factory.annotation.Value;
+ import org.springframework.security.authentication.AuthenticationManager;
+ import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+ import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+@@ -65,10 +66,14 @@ public class SecurityConfig {
+         return http.build();
+     }
+ 
++    @Value("${rigs.frontend.url:http://localhost:5173}")
++    private String frontendUrl;
++
+     @Bean
+     public CorsConfigurationSource corsConfigurationSource() {
+         CorsConfiguration configuration = new CorsConfiguration();
+-        configuration.setAllowedOriginPatterns(List.of("*"));
++        // Allow localhost and the configured frontend URL
++        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://localhost:3000", frontendUrl));
+         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
+         configuration.setExposedHeaders(List.of("Authorization"));
+diff --git a/src/main/resources/application.properties b/src/main/resources/application.properties
+index 9dba907..f576494 100644
+--- a/src/main/resources/application.properties
++++ b/src/main/resources/application.properties
+@@ -47,5 +47,5 @@ rigs.upload.dir=./uploads
+ # ================= MQTT =================
+ mqtt.broker.url=ssl://802966d9c99f48a3a2436e3eacd58939.s1.eu.hivemq.cloud:8883
+ mqtt.client.id=rigs-backend-${random.uuid}
+-mqtt.username=rigs_client
+-mqtt.password=Kanzariya2413
++mqtt.username=${MQTT_USERNAME}
++mqtt.password=${MQTT_PASSWORD}
