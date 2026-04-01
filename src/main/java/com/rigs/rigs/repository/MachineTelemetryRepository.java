@@ -3,6 +3,9 @@ package com.rigs.rigs.repository;
 import com.rigs.rigs.entity.Machine;
 import com.rigs.rigs.entity.MachineTelemetry;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -13,4 +16,8 @@ public interface MachineTelemetryRepository extends JpaRepository<MachineTelemet
     Optional<MachineTelemetry> findFirstByMachineOrderByTimestampDesc(Machine machine);
 
     List<MachineTelemetry> findTop50ByMachineOrderByTimestampDesc(Machine machine);
+
+    @Modifying
+    @Query("DELETE FROM MachineTelemetry mt WHERE mt.timestamp < :cutoff")
+    int deleteByTimestampBefore(@Param("cutoff") java.time.LocalDateTime cutoff);
 }
