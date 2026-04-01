@@ -2,7 +2,7 @@
 -- Optimizing queries for large telemetry ingestion and dashboard loads
 
 -- 1. Index for fast telemetry queries (Dashboard charts querying by machine + time)
-CREATE INDEX idx_telemetry_machine_time ON machine_telemetry (machine_id, timestamp DESC);
+CREATE INDEX idx_telemetry_machine_time ON machine_telemetry (machine_id, `timestamp` DESC);
 
 -- 2. Index for quick machine status checks (Admin/Worker Dashboard KPI queries)
 CREATE INDEX idx_machine_status ON machines (status);
