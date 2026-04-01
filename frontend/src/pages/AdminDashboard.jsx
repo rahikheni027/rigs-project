@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
+import { useMachines } from '../context/MachineContext';
 import WorkerDashboard from './WorkerDashboard';
 import {
     Cpu, Shield, AlertTriangle, Users, UserCheck, UserX, Clock,
@@ -14,9 +15,9 @@ const S = {
 };
 
 const AdminDashboard = () => {
+    const { machines } = useMachines();
     const [users, setUsers] = useState([]);
     const [pendingUsers, setPendingUsers] = useState([]);
-    const [machines, setMachines] = useState([]);
     const [alerts, setAlerts] = useState([]);
     const [stats, setStats] = useState({});
     const [loading, setLoading] = useState(true);
@@ -29,26 +30,24 @@ const AdminDashboard = () => {
         setTimeout(() => setToast(null), 3000);
     };
 
-    const fetchData = async () => {
+    const fetchAdminData = async () => {
         try {
-            const [usersRes, pendRes, statsRes, machRes, alertRes] = await Promise.all([
+            const [usersRes, pendRes, statsRes, alertRes] = await Promise.all([
                 api.get('/admin/users'),
                 api.get('/admin/users/pending'),
                 api.get('/admin/stats'),
-                api.get('/machines'),
                 api.get('/alerts?size=10'),
             ]);
             setUsers(usersRes.data);
             setPendingUsers(pendRes.data);
             setStats(statsRes.data);
-            setMachines(machRes.data);
             setAlerts(alertRes.data.content || []);
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
     useEffect(() => {
-        fetchData();
-        const t = setInterval(fetchData, 10000);
+        fetchAdminData();
+        const t = setInterval(fetchAdminData, 10000);
         return () => clearInterval(t);
     }, []);
 
@@ -61,7 +60,7 @@ const AdminDashboard = () => {
             setStats(prev => ({ ...prev, activeWorkers: (prev.activeWorkers || 0) + 1, pendingApproval: Math.max(0, (prev.pendingApproval || 0) - 1) }));
             await api.put(`/admin/users/${id}/approve`);
             showToast(`Operator ${userToApprove?.name || ''} access granted`);
-        } catch (e) { showToast('Approval failed', 'error'); fetchData(); }
+        } catch (e) { showToast('Approval failed', 'error'); fetchAdminData(); }
         finally { setBtnLoading(p => ({ ...p, [`approve-${id}`]: false })); }
     };
 
@@ -73,7 +72,7 @@ const AdminDashboard = () => {
             setStats(prev => ({ ...prev, pendingApproval: Math.max(0, (prev.pendingApproval || 0) - 1) }));
             await api.put(`/admin/users/${id}/reject`);
             showToast(`${userToReject?.name || ''} access denied`);
-        } catch (e) { showToast('Rejection failed', 'error'); fetchData(); }
+        } catch (e) { showToast('Rejection failed', 'error'); fetchAdminData(); }
         finally { setBtnLoading(p => ({ ...p, [`reject-${id}`]: false })); }
     };
 
@@ -85,7 +84,7 @@ const AdminDashboard = () => {
             setStats(prev => ({ ...prev, activeWorkers: Math.max(0, (prev.activeWorkers || 0) - 1), totalWorkers: Math.max(0, (prev.totalWorkers || 0) - 1) }));
             await api.delete(`/admin/users/${id}`);
             showToast(`${userToRemove?.name || 'User'} removed from system`);
-        } catch (e) { showToast('Removal failed', 'error'); fetchData(); }
+        } catch (e) { showToast('Removal failed', 'error'); fetchAdminData(); }
         finally { setBtnLoading(p => ({ ...p, [`remove-${id}`]: false })); }
     };
 

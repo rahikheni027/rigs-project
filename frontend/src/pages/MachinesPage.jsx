@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useMachines } from '../context/MachineContext';
 import {
     Thermometer, Activity, Zap, Gauge, Wind, BarChart3, AlertTriangle,
     Play, Square, OctagonX, RotateCcw, Wrench, SlidersHorizontal,
@@ -53,39 +54,10 @@ const GaugeBar = ({ value, max, color, label, unit, warn }) => {
 };
 
 const MachinesPage = () => {
-    const [machines, setMachines] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { machines, setMachines } = useMachines();
     const [filter, setFilter] = useState('all');
     const [cmdLoading, setCmdLoading] = useState({});
     const { user } = useAuth();
-    const intervalRef = useRef(null);
-
-    const fetchMachines = async (signal) => {
-        try {
-            const opts = signal ? { signal } : {};
-            const r = await api.get('/machines', opts);
-            setMachines(r.data);
-        } catch (e) { 
-            if (e.name !== 'CanceledError') console.error(e); 
-        } finally { 
-            setLoading(false); 
-        }
-    };
-
-    useEffect(() => {
-        const controller = new AbortController();
-        
-        fetchMachines(controller.signal);
-        intervalRef.current = setInterval(() => {
-            fetchMachines(controller.signal);
-        }, 10000);
-        
-        return () => {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            controller.abort();
-        };
-    }, []);
-
     const handleCommand = async (id, cmd) => {
         setCmdLoading(p => ({ ...p, [`${id}-${cmd}`]: true }));
         
@@ -101,7 +73,7 @@ const MachinesPage = () => {
 
         try {
             await api.post(`/machines/${id}/command?command=${cmd}&issuedBy=${user?.name || 'operator'}`);
-            setTimeout(fetchMachines, 800);
+            // Instant broadcast will be triggered by SSE from the backend
         } catch (e) {
             console.error('Command failed:', e);
         } finally {
@@ -126,12 +98,12 @@ const MachinesPage = () => {
     const avgTemp = machines.length ? (machines.reduce((s, m) => s + (m.temperature || 0), 0) / machines.length).toFixed(1) : '--';
     const totalPower = machines.reduce((s, m) => s + (m.powerConsumption || 0), 0).toFixed(1);
 
-    if (loading) return (
+    if (!machines || machines.length === 0) return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: 14 }}>
             <div style={{ width: 48, height: 48, borderRadius: 10, background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Cpu size={22} color="#0ea5e9" style={{ animation: 'pulse 1.5s infinite' }} />
             </div>
-            <p style={{ color: '#64748b', fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>INITIALIZING MACHINE CONTROL...</p>
+            <p style={{ color: '#64748b', fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>INITIALIZING MACHINE CONTROL OR WAITING FOR DATA...</p>
         </div>
     );
 

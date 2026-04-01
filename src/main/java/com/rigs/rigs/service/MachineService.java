@@ -33,6 +33,7 @@ public class MachineService {
     private final MachineTelemetryRepository telemetryRepository;
     private final MachineSettingsRepository settingsRepository;
     private final AlertService alertService;
+    private final SseService sseService;
 
     @Transactional(readOnly = true)
     public List<MachineTelemetryResponse> getAllMachinesWithLatestTelemetry() {
@@ -143,6 +144,10 @@ public class MachineService {
         checkAlerts(machine, telemetry, settings);
 
         machineRepository.save(machine);
+
+        // INSTANT SSE PUSH
+        MachineTelemetryResponse response = buildTelemetryResponse(machine);
+        sseService.broadcastTelemetry(response);
     }
 
     @Transactional(readOnly = true)

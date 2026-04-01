@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
+import { useMachines } from '../context/MachineContext';
 import { LayoutDashboard, Shield, AlertTriangle, User, LogOut, Cpu, Zap, Radio, Clock, Sun, Moon, Settings } from 'lucide-react';
 
 const Navbar = () => {
@@ -11,6 +12,7 @@ const Navbar = () => {
     const location = useLocation();
     const { showToast } = useToast();
     const { theme, toggleTheme } = useTheme();
+    const { isOnline } = useMachines();
     const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
@@ -107,9 +109,9 @@ const Navbar = () => {
                     </button>
 
                     {/* System Status */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: 'rgba(34, 197, 94, 0.06)', border: '1px solid rgba(34, 197, 94, 0.15)', borderRadius: 6 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px rgba(34,197,94,0.5)', animation: 'pulse 2s infinite' }} />
-                        <span style={{ fontSize: 10, fontWeight: 700, color: '#4ade80', fontFamily: "'JetBrains Mono', monospace" }}>ONLINE</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: isOnline ? 'rgba(34, 197, 94, 0.06)' : 'rgba(239, 68, 68, 0.06)', border: `1px solid ${isOnline ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'}`, borderRadius: 6 }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: isOnline ? '#22c55e' : '#ef4444', boxShadow: isOnline ? '0 0 8px rgba(34,197,94,0.5)' : '0 0 8px rgba(239,68,68,0.5)', animation: isOnline ? 'pulse 2s infinite' : 'alarm-flash 1s infinite' }} />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: isOnline ? '#4ade80' : '#f87171', fontFamily: "'JetBrains Mono', monospace" }}>{isOnline ? 'STREAMING' : 'OFFLINE'}</span>
                     </div>
 
                     {/* Clock */}

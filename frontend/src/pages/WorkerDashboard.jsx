@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar } from 'recharts';
 import { motion } from 'framer-motion';
 import api from '../api/axios';
+import { useMachines } from '../context/MachineContext';
 import ProcessFlowDiagram from '../components/ProcessFlowDiagram';
 import {
     Cpu, Thermometer, Activity, Zap, Gauge, AlertTriangle, Signal, ChevronRight,
@@ -74,38 +75,42 @@ const OEEGauge = ({ value }) => {
 };
 
 const WorkerDashboard = () => {
-    const [machines, setMachines] = useState([]);
+    const { machines } = useMachines();
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [chartData, setChartData] = useState([]);
 
-    const fetchData = async () => {
+    const fetchAlerts = async () => {
         try {
-            const [machRes, alertRes] = await Promise.all([
-                api.get('/machines'),
-                api.get('/alerts?size=10'),
-            ]);
-            setMachines(machRes.data);
+            const alertRes = await api.get('/alerts?size=10');
             setAlerts(alertRes.data.content || []);
-
-            setChartData(prev => {
-                const now = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-                const avgTemp = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.temperature || 0), 0) / machRes.data.length : 0;
-                const avgVib = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.vibration || 0), 0) / machRes.data.length : 0;
-                const totalPower = machRes.data.reduce((s, m) => s + (m.powerConsumption || 0), 0);
-                const avgRpm = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.rpm || 0), 0) / machRes.data.length : 0;
-                const avgEff = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.efficiency || 0), 0) / machRes.data.length : 0;
-                const next = [...prev, { time: now, temp: avgTemp, vib: avgVib, power: totalPower, rpm: avgRpm, eff: avgEff }];
-                return next.length > 30 ? next.slice(-30) : next;
-            });
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
     useEffect(() => {
-        fetchData();
-        const t = setInterval(fetchData, 10000);
+        fetchAlerts();
+        const t = setInterval(fetchAlerts, 10000);
         return () => clearInterval(t);
     }, []);
+
+    // Build chart data directly from streaming machines state
+    useEffect(() => {
+        if (!machines || machines.length === 0) return;
+        setChartData(prev => {
+            const now = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            // Only add a new point if the time has changed (prevents 10s of points per second)
+            if (prev.length > 0 && prev[prev.length - 1].time === now) return prev;
+
+            const avgTemp = machines.reduce((s, m) => s + (m.temperature || 0), 0) / machines.length;
+            const avgVib = machines.reduce((s, m) => s + (m.vibration || 0), 0) / machines.length;
+            const totalPower = machines.reduce((s, m) => s + (m.powerConsumption || 0), 0);
+            const avgRpm = machines.reduce((s, m) => s + (m.rpm || 0), 0) / machines.length;
+            const avgEff = machines.reduce((s, m) => s + (m.efficiency || 0), 0) / machines.length;
+            
+            const next = [...prev, { time: now, temp: avgTemp, vib: avgVib, power: totalPower, rpm: avgRpm, eff: avgEff }];
+            return next.length > 40 ? next.slice(-40) : next;
+        });
+    }, [machines]);
 
     const runCount = machines.filter(m => m.status === 'RUNNING').length;
     const stoppedCount = machines.filter(m => m.status === 'STOPPED' || m.status === 'OFFLINE').length;
@@ -166,7 +171,7 @@ const WorkerDashboard = () => {
                             <span style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', fontFamily: "'JetBrains Mono', monospace" }}>LIVE</span>
                         </div>
                     </div>
-                    <p style={{ fontSize: 11, color: '#64748b', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>R.I.G.S. INDUSTRIAL SCADA · POLL INTERVAL 2s</p>
+                    <p style={{ fontSize: 11, color: '#64748b', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>R.I.G.S. INDUSTRIAL SCADA · REAL-TIME SSE STREAM</p>
                 </div>
                 {/* Alarm Summary */}
                 <div style={{ display: 'flex', gap: 6 }}>

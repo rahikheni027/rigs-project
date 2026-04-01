@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useMachines } from '../context/MachineContext';
 import Navbar from '../components/Navbar';
 import { Zap, Wifi, WifiOff, Clock, Radio, Database, Server, Shield } from 'lucide-react';
-import api from '../api/axios';
 
 const Layout = () => {
     const { user, loading } = useAuth();
-    const [connected, setConnected] = useState(true);
-    const [lastRefresh, setLastRefresh] = useState(new Date());
-    const [dataPoints, setDataPoints] = useState(0);
+    const { isOnline, dataPoints, lastSync } = useMachines();
     const [uptime, setUptime] = useState(0);
 
     useEffect(() => {
@@ -18,22 +16,6 @@ const Layout = () => {
             setUptime(Math.floor((Date.now() - startTime) / 1000));
         }, 1000);
         return () => clearInterval(uptimeTimer);
-    }, []);
-
-    useEffect(() => {
-        const checkConnection = async () => {
-            try {
-                await api.get('/machines');
-                setConnected(true);
-                setLastRefresh(new Date());
-                setDataPoints(p => p + 1);
-            } catch (e) {
-                setConnected(false);
-            }
-        };
-        checkConnection();
-        const interval = setInterval(checkConnection, 15000);
-        return () => clearInterval(interval);
     }, []);
 
     const formatUptime = (s) => {
@@ -82,7 +64,7 @@ const Layout = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     {/* Connection Status */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        {connected ? (
+                        {isOnline ? (
                             <>
                                 <div style={{
                                     width: 6, height: 6, borderRadius: '50%', background: '#22c55e',
@@ -90,7 +72,7 @@ const Layout = () => {
                                     animation: 'pulse 3s infinite',
                                 }} />
                                 <Wifi size={10} color="#22c55e" />
-                                <span style={{ color: '#4ade80' }}>CONNECTED</span>
+                                <span style={{ color: '#4ade80' }}>STREAMING</span>
                             </>
                         ) : (
                             <>
@@ -118,7 +100,7 @@ const Layout = () => {
                     {/* Protocol */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Radio size={10} color="#0ea5e9" />
-                        <span>MQTT/TLS · POLL 15s</span>
+                        <span>SSE · PUSH DIRECT</span>
                     </div>
                 </div>
 
@@ -126,7 +108,7 @@ const Layout = () => {
                     {/* Last Sync */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Clock size={10} color="#475569" />
-                        <span>SYNC: {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+                        <span>SYNC: {lastSync.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
                     </div>
 
                     <span style={{ color: '#1e293b' }}>│</span>

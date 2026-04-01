@@ -3,10 +3,13 @@ package com.rigs.rigs.controller;
 import com.rigs.rigs.dto.MachineTelemetryResponse;
 import com.rigs.rigs.service.MachineService;
 import com.rigs.rigs.service.CommandService;
+import com.rigs.rigs.service.SseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 import java.util.Map;
@@ -19,6 +22,13 @@ public class MachineController {
 
     private final MachineService machineService;
     private final CommandService commandService;
+    private final SseService sseService;
+
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamMachineEvents() {
+        log.debug("New SSE connection established");
+        return sseService.createConnection();
+    }
 
     @GetMapping
     public ResponseEntity<List<MachineTelemetryResponse>> getAllMachines() {

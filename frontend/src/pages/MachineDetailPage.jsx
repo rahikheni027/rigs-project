@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { motion } from 'framer-motion';
 import api from '../api/axios';
+import { useMachines } from '../context/MachineContext';
 import {
     ArrowLeft, Thermometer, Activity, Zap, Gauge, Wind, BarChart3, AlertTriangle,
     Play, Square, OctagonX, RotateCcw, Wrench, SlidersHorizontal, Cpu,
@@ -141,33 +142,54 @@ const VirtualMachineVisualizer = ({ status, type }) => {
 
 const MachineDetailPage = () => {
     const { machineId } = useParams();
+    const { machines, setMachines } = useMachines();
+    const liveMachine = machines?.find(m => m.machineId === machineId);
+    
     const [machine, setMachine] = useState(null);
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [cmdLoading, setCmdLoading] = useState({});
 
-    const fetchData = async () => {
-        try {
-            const [machRes, histRes] = await Promise.all([
-                api.get(`/machines/${machineId}/telemetry`),
-                api.get(`/machines/${machineId}/telemetry/history`),
-            ]);
-            setMachine(machRes.data);
-            const histData = (histRes.data || []).slice(-40).map((d, i) => ({
-                time: d.timestamp ? new Date(d.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : `T${i}`,
-                temp: d.temperature, vib: d.vibration, rpm: d.rpm,
-                pres: d.pressure, power: d.powerConsumption, eff: d.efficiency,
-                cur: d.currentDraw, err: d.errorRate,
-            }));
-            setHistory(histData);
-        } catch (e) { console.error(e); } finally { setLoading(false); }
-    };
-
+    // Fetch initial state and history only once
     useEffect(() => {
-        fetchData();
-        const t = setInterval(fetchData, 10000);
-        return () => clearInterval(t);
+        const fetchInitialInfo = async () => {
+            try {
+                const [machRes, histRes] = await Promise.all([
+                    api.get(`/machines/${machineId}/telemetry`),
+                    api.get(`/machines/${machineId}/telemetry/history`),
+                ]);
+                setMachine(machRes.data);
+                
+                const histData = (histRes.data || []).slice(-40).map((d, i) => ({
+                    time: d.timestamp ? new Date(d.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : `T${i}`,
+                    temp: d.temperature, vib: d.vibration, rpm: d.rpm,
+                    pres: d.pressure, power: d.powerConsumption, eff: d.efficiency,
+                    cur: d.currentDraw, err: d.errorRate,
+                }));
+                setHistory(histData);
+            } catch (e) { console.error(e); } finally { setLoading(false); }
+        };
+        fetchInitialInfo();
     }, [machineId]);
+
+    // Handle real-time SSE updates for the specific machine
+    useEffect(() => {
+        if (!liveMachine) return;
+        setMachine(prev => ({ ...prev, ...liveMachine }));
+        
+        setHistory(prev => {
+            const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            if (prev.length > 0 && prev[prev.length - 1].time === now) return prev;
+            
+            const next = [...prev, {
+                time: now,
+                temp: liveMachine.temperature, vib: liveMachine.vibration, rpm: liveMachine.rpm,
+                pres: liveMachine.pressure, power: liveMachine.powerConsumption, eff: liveMachine.efficiency,
+                cur: liveMachine.currentDraw, err: liveMachine.errorRate,
+            }];
+            return next.length > 50 ? next.slice(-50) : next;
+        });
+    }, [liveMachine]);
 
     const handleCommand = async (cmd) => {
         setCmdLoading(p => ({ ...p, [cmd]: true }));
@@ -184,7 +206,7 @@ const MachineDetailPage = () => {
 
         try {
             await api.post(`/machines/${machineId}/command?command=${cmd}&issuedBy=operator`);
-            setTimeout(fetchData, 800);
+            // Global context is instantly broadcasted via SSE
         } catch (e) { console.error(e); }
         finally { setTimeout(() => setCmdLoading(p => ({ ...p, [cmd]: false })), 1200); }
     };

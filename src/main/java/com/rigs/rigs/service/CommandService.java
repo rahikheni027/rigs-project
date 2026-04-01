@@ -19,6 +19,8 @@ public class CommandService {
     private final CommandRepository commandRepository;
     private final MachineRepository machineRepository;
     private final MqttListenerService mqttService;
+    private final MachineService machineService;
+    private final SseService sseService;
 
     @Transactional
     public Command issueCommand(Long machineId, String type, String parameters, String issuedBy) {
@@ -44,6 +46,11 @@ public class CommandService {
         log.info("Issuer {} sent {} to machine {}", issuedBy, type, machineId);
 
         mqttService.sendCommand(machineId, type);
+
+        // INSTANT SSE PUSH ON COMMAND OVERRIDE
+        if (targetStatus != null) {
+            sseService.broadcastTelemetry(machineService.getMachineTelemetry(machineId));
+        }
 
         return cmd;
     }
