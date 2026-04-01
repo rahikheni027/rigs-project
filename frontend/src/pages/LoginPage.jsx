@@ -24,7 +24,25 @@ const LoginPage = () => {
             setError('Your account has been locked. Please contact the administrator.');
         }
 
-
+        // Handle OAuth JWT token redirect — auto-login
+        const token = searchParams.get('token');
+        if (token) {
+            const name = searchParams.get('name') || '';
+            const email = searchParams.get('email') || '';
+            const role = searchParams.get('role') || 'WORKER';
+            const id = searchParams.get('id') || '';
+            const userData = {
+                token,
+                name: decodeURIComponent(name),
+                email: decodeURIComponent(email),
+                roles: [`ROLE_${role}`],
+                id,
+            };
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(userData));
+            window.location.href = '/app/dashboard';
+            return;
+        }
 
         // If user is already logged in, go to dashboard
         if (user) {

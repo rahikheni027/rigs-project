@@ -24,8 +24,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import jakarta.servlet.http.HttpServletRequest;
-import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -38,31 +36,8 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
 
-    private final ConcurrentHashMap<String, Long> requestCounts = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Long> timeWindows = new ConcurrentHashMap<>();
-
-    private boolean isRateLimited(String ip) {
-        long now = System.currentTimeMillis();
-        long windowStart = timeWindows.computeIfAbsent(ip, k -> now);
-        
-        if (now - windowStart > 60000) { // 1 minute window
-            timeWindows.put(ip, now);
-            requestCounts.put(ip, 1L);
-            return false;
-        }
-        long count = requestCounts.getOrDefault(ip, 0L);
-        if (count >= 5) return true;
-        
-        requestCounts.put(ip, count + 1);
-        return false;
-    }
-
     @PostMapping("/signin")
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request) {
-        if (isRateLimited(request.getRemoteAddr())) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(Map.of("error", "TOO_MANY_REQUESTS", "message", "Rate limit exceeded. Try again in 1 minute."));
-        }
+    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
@@ -112,11 +87,7 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest, HttpServletRequest request) {
-        if (isRateLimited(request.getRemoteAddr())) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(Map.of("error", "TOO_MANY_REQUESTS", "message", "Rate limit exceeded. Try again in 1 minute."));
-        }
+    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
         if (userRepository.findByEmail(signUpRequest.getEmail()).isPresent()) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
         }
@@ -136,22 +107,5 @@ public class AuthController {
 
         return ResponseEntity.ok(new MessageResponse(
                 "User registered successfully! Your account is pending admin approval. You will be able to login once an administrator approves your access."));
-    }
-
-    @GetMapping("/oauth2/success")
-    public ResponseEntity<?> getOAuth2Token(HttpServletRequest request) {
-        String token = (String) request.getSession().getAttribute("oauthToken");
-        if (token != null) {
-            Map<String, Object> data = Map.of(
-                    "token", token,
-                    "name", request.getSession().getAttribute("oauthName"),
-                    "email", request.getSession().getAttribute("oauthEmail"),
-                    "roles", List.of("ROLE_" + request.getSession().getAttribute("oauthRole")),
-                    "id", request.getSession().getAttribute("oauthId")
-            );
-            request.getSession().invalidate();
-            return ResponseEntity.ok(data);
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 }
