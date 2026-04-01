@@ -25,6 +25,12 @@ public class CommandService {
         Machine machine = machineRepository.findById(machineId)
                 .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + machineId));
 
+        String targetStatus = mapCommandToStatus(type);
+        if (targetStatus != null) {
+            machine.setStatus(targetStatus);
+            machineRepository.save(machine);
+        }
+
         Command cmd = Command.builder()
                 .machine(machine)
                 .commandType(type)
@@ -40,5 +46,16 @@ public class CommandService {
         mqttService.sendCommand(machineId, type);
 
         return cmd;
+    }
+
+    private String mapCommandToStatus(String command) {
+        return switch (command.toUpperCase()) {
+            case "START", "RESET" -> "RUNNING";
+            case "STOP" -> "STOPPED";
+            case "EMERGENCY_STOP" -> "EMERGENCY";
+            case "MAINTENANCE_MODE" -> "MAINTENANCE";
+            case "CALIBRATION" -> "CALIBRATING";
+            default -> null;
+        };
     }
 }
