@@ -5,6 +5,7 @@ WORKDIR /app
 COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
+RUN chmod +x ./mvnw
 RUN ./mvnw dependency:go-offline -B
 
 # Copy the rest of the source code and build the application
