@@ -60,17 +60,30 @@ const MachinesPage = () => {
     const { user } = useAuth();
     const intervalRef = useRef(null);
 
-    const fetchMachines = async () => {
+    const fetchMachines = async (signal) => {
         try {
-            const r = await api.get('/machines');
+            const opts = signal ? { signal } : {};
+            const r = await api.get('/machines', opts);
             setMachines(r.data);
-        } catch (e) { console.error(e); } finally { setLoading(false); }
+        } catch (e) { 
+            if (e.name !== 'CanceledError') console.error(e); 
+        } finally { 
+            setLoading(false); 
+        }
     };
 
     useEffect(() => {
-        fetchMachines();
-        intervalRef.current = setInterval(fetchMachines, 10000);
-        return () => clearInterval(intervalRef.current);
+        const controller = new AbortController();
+        
+        fetchMachines(controller.signal);
+        intervalRef.current = setInterval(() => {
+            fetchMachines(controller.signal);
+        }, 10000);
+        
+        return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+            controller.abort();
+        };
     }, []);
 
     const handleCommand = async (id, cmd) => {

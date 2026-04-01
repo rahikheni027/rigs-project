@@ -14,19 +14,34 @@ const AlertsPage = () => {
     const [filter, setFilter] = useState('all');
     const [autoRefresh, setAutoRefresh] = useState(true);
 
-    const fetchAlerts = async () => {
-        try {
-            const r = await api.get('/alerts');
-            setAlerts(r.data.content || []);
-        } catch (e) { console.error(e); } finally { setLoading(false); }
-    };
-
     useEffect(() => {
+        let isMounted = true;
+        const controller = new AbortController();
+
+        const fetchAlerts = async () => {
+            try {
+                const r = await api.get('/alerts', { signal: controller.signal });
+                if (!isMounted) return;
+                setAlerts(r.data.content || []);
+            } catch (e) { 
+                if (!isMounted || e.name === 'CanceledError') return;
+                console.error(e); 
+            } finally { 
+                if (isMounted) setLoading(false); 
+            }
+        };
+
         fetchAlerts();
+        let t;
         if (autoRefresh) {
-            const t = setInterval(fetchAlerts, 10000);
-            return () => clearInterval(t);
+            t = setInterval(fetchAlerts, 10000);
         }
+        
+        return () => {
+            isMounted = false;
+            if (t) clearInterval(t);
+            controller.abort();
+        };
     }, [filter, autoRefresh]);
 
     const handleAck = async (id) => {

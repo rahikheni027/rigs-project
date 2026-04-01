@@ -1,0 +1,3 @@
+757bbd4 Refactor: improve maintainability with AppConstants, typed generics, and fixed @Transactional self-invocations
+948b60d Optimize frontend polling loop and reduce DataInitializer machines from 20 to 5
+316e3b5 Fix polling and commands from frontend

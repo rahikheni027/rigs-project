@@ -16,7 +16,7 @@ import java.util.Date;
 @Slf4j
 public class JwtUtils {
 
-    @Value("${rigs.jwt.secret:SuperSecretKeyForRigsEnterpriseUpgrade2026!}")
+    @Value("${RIGS_JWT_SECRET}")
     private String jwtSecret;
 
     @Value("${rigs.jwt.expirationMs:86400000}") // 24 hours

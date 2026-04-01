@@ -44,30 +44,45 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [chartData, setChartData] = useState([]);
 
-    const fetchData = async () => {
-        try {
-            const [machRes, alertRes] = await Promise.all([
-                api.get('/machines'),
-                api.get('/alerts?size=10'),
-            ]);
-            setMachines(machRes.data);
-            setAlerts(alertRes.data.content || []);
-
-            setChartData(prev => {
-                const now = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                const avgTemp = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.temperature || 0), 0) / machRes.data.length : 0;
-                const totalPower = machRes.data.reduce((s, m) => s + (m.powerConsumption || 0), 0);
-                const avgEff = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.efficiency || 0), 0) / machRes.data.length : 0;
-                const next = [...prev, { time: now, temp: avgTemp, power: totalPower, eff: avgEff }];
-                return next.length > 30 ? next.slice(-30) : next;
-            });
-        } catch (e) { console.error(e); } finally { setLoading(false); }
-    };
-
     useEffect(() => {
+        let isMounted = true;
+        const controller = new AbortController();
+
+        const fetchData = async () => {
+            try {
+                const [machRes, alertRes] = await Promise.all([
+                    api.get('/machines', { signal: controller.signal }),
+                    api.get('/alerts?size=10', { signal: controller.signal }),
+                ]);
+                if (!isMounted) return;
+                
+                setMachines(machRes.data);
+                setAlerts(alertRes.data.content || []);
+
+                setChartData(prev => {
+                    const now = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    const avgTemp = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.temperature || 0), 0) / machRes.data.length : 0;
+                    const totalPower = machRes.data.reduce((s, m) => s + (m.powerConsumption || 0), 0);
+                    const avgEff = machRes.data.length ? machRes.data.reduce((s, m) => s + (m.efficiency || 0), 0) / machRes.data.length : 0;
+                    const next = [...prev, { time: now, temp: avgTemp, power: totalPower, eff: avgEff }];
+                    return next.length > 30 ? next.slice(-30) : next;
+                });
+            } catch (e) { 
+                if (!isMounted || e.name === 'CanceledError') return;
+                console.error(e); 
+            } finally { 
+                if (isMounted) setLoading(false); 
+            }
+        };
+
         fetchData();
         const t = setInterval(fetchData, 10000);
-        return () => clearInterval(t);
+        
+        return () => {
+            isMounted = false;
+            clearInterval(t);
+            controller.abort();
+        };
     }, []);
 
     const runCount = machines.filter(m => m.status === 'RUNNING').length;

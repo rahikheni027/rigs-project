@@ -1,0 +1,1145 @@
+diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+index 095e25c..3ba9583 100644
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ -2,6 +2,7 @@ import React from 'react';
+ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+ import { AuthProvider, useAuth } from './context/AuthContext';
+ import { ThemeProvider } from './context/ThemeContext';
++import { PollingProvider } from './context/PollingContext';
+ import Layout from './components/Layout';
+ import LandingPage from './pages/LandingPage';
+ import LoginPage from './pages/LoginPage';
+@@ -27,37 +28,39 @@ function App() {
+   return (
+     <ThemeProvider>
+       <AuthProvider>
+-        <BrowserRouter>
+-          <Routes>
+-            {/* Public routes */}
+-            <Route path="/" element={<LandingPage />} />
+-            <Route path="/login" element={<LoginPage />} />
+-            <Route path="/register" element={<RegisterPage />} />
+-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
++        <PollingProvider>
++          <BrowserRouter>
++            <Routes>
++              {/* Public routes */}
++              <Route path="/" element={<LandingPage />} />
++              <Route path="/login" element={<LoginPage />} />
++              <Route path="/register" element={<RegisterPage />} />
++              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+ 
+-            {/* Protected layout */}
+-            <Route path="/app" element={<Layout />}>
+-              <Route index element={<Navigate to="/app/dashboard" replace />} />
+-              <Route path="dashboard" element={<DashboardRouter />} />
+-              <Route path="machines" element={<MachinesPage />} />
+-              <Route path="machines/:id" element={<MachineDetailPage />} />
+-              <Route path="alerts" element={<AlertsPage />} />
+-              <Route path="admin" element={<AdminDashboard />} />
+-              <Route path="profile" element={<ProfilePage />} />
+-              <Route path="settings" element={<SettingsPage />} />
+-            </Route>
++              {/* Protected layout */}
++              <Route path="/app" element={<Layout />}>
++                <Route index element={<Navigate to="/app/dashboard" replace />} />
++                <Route path="dashboard" element={<DashboardRouter />} />
++                <Route path="machines" element={<MachinesPage />} />
++                <Route path="machines/:id" element={<MachineDetailPage />} />
++                <Route path="alerts" element={<AlertsPage />} />
++                <Route path="admin" element={<AdminDashboard />} />
++                <Route path="profile" element={<ProfilePage />} />
++                <Route path="settings" element={<SettingsPage />} />
++              </Route>
+ 
+-            {/* Legacy redirects */}
+-            <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
+-            <Route path="/machines" element={<Navigate to="/app/machines" replace />} />
+-            <Route path="/alerts" element={<Navigate to="/app/alerts" replace />} />
+-            <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
+-            <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
++              {/* Legacy redirects */}
++              <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
++              <Route path="/machines" element={<Navigate to="/app/machines" replace />} />
++              <Route path="/alerts" element={<Navigate to="/app/alerts" replace />} />
++              <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
++              <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
+ 
+-            {/* 404 catch-all */}
+-            <Route path="*" element={<NotFoundPage />} />
+-          </Routes>
+-        </BrowserRouter>
++              {/* 404 catch-all */}
++              <Route path="*" element={<NotFoundPage />} />
++            </Routes>
++          </BrowserRouter>
++        </PollingProvider>
+       </AuthProvider>
+     </ThemeProvider>
+   );
+diff --git a/frontend/src/context/PollingContext.jsx b/frontend/src/context/PollingContext.jsx
+new file mode 100644
+index 0000000..dcefb0b
+--- /dev/null
++++ b/frontend/src/context/PollingContext.jsx
+@@ -0,0 +1,40 @@
++import React, { createContext, useContext, useState, useEffect } from 'react';
++
++const PollingContext = createContext(null);
++
++export const PollingProvider = ({ children }) => {
++    const [pollInterval, setPollIntervalState] = useState(() => {
++        const saved = localStorage.getItem('rigs-refresh');
++        return saved ? Number(saved) : 5;
++    });
++
++    const setPollInterval = (seconds) => {
++        const val = Number(seconds);
++        if (isNaN(val) || val < 1) return;
++        setPollIntervalState(val);
++        localStorage.setItem('rigs-refresh', String(val));
++    };
++
++    // Sync across tabs/windows
++    useEffect(() => {
++        const onStorage = (e) => {
++            if (e.key === 'rigs-refresh' && e.newValue) {
++                setPollIntervalState(Number(e.newValue));
++            }
++        };
++        window.addEventListener('storage', onStorage);
++        return () => window.removeEventListener('storage', onStorage);
++    }, []);
++
++    return (
++        <PollingContext.Provider value={{ pollInterval, setPollInterval }}>
++            {children}
++        </PollingContext.Provider>
++    );
++};
++
++export const usePoll = () => {
++    const ctx = useContext(PollingContext);
++    if (!ctx) throw new Error('usePoll must be used inside <PollingProvider>');
++    return ctx;
++};
+diff --git a/frontend/src/pages/Dashboard.jsx b/frontend/src/pages/Dashboard.jsx
+index 333e8da..279661e 100644
+--- a/frontend/src/pages/Dashboard.jsx
++++ b/frontend/src/pages/Dashboard.jsx
+@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
+ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+ import { motion } from 'framer-motion';
+ import api from '../api/axios';
++import { usePoll } from '../context/PollingContext';
+ import {
+     Cpu, Thermometer, Zap, AlertTriangle, Signal, Shield, Clock,
+     Wifi, BarChart3, ChevronRight
+@@ -43,6 +44,7 @@ const Dashboard = () => {
+     const [alerts, setAlerts] = useState([]);
+     const [loading, setLoading] = useState(true);
+     const [chartData, setChartData] = useState([]);
++    const { pollInterval } = usePoll();
+ 
+     const fetchData = async () => {
+         try {
+@@ -65,10 +67,23 @@ const Dashboard = () => {
+     };
+ 
+     useEffect(() => {
+-        fetchData();
+-        const t = setInterval(fetchData, 10000);
+-        return () => clearInterval(t);
+-    }, []);
++        let isMounted = true;
++        let timeoutId;
++
++        const poll = async () => {
++            if (!isMounted) return;
++            await fetchData();
++            if (isMounted) {
++                timeoutId = setTimeout(poll, pollInterval * 1000);
++            }
++        };
++
++        poll();
++        return () => {
++            isMounted = false;
++            clearTimeout(timeoutId);
++        };
++    }, [pollInterval]);
+ 
+     const runCount = machines.filter(m => m.status === 'RUNNING').length;
+     const alertCount = machines.filter(m => m.status === 'EMERGENCY' || m.maintenanceAlert).length;
+diff --git a/frontend/src/pages/MachinesPage.jsx b/frontend/src/pages/MachinesPage.jsx
+index df91353..75851fa 100644
+--- a/frontend/src/pages/MachinesPage.jsx
++++ b/frontend/src/pages/MachinesPage.jsx
+@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
+ import { Link } from 'react-router-dom';
+ import api from '../api/axios';
+ import { useAuth } from '../context/AuthContext';
++import { usePoll } from '../context/PollingContext';
+ import {
+     Thermometer, Activity, Zap, Gauge, Wind, BarChart3, AlertTriangle,
+     Play, Square, OctagonX, RotateCcw, Wrench, SlidersHorizontal,
+@@ -57,7 +58,9 @@ const MachinesPage = () => {
+     const [loading, setLoading] = useState(true);
+     const [filter, setFilter] = useState('all');
+     const [cmdLoading, setCmdLoading] = useState({});
++    const [cmdError, setCmdError] = useState(null);
+     const { user } = useAuth();
++    const { pollInterval } = usePoll();
+     const intervalRef = useRef(null);
+ 
+     const fetchMachines = async () => {
+@@ -68,20 +71,54 @@ const MachinesPage = () => {
+     };
+ 
+     useEffect(() => {
+-        fetchMachines();
+-        intervalRef.current = setInterval(fetchMachines, 10000);
+-        return () => clearInterval(intervalRef.current);
+-    }, []);
++        let isMounted = true;
++        let timeoutId;
++
++        const poll = async () => {
++            if (!isMounted) return;
++            await fetchMachines();
++            if (isMounted) {
++                timeoutId = setTimeout(poll, pollInterval * 1000);
++            }
++        };
++
++        poll();
++        return () => {
++            isMounted = false;
++            clearTimeout(timeoutId);
++        };
++    }, [pollInterval]);
+ 
+     const handleCommand = async (id, cmd) => {
+         setCmdLoading(p => ({ ...p, [`${id}-${cmd}`]: true }));
++        setCmdError(null);
++
++        // Optimistic UI update
++        const expectedStatus =
++            cmd === 'START' || cmd === 'RESET' ? 'RUNNING' :
++                cmd === 'STOP' ? 'STOPPED' :
++                    cmd === 'EMERGENCY_STOP' ? 'EMERGENCY' :
++                        cmd === 'MAINTENANCE_MODE' ? 'MAINTENANCE' :
++                            cmd === 'CALIBRATION' ? 'CALIBRATING' : undefined;
++
++        if (expectedStatus) {
++            setMachines(prev => prev.map(m => m.machineId === id ? { ...m, status: expectedStatus } : m));
++        }
++
+         try {
+-            await api.post(`/machines/${id}/command?command=${cmd}&issuedBy=${user?.name || 'operator'}`);
+-            setTimeout(fetchMachines, 800);
++            const params = new URLSearchParams({
++                command: cmd,
++                issuedBy: user?.name || 'operator',
++            });
++            await api.post(`/machines/${id}/command?${params.toString()}`);
++            setTimeout(fetchMachines, 600);
+         } catch (e) {
+             console.error('Command failed:', e);
++            const msg = e.response?.data?.message || e.message || 'Command failed';
++            setCmdError(`[${cmd}] ${msg}`);
++            setTimeout(() => setCmdError(null), 4000);
+         } finally {
+-            setTimeout(() => setCmdLoading(p => ({ ...p, [`${id}-${cmd}`]: false })), 1200);
++            setTimeout(() => setCmdLoading(p => ({ ...p, [`${id}-${cmd}`]: false })), 1000);
+         }
+     };
+ 
+@@ -113,6 +150,28 @@ const MachinesPage = () => {
+ 
+     return (
+         <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#f1f5f9' }}>
++            {/* Command error toast */}
++            {cmdError && (
++                <div style={{
++                    position: 'fixed', top: 16, right: 16, zIndex: 9999,
++                    background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
++                    borderRadius: 8, padding: '10px 16px', color: '#f87171',
++                    fontSize: 12, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
++                    display: 'flex', alignItems: 'center', gap: 8,
++                    boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
++                }}>
++                    <AlertTriangle size={14} /> {cmdError}
++                </div>
++            )}
++            {/* Poll-rate indicator */}
++            <div style={{
++                position: 'fixed', bottom: 16, right: 16, zIndex: 999,
++                background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(14,165,233,0.15)',
++                borderRadius: 6, padding: '4px 10px', fontSize: 9, color: '#38bdf8',
++                fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
++            }}>
++                POLL {pollInterval}s
++            </div>
+             {/* Header */}
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                 <div>
+diff --git a/frontend/src/pages/SettingsPage.jsx b/frontend/src/pages/SettingsPage.jsx
+index ed06746..8b7eb30 100644
+--- a/frontend/src/pages/SettingsPage.jsx
++++ b/frontend/src/pages/SettingsPage.jsx
+@@ -1,16 +1,43 @@
+-import React, { useState } from 'react';
++import { useState } from 'react';
+ import { useTheme } from '../context/ThemeContext';
++import { usePoll } from '../context/PollingContext';
+ import { Settings, Sun, Moon, Bell, RefreshCw, Shield, Monitor, Palette, Volume2, Save, Check } from 'lucide-react';
+ 
++const Toggle = ({ value, onChange, label, desc, icon: Icon, color }) => (
++    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
++        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
++            <div style={{ width: 34, height: 34, borderRadius: 8, background: `${color}15`, border: `1px solid ${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
++                <Icon size={15} color={color} />
++            </div>
++            <div>
++                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{label}</div>
++                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{desc}</div>
++            </div>
++        </div>
++        <button onClick={onChange} style={{
++            width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
++            background: value ? '#22c55e' : 'var(--toggle-off)',
++            position: 'relative', transition: 'all 0.2s',
++        }}>
++            <div style={{
++                width: 18, height: 18, borderRadius: '50%', background: 'white',
++                position: 'absolute', top: 3,
++                left: value ? 23 : 3, transition: 'left 0.2s',
++            }} />
++        </button>
++    </div>
++);
++
+ const SettingsPage = () => {
+     const { theme, toggleTheme } = useTheme();
+-    const [refreshRate, setRefreshRate] = useState(localStorage.getItem('rigs-refresh') || '2');
++    const { pollInterval, setPollInterval } = usePoll();
++    const [refreshRate, setRefreshRate] = useState(String(pollInterval));
+     const [notifications, setNotifications] = useState(localStorage.getItem('rigs-notif') !== 'false');
+     const [soundAlerts, setSoundAlerts] = useState(localStorage.getItem('rigs-sound') !== 'false');
+     const [saved, setSaved] = useState(false);
+ 
+     const handleSave = () => {
+-        localStorage.setItem('rigs-refresh', refreshRate);
++        setPollInterval(Number(refreshRate));
+         localStorage.setItem('rigs-notif', notifications);
+         localStorage.setItem('rigs-sound', soundAlerts);
+         setSaved(true);
+@@ -28,31 +55,6 @@ const SettingsPage = () => {
+         },
+     };
+ 
+-    const Toggle = ({ value, onChange, label, desc, icon: Icon, color }) => (
+-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
+-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+-                <div style={{ width: 34, height: 34, borderRadius: 8, background: `${color}15`, border: `1px solid ${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+-                    <Icon size={15} color={color} />
+-                </div>
+-                <div>
+-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{label}</div>
+-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{desc}</div>
+-                </div>
+-            </div>
+-            <button onClick={onChange} style={{
+-                width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+-                background: value ? '#22c55e' : 'var(--toggle-off)',
+-                position: 'relative', transition: 'all 0.2s',
+-            }}>
+-                <div style={{
+-                    width: 18, height: 18, borderRadius: '50%', background: 'white',
+-                    position: 'absolute', top: 3,
+-                    left: value ? 23 : 3, transition: 'left 0.2s',
+-                }} />
+-            </button>
+-        </div>
+-    );
+-
+     return (
+         <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: 'var(--text-primary)', maxWidth: 700, margin: '0 auto' }}>
+             <div style={{ marginBottom: 20 }}>
+diff --git a/rigs_simulator/__pycache__/machine.cpython-312.pyc b/rigs_simulator/__pycache__/machine.cpython-312.pyc
+index 792fd50..3f6fa2e 100644
+Binary files a/rigs_simulator/__pycache__/machine.cpython-312.pyc and b/rigs_simulator/__pycache__/machine.cpython-312.pyc differ
+diff --git a/rigs_simulator/__pycache__/simulator.cpython-312.pyc b/rigs_simulator/__pycache__/simulator.cpython-312.pyc
+index c3a5b6c..513d367 100644
+Binary files a/rigs_simulator/__pycache__/simulator.cpython-312.pyc and b/rigs_simulator/__pycache__/simulator.cpython-312.pyc differ
+diff --git a/src/main/java/com/rigs/rigs/config/DataInitializer.java b/src/main/java/com/rigs/rigs/config/DataInitializer.java
+index 0d79bff..fa96751 100644
+--- a/src/main/java/com/rigs/rigs/config/DataInitializer.java
++++ b/src/main/java/com/rigs/rigs/config/DataInitializer.java
+@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
+ import org.springframework.security.crypto.password.PasswordEncoder;
+ 
+ import java.time.LocalDateTime;
++import com.rigs.rigs.util.AppConstants;
+ 
+ @Configuration
+ public class DataInitializer {
+@@ -39,7 +40,7 @@ public class DataInitializer {
+                 admin.setAccountLocked(false);
+                 admin.setFailedAttempts(0);
+                 admin.setEnabled(1);
+-                admin.setRole("ADMIN");
++                admin.setRole(AppConstants.ROLE_ADMIN);
+                 admin.setProvider("LOCAL");
+                 admin.setPassword(passwordEncoder.encode("Password@123"));
+                 userRepository.save(admin);
+@@ -49,7 +50,7 @@ public class DataInitializer {
+                 admin.setName("System Admin");
+                 admin.setEmail("admin@rigs.com");
+                 admin.setPassword(passwordEncoder.encode("Password@123"));
+-                admin.setRole("ADMIN");
++                admin.setRole(AppConstants.ROLE_ADMIN);
+                 admin.setEnabled(1);
+                 admin.setActive(1);
+                 admin.setProvider("LOCAL");
+@@ -61,8 +62,8 @@ public class DataInitializer {
+                 log.info("✅ Created admin account: admin@rigs.com / Password@123");
+             }
+ 
+-            // ===== ALWAYS RESET MACHINES TO EXACTLY 20 WITH IDs 1-20 =====
+-            log.info("Resetting machines to IDs 1-20...");
++            // ===== ALWAYS RESET MACHINES TO EXACTLY 5 WITH IDs 1-5 =====
++            log.info("Resetting machines to IDs 1-5...");
+ 
+             // 1. Delete all child records first (foreign key order)
+             telemetryRepository.deleteAll();
+@@ -76,26 +77,11 @@ public class DataInitializer {
+             jdbcTemplate.execute("ALTER TABLE machine_telemetry AUTO_INCREMENT = 1");
+ 
+             String[][] machineData = {
+-                    { "CNC-Lathe-001", "Floor-A, Bay-1", "RUNNING", "45.2", "false" },
+-                    { "CNC-Mill-002", "Floor-A, Bay-2", "RUNNING", "87.5", "false" },
+-                    { "Hydraulic-Press-003", "Floor-A, Bay-3", "STOPPED", "120.8", "false" },
+-                    { "Welding-Robot-004", "Floor-A, Bay-4", "RUNNING", "63.1", "false" },
+-                    { "Assembly-Line-005", "Floor-B, Bay-1", "RUNNING", "210.4", "false" },
+-                    { "Conveyor-Belt-006", "Floor-B, Bay-2", "RUNNING", "156.3", "false" },
+-                    { "Injection-Mold-007", "Floor-B, Bay-3", "STOPPED", "89.6", "false" },
+-                    { "Drill-Press-008", "Floor-B, Bay-4", "RUNNING", "110.2", "false" },
+-                    { "Laser-Cutter-009", "Floor-C, Bay-1", "RUNNING", "75.8", "false" },
+-                    { "3D-Printer-010", "Floor-C, Bay-2", "STOPPED", "43.1", "false" },
+-                    { "Paint-Booth-011", "Floor-C, Bay-3", "RUNNING", "289.5", "false" },
+-                    { "Heat-Treat-Oven-012", "Floor-C, Bay-4", "RUNNING", "167.9", "false" },
+-                    { "Grinding-Machine-013", "Floor-D, Bay-1", "RUNNING", "94.3", "false" },
+-                    { "Plasma-Cutter-014", "Floor-D, Bay-2", "STOPPED", "123.7", "false" },
+-                    { "Water-Jet-015", "Floor-D, Bay-3", "RUNNING", "56.4", "false" },
+-                    { "EDM-Machine-016", "Floor-D, Bay-4", "RUNNING", "234.6", "false" },
+-                    { "Sheet-Metal-017", "Floor-E, Bay-1", "RUNNING", "345.2", "false" },
+-                    { "Packaging-Unit-018", "Floor-E, Bay-2", "RUNNING", "78.1", "false" },
+-                    { "Quality-Scanner-019", "Floor-E, Bay-3", "RUNNING", "156.8", "false" },
+-                    { "AGV-Transport-020", "Floor-E, Bay-4", "RUNNING", "210.3", "false" }
++                    { "CNC-Lathe-001", "Floor-A, Bay-1", AppConstants.STATUS_RUNNING, "45.2", "false" },
++                    { "CNC-Mill-002", "Floor-A, Bay-2", AppConstants.STATUS_RUNNING, "87.5", "false" },
++                    { "Hydraulic-Press-003", "Floor-A, Bay-3", AppConstants.STATUS_STOPPED, "120.8", "false" },
++                    { "Welding-Robot-004", "Floor-A, Bay-4", AppConstants.STATUS_RUNNING, "63.1", "false" },
++                    { "Assembly-Line-005", "Floor-B, Bay-1", AppConstants.STATUS_RUNNING, "210.4", "false" }
+             };
+ 
+             for (String[] md : machineData) {
+@@ -109,18 +95,18 @@ public class DataInitializer {
+                 Machine saved = machineRepository.save(m);
+ 
+                 // Create initial telemetry for running machines
+-                if ("RUNNING".equals(md[2])) {
++                if (AppConstants.STATUS_RUNNING.equals(md[2])) {
+                     MachineTelemetry t = new MachineTelemetry();
+                     t.setMachine(saved);
+                     t.setTemperature(55 + Math.random() * 30);
+                     t.setVibration(0.5 + Math.random() * 2.0);
+                     t.setCurrentDraw(8 + Math.random() * 12);
+-                    t.setMachineStatus("RUNNING");
++                    t.setMachineStatus(AppConstants.STATUS_RUNNING);
+                     t.setTimestamp(LocalDateTime.now());
+                     telemetryRepository.save(t);
+                 }
+             }
+-            log.info("✅ Created 20 machines with IDs 1-20 and initial telemetry");
++            log.info("✅ Created 5 machines with IDs 1-5 and initial telemetry");
+         };
+     }
+ }
+diff --git a/src/main/java/com/rigs/rigs/controller/AdminController.java b/src/main/java/com/rigs/rigs/controller/AdminController.java
+index 7812431..1765dd3 100644
+--- a/src/main/java/com/rigs/rigs/controller/AdminController.java
++++ b/src/main/java/com/rigs/rigs/controller/AdminController.java
+@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
+ 
+ import java.util.List;
+ import java.util.stream.Collectors;
++import com.rigs.rigs.util.AppConstants;
+ 
+ @RestController
+ @RequestMapping("/api/admin")
+@@ -24,7 +25,7 @@ public class AdminController {
+ 
+     @GetMapping("/users")
+     public ResponseEntity<List<UserResponse>> getAllUsers() {
+-        List<UserResponse> users = userRepository.findByRoleNot("ADMIN").stream()
++        List<UserResponse> users = userRepository.findByRoleNot(AppConstants.ROLE_ADMIN).stream()
+                 .map(this::toUserResponse)
+                 .collect(Collectors.toList());
+         return ResponseEntity.ok(users);
+@@ -32,18 +33,18 @@ public class AdminController {
+ 
+     @GetMapping("/users/pending")
+     public ResponseEntity<List<UserResponse>> getPendingUsers() {
+-        List<UserResponse> users = userRepository.findByEnabledAndRoleNot(0, "ADMIN").stream()
++        List<UserResponse> users = userRepository.findByEnabledAndRoleNot(0, AppConstants.ROLE_ADMIN).stream()
+                 .map(this::toUserResponse)
+                 .collect(Collectors.toList());
+         return ResponseEntity.ok(users);
+     }
+ 
+     @PutMapping("/users/{id}/approve")
+-    public ResponseEntity<?> approveUser(@PathVariable Long id) {
++    public ResponseEntity<MessageResponse> approveUser(@PathVariable Long id) {
+         User user = userRepository.findById(id)
+                 .orElseThrow(() -> new RuntimeException("User not found"));
+ 
+-        if ("ADMIN".equals(user.getRole())) {
++        if (AppConstants.ROLE_ADMIN.equals(user.getRole())) {
+             return ResponseEntity.badRequest().body(new MessageResponse("Cannot modify admin user"));
+         }
+ 
+@@ -54,11 +55,11 @@ public class AdminController {
+     }
+ 
+     @PutMapping("/users/{id}/reject")
+-    public ResponseEntity<?> rejectUser(@PathVariable Long id) {
++    public ResponseEntity<MessageResponse> rejectUser(@PathVariable Long id) {
+         User user = userRepository.findById(id)
+                 .orElseThrow(() -> new RuntimeException("User not found"));
+ 
+-        if ("ADMIN".equals(user.getRole())) {
++        if (AppConstants.ROLE_ADMIN.equals(user.getRole())) {
+             return ResponseEntity.badRequest().body(new MessageResponse("Cannot modify admin user"));
+         }
+ 
+@@ -68,11 +69,11 @@ public class AdminController {
+     }
+ 
+     @DeleteMapping("/users/{id}")
+-    public ResponseEntity<?> removeUser(@PathVariable Long id) {
++    public ResponseEntity<MessageResponse> removeUser(@PathVariable Long id) {
+         User user = userRepository.findById(id)
+                 .orElseThrow(() -> new RuntimeException("User not found"));
+ 
+-        if ("ADMIN".equals(user.getRole())) {
++        if (AppConstants.ROLE_ADMIN.equals(user.getRole())) {
+             return ResponseEntity.badRequest().body(new MessageResponse("Cannot delete admin user"));
+         }
+ 
+@@ -82,10 +83,10 @@ public class AdminController {
+     }
+ 
+     @GetMapping("/stats")
+-    public ResponseEntity<?> getStats() {
+-        long totalWorkers = userRepository.findByRoleNot("ADMIN").size();
+-        long pendingApproval = userRepository.findByEnabledAndRoleNot(0, "ADMIN").size();
+-        long activeWorkers = userRepository.findByEnabledAndRoleNot(1, "ADMIN").size();
++    public ResponseEntity<java.util.Map<String, Long>> getStats() {
++        long totalWorkers = userRepository.findByRoleNot(AppConstants.ROLE_ADMIN).size();
++        long pendingApproval = userRepository.findByEnabledAndRoleNot(0, AppConstants.ROLE_ADMIN).size();
++        long activeWorkers = userRepository.findByEnabledAndRoleNot(1, AppConstants.ROLE_ADMIN).size();
+ 
+         return ResponseEntity.ok(java.util.Map.of(
+                 "totalWorkers", totalWorkers,
+diff --git a/src/main/java/com/rigs/rigs/controller/AlertController.java b/src/main/java/com/rigs/rigs/controller/AlertController.java
+index ee280e9..6363efc 100644
+--- a/src/main/java/com/rigs/rigs/controller/AlertController.java
++++ b/src/main/java/com/rigs/rigs/controller/AlertController.java
+@@ -17,6 +17,7 @@ import org.springframework.security.core.userdetails.UserDetails;
+ import org.springframework.web.bind.annotation.*;
+ 
+ import java.util.Map;
++import com.rigs.rigs.util.AppConstants;
+ 
+ @RestController
+ @RequestMapping("/api/alerts")
+@@ -53,11 +54,11 @@ public class AlertController {
+ 
+     @PostMapping("/{alertId}/acknowledge")
+     @PreAuthorize("hasRole('ADMIN')")
+-    public ResponseEntity<?> acknowledgeAlert(@PathVariable Long alertId,
++    public ResponseEntity<Map<String, String>> acknowledgeAlert(@PathVariable Long alertId,
+             @AuthenticationPrincipal UserDetails userDetails) {
+ 
+         User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
+         alertService.acknowledgeAlert(alertId, user);
+-        return ResponseEntity.ok(Map.of("message", "Alert acknowledged successfully"));
++        return ResponseEntity.ok(Map.of(AppConstants.KEY_MESSAGE, "Alert acknowledged successfully"));
+     }
+ }
+diff --git a/src/main/java/com/rigs/rigs/controller/AuthController.java b/src/main/java/com/rigs/rigs/controller/AuthController.java
+index d75d647..19514fc 100644
+--- a/src/main/java/com/rigs/rigs/controller/AuthController.java
++++ b/src/main/java/com/rigs/rigs/controller/AuthController.java
+@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.stream.Collectors;
++import com.rigs.rigs.util.AppConstants;
+ 
+ @RestController
+ @RequestMapping("/api/auth")
+@@ -31,81 +32,84 @@ import java.util.stream.Collectors;
+ @Slf4j
+ public class AuthController {
+ 
+-    private final AuthenticationManager authenticationManager;
+-    private final UserRepository userRepository;
+-    private final PasswordEncoder passwordEncoder;
+-    private final JwtUtils jwtUtils;
++        private final AuthenticationManager authenticationManager;
++        private final UserRepository userRepository;
++        private final PasswordEncoder passwordEncoder;
++        private final JwtUtils jwtUtils;
+ 
+-    @PostMapping("/signin")
+-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+-        try {
+-            Authentication authentication = authenticationManager.authenticate(
+-                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
++        @PostMapping("/signin")
++        public ResponseEntity<Object> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
++                try {
++                        Authentication authentication = authenticationManager.authenticate(
++                                        new UsernamePasswordAuthenticationToken(loginRequest.getEmail(),
++                                                        loginRequest.getPassword()));
+ 
+-            SecurityContextHolder.getContext().setAuthentication(authentication);
+-            String jwt = jwtUtils.generateJwtToken(authentication);
++                        SecurityContextHolder.getContext().setAuthentication(authentication);
++                        String jwt = jwtUtils.generateJwtToken(authentication);
+ 
+-            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+-            List<String> roles = userDetails.getAuthorities().stream()
+-                    .map(GrantedAuthority::getAuthority)
+-                    .collect(Collectors.toList());
++                        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
++                        List<String> roles = userDetails.getAuthorities().stream()
++                                        .map(GrantedAuthority::getAuthority)
++                                        .collect(Collectors.toList());
+ 
+-            User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
++                        User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
+ 
+-            // Update last login time
+-            user.setLastLoginAt(java.time.LocalDateTime.now());
+-            userRepository.save(user);
++                        // Update last login time
++                        user.setLastLoginAt(java.time.LocalDateTime.now());
++                        userRepository.save(user);
+ 
+-            return ResponseEntity.ok(JwtResponse.builder()
+-                    .token(jwt)
+-                    .id(user.getId())
+-                    .name(user.getName())
+-                    .email(user.getEmail())
+-                    .roles(roles)
+-                    .build());
++                        return ResponseEntity.ok(JwtResponse.builder()
++                                        .token(jwt)
++                                        .id(user.getId())
++                                        .name(user.getName())
++                                        .email(user.getEmail())
++                                        .roles(roles)
++                                        .build());
+ 
+-        } catch (DisabledException e) {
+-            log.warn("Login attempt by disabled/pending account: {}", loginRequest.getEmail());
+-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+-                    .body(Map.of(
+-                            "error", "ACCOUNT_PENDING",
+-                            "message",
+-                            "Your account is pending admin approval. Please wait for the administrator to approve your access."));
+-        } catch (LockedException e) {
+-            log.warn("Login attempt by locked account: {}", loginRequest.getEmail());
+-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+-                    .body(Map.of(
+-                            "error", "ACCOUNT_LOCKED",
+-                            "message", "Your account has been locked. Please contact the administrator."));
+-        } catch (AuthenticationException e) {
+-            log.warn("Failed login attempt for: {}", loginRequest.getEmail());
+-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+-                    .body(Map.of(
+-                            "error", "BAD_CREDENTIALS",
+-                            "message", "Invalid email or password. Please try again."));
++                } catch (DisabledException e) {
++                        log.warn("Login attempt by disabled/pending account: {}", loginRequest.getEmail());
++                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
++                                        .body(Map.of(
++                                                        AppConstants.KEY_ERROR, "ACCOUNT_PENDING",
++                                                        AppConstants.KEY_MESSAGE,
++                                                        "Your account is pending admin approval. Please wait for the administrator to approve your access."));
++                } catch (LockedException e) {
++                        log.warn("Login attempt by locked account: {}", loginRequest.getEmail());
++                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
++                                        .body(Map.of(
++                                                        AppConstants.KEY_ERROR, "ACCOUNT_LOCKED",
++                                                        AppConstants.KEY_MESSAGE,
++                                                        "Your account has been locked. Please contact the administrator."));
++                } catch (AuthenticationException e) {
++                        log.warn("Failed login attempt for: {}", loginRequest.getEmail());
++                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
++                                        .body(Map.of(
++                                                        AppConstants.KEY_ERROR, "BAD_CREDENTIALS",
++                                                        AppConstants.KEY_MESSAGE,
++                                                        "Invalid email or password. Please try again."));
++                }
+         }
+-    }
+ 
+-    @PostMapping("/signup")
+-    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
+-        if (userRepository.findByEmail(signUpRequest.getEmail()).isPresent()) {
+-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
+-        }
++        @PostMapping("/signup")
++        public ResponseEntity<MessageResponse> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
++                if (userRepository.findByEmail(signUpRequest.getEmail()).isPresent()) {
++                        return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
++                }
+ 
+-        User user = User.builder()
+-                .name(signUpRequest.getName())
+-                .email(signUpRequest.getEmail())
+-                .password(passwordEncoder.encode(signUpRequest.getPassword()))
+-                .role("WORKER")
+-                .provider("LOCAL")
+-                .enabled(0) // Pending approval
+-                .active(1)
+-                .build();
++                User user = User.builder()
++                                .name(signUpRequest.getName())
++                                .email(signUpRequest.getEmail())
++                                .password(passwordEncoder.encode(signUpRequest.getPassword()))
++                                .role(AppConstants.ROLE_WORKER)
++                                .provider("LOCAL")
++                                .enabled(0) // Pending approval
++                                .active(1)
++                                .build();
+ 
+-        userRepository.save(user);
+-        log.info("Registered new user: {} (pending approval)", user.getEmail());
++                userRepository.save(user);
++                log.info("Registered new user: {} (pending approval)", user.getEmail());
+ 
+-        return ResponseEntity.ok(new MessageResponse(
+-                "User registered successfully! Your account is pending admin approval. You will be able to login once an administrator approves your access."));
+-    }
++                return ResponseEntity.ok(new MessageResponse(
++                                "User registered successfully! Your account is pending admin approval. You will be able to login once an administrator approves your access."));
++        }
+ }
+diff --git a/src/main/java/com/rigs/rigs/controller/MachineController.java b/src/main/java/com/rigs/rigs/controller/MachineController.java
+index 035ce04..db20aef 100644
+--- a/src/main/java/com/rigs/rigs/controller/MachineController.java
++++ b/src/main/java/com/rigs/rigs/controller/MachineController.java
+@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
+ 
+ import java.util.List;
+ import java.util.Map;
++import com.rigs.rigs.util.AppConstants;
+ 
+ @RestController
+ @RequestMapping("/api/machines")
+@@ -39,10 +40,11 @@ public class MachineController {
+     }
+ 
+     @PostMapping("/{machineId}/command")
+-    public ResponseEntity<?> sendCommand(@PathVariable Long machineId, @RequestParam String command,
++    public ResponseEntity<Map<String, String>> sendCommand(@PathVariable Long machineId, @RequestParam String command,
+             @RequestParam(required = false) String issuedBy) {
+         log.info("Sending command '{}' to machine {}", command, machineId);
+-        commandService.issueCommand(machineId, command.toUpperCase(), null, issuedBy != null ? issuedBy : "ADMIN");
+-        return ResponseEntity.ok(Map.of("status", "sent", "command", command.toUpperCase()));
++        commandService.issueCommand(machineId, command.toUpperCase(), null,
++                issuedBy != null ? issuedBy : AppConstants.ROLE_ADMIN);
++        return ResponseEntity.ok(Map.of(AppConstants.KEY_STATUS, "sent", "command", command.toUpperCase()));
+     }
+ }
+diff --git a/src/main/java/com/rigs/rigs/controller/MachineSettingsController.java b/src/main/java/com/rigs/rigs/controller/MachineSettingsController.java
+index a3101a6..d119241 100644
+--- a/src/main/java/com/rigs/rigs/controller/MachineSettingsController.java
++++ b/src/main/java/com/rigs/rigs/controller/MachineSettingsController.java
+@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
+ 
+ import java.util.List;
+ import java.util.Map;
++import com.rigs.rigs.util.AppConstants;
+ 
+ @RestController
+ @RequestMapping("/api/admin/settings")
+@@ -29,7 +30,7 @@ public class MachineSettingsController {
+     }
+ 
+     @PutMapping("/{machineId}")
+-    public ResponseEntity<?> updateSettings(
++    public ResponseEntity<Map<String, String>> updateSettings(
+             @PathVariable Long machineId,
+             @RequestBody MachineSettingsDTO settingsDTO,
+             HttpServletRequest request) {
+@@ -40,7 +41,7 @@ public class MachineSettingsController {
+         settingsService.updateSettings(machineId, settingsDTO.getVibrationThreshold(),
+                 settingsDTO.getRuntimeLimitHours(), settingsDTO.getHeartbeatTimeout(), email, ipAddress);
+ 
+-        return ResponseEntity.ok(Map.of("message", "Settings updated successfully"));
++        return ResponseEntity.ok(Map.of(AppConstants.KEY_MESSAGE, "Settings updated successfully"));
+     }
+ 
+     private String getCurrentUserEmail() {
+diff --git a/src/main/java/com/rigs/rigs/controller/ProfileController.java b/src/main/java/com/rigs/rigs/controller/ProfileController.java
+index d364673..6f716d5 100644
+--- a/src/main/java/com/rigs/rigs/controller/ProfileController.java
++++ b/src/main/java/com/rigs/rigs/controller/ProfileController.java
+@@ -39,26 +39,27 @@ public class ProfileController {
+     }
+ 
+     @PutMapping("/update-name")
+-    public ResponseEntity<?> updateName(@AuthenticationPrincipal UserDetails userDetails, @RequestParam String name) {
++    public ResponseEntity<MessageResponse> updateName(@AuthenticationPrincipal UserDetails userDetails,
++            @RequestParam String name) {
+         profileService.updateName(userDetails.getUsername(), name);
+         return ResponseEntity.ok(new MessageResponse("Name updated successfully"));
+     }
+ 
+     @PostMapping("/upload-image")
+-    public ResponseEntity<?> uploadImage(@AuthenticationPrincipal UserDetails userDetails,
++    public ResponseEntity<Map<String, String>> uploadImage(@AuthenticationPrincipal UserDetails userDetails,
+             @RequestParam("file") MultipartFile file) throws IOException {
+         String imageUrl = profileService.uploadProfileImage(userDetails.getUsername(), file);
+         return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
+     }
+ 
+     @PostMapping("/toggle-2fa")
+-    public ResponseEntity<?> toggle2fa(@AuthenticationPrincipal UserDetails userDetails) {
++    public ResponseEntity<MessageResponse> toggle2fa(@AuthenticationPrincipal UserDetails userDetails) {
+         profileService.toggleTwoFactor(userDetails.getUsername());
+         return ResponseEntity.ok(new MessageResponse("2FA setting updated"));
+     }
+ 
+     @PutMapping("/password")
+-    public ResponseEntity<?> changePassword(@AuthenticationPrincipal UserDetails userDetails,
++    public ResponseEntity<MessageResponse> changePassword(@AuthenticationPrincipal UserDetails userDetails,
+             @RequestBody Map<String, String> request) {
+         String currentPassword = request.get("currentPassword");
+         String newPassword = request.get("newPassword");
+diff --git a/src/main/java/com/rigs/rigs/entity/Machine.java b/src/main/java/com/rigs/rigs/entity/Machine.java
+index fc01db1..f52ca9f 100644
+--- a/src/main/java/com/rigs/rigs/entity/Machine.java
++++ b/src/main/java/com/rigs/rigs/entity/Machine.java
+@@ -24,7 +24,7 @@ public class Machine {
+ 
+     @Builder.Default
+     @Column(nullable = false)
+-    private String status = "OFFLINE";
++    private String status = com.rigs.rigs.util.AppConstants.STATUS_OFFLINE;
+ 
+     @Builder.Default
+     @Column(name = "machine_type")
+diff --git a/src/main/java/com/rigs/rigs/entity/User.java b/src/main/java/com/rigs/rigs/entity/User.java
+index 821dad7..b0e7d60 100644
+--- a/src/main/java/com/rigs/rigs/entity/User.java
++++ b/src/main/java/com/rigs/rigs/entity/User.java
+@@ -30,7 +30,7 @@ public class User {
+     private Integer enabled = 0;
+ 
+     @Builder.Default
+-    private String role = "USER";
++    private String role = com.rigs.rigs.util.AppConstants.ROLE_USER;
+ 
+     @Builder.Default
+     private String provider = "LOCAL";
+diff --git a/src/main/java/com/rigs/rigs/exception/GlobalExceptionHandler.java b/src/main/java/com/rigs/rigs/exception/GlobalExceptionHandler.java
+index 494853f..cde4250 100644
+--- a/src/main/java/com/rigs/rigs/exception/GlobalExceptionHandler.java
++++ b/src/main/java/com/rigs/rigs/exception/GlobalExceptionHandler.java
+@@ -15,17 +15,17 @@ import java.util.stream.Collectors;
+ public class GlobalExceptionHandler {
+ 
+     @ExceptionHandler(IllegalArgumentException.class)
+-    public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException e) {
++    public ResponseEntity<MessageResponse> handleIllegalArgumentException(IllegalArgumentException e) {
+         return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
+     }
+ 
+     @ExceptionHandler(BadCredentialsException.class)
+-    public ResponseEntity<?> handleBadCredentialsException(BadCredentialsException e) {
++    public ResponseEntity<MessageResponse> handleBadCredentialsException(BadCredentialsException e) {
+         return ResponseEntity.status(401).body(new MessageResponse("Error: Invalid email or password"));
+     }
+ 
+     @ExceptionHandler(MethodArgumentNotValidException.class)
+-    public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
++    public ResponseEntity<MessageResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
+         String errors = ex.getBindingResult().getFieldErrors().stream()
+                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                 .collect(Collectors.joining(", "));
+@@ -33,7 +33,7 @@ public class GlobalExceptionHandler {
+     }
+ 
+     @ExceptionHandler(Exception.class)
+-    public ResponseEntity<?> handleGlobalException(Exception e) {
++    public ResponseEntity<MessageResponse> handleGlobalException(Exception e) {
+         log.error("Unhandled exception: ", e);
+         return ResponseEntity.status(500).body(new MessageResponse("An internal server error occurred."));
+     }
+diff --git a/src/main/java/com/rigs/rigs/security/SecurityConfig.java b/src/main/java/com/rigs/rigs/security/SecurityConfig.java
+index 1e2b64a..efc294f 100644
+--- a/src/main/java/com/rigs/rigs/security/SecurityConfig.java
++++ b/src/main/java/com/rigs/rigs/security/SecurityConfig.java
+@@ -19,6 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+ 
+ import java.util.Arrays;
+ import java.util.List;
++import com.rigs.rigs.util.AppConstants;
+ 
+ @Configuration
+ @EnableWebSecurity
+@@ -54,7 +55,7 @@ public class SecurityConfig {
+                         .requestMatchers("/api/test/**").permitAll()
+                         .requestMatchers("/uploads/**").permitAll()
+                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
++                        .requestMatchers("/api/admin/**").hasRole(AppConstants.ROLE_ADMIN)
+                         .anyRequest().authenticated())
+                 .oauth2Login(oauth2 -> oauth2
+                         .successHandler(oAuth2LoginSuccessHandler));
+diff --git a/src/main/java/com/rigs/rigs/service/MachineService.java b/src/main/java/com/rigs/rigs/service/MachineService.java
+index 740fcf8..72e2ab7 100644
+--- a/src/main/java/com/rigs/rigs/service/MachineService.java
++++ b/src/main/java/com/rigs/rigs/service/MachineService.java
+@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
+ import java.time.temporal.ChronoUnit;
+ import java.util.List;
+ import java.util.stream.Collectors;
++import com.rigs.rigs.util.AppConstants;
+ 
+ @Service
+ @RequiredArgsConstructor
+@@ -111,7 +112,7 @@ public class MachineService {
+                     .location(LOCATIONS[(int) (machineId % LOCATIONS.length)])
+                     .machineType(MACHINE_TYPES[(int) (machineId % MACHINE_TYPES.length)])
+                     .processUnit(UNITS[(int) (machineId % UNITS.length)])
+-                    .status("RUNNING")
++                    .status(AppConstants.STATUS_RUNNING)
+                     .build();
+             newMachine = machineRepository.save(newMachine);
+             log.info("Auto-created machine: {} (ID={})", newMachine.getName(), newMachine.getId());
+@@ -196,10 +197,10 @@ public class MachineService {
+     public void monitorHeartbeats() {
+         List<Machine> machines = machineRepository.findAll();
+         for (Machine m : machines) {
+-            if (!"OFFLINE".equals(m.getStatus())) {
++            if (!AppConstants.STATUS_OFFLINE.equals(m.getStatus())) {
+                 MachineSettings s = settingsRepository.findByMachine(m).orElse(null);
+                 if (!checkMachineOnline(m, s)) {
+-                    m.setStatus("OFFLINE");
++                    m.setStatus(AppConstants.STATUS_OFFLINE);
+                     machineRepository.save(m);
+                     alertService.createAlert(m, Alert.AlertType.OFFLINE, Alert.AlertSeverity.CRITICAL,
+                             "Machine heartbeat missing. Status marked as OFFLINE.");
+diff --git a/src/main/java/com/rigs/rigs/service/MachineSettingsService.java b/src/main/java/com/rigs/rigs/service/MachineSettingsService.java
+index f1c58cb..d3da1ea 100644
+--- a/src/main/java/com/rigs/rigs/service/MachineSettingsService.java
++++ b/src/main/java/com/rigs/rigs/service/MachineSettingsService.java
+@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
+ import lombok.extern.slf4j.Slf4j;
+ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.context.annotation.Lazy;
+ 
+ import java.util.List;
+ import java.util.stream.Collectors;
+@@ -22,6 +24,10 @@ public class MachineSettingsService {
+     private final MachineRepository machineRepository;
+     private final AuditLogService auditLogService;
+ 
++    @Autowired
++    @Lazy
++    private MachineSettingsService self;
++
+     @Transactional
+     public MachineSettings getOrCreateSettings(Long machineId) {
+         Machine machine = machineRepository.findById(machineId)
+@@ -58,7 +64,7 @@ public class MachineSettingsService {
+     public void updateSettings(Long machineId, Double vibrationThreshold, Double runtimeLimitHours,
+             Integer heartbeatTimeout, String userEmail, String ipAddress) {
+ 
+-        MachineSettings settings = getOrCreateSettings(machineId);
++        MachineSettings settings = self.getOrCreateSettings(machineId);
+ 
+         String beforeState = String.format("{\"vib\":%.2f,\"runtime\":%.2f,\"timeout\":%d}",
+                 settings.getVibrationThreshold(), settings.getRuntimeLimitHours(), settings.getHeartbeatTimeout());
+@@ -76,7 +82,7 @@ public class MachineSettingsService {
+                 settings.getVibrationThreshold(), settings.getRuntimeLimitHours(), settings.getHeartbeatTimeout());
+ 
+         auditLogService.logAction(userEmail, "CONFIG_CHANGE", "MachineSettings",
+-                afterState, ipAddress, "INFO", machineId);
++                "from " + beforeState + " to " + afterState, ipAddress, "INFO", machineId);
+ 
+         log.info("Settings updated for machine {}: {}", machineId, afterState);
+     }
+diff --git a/src/main/java/com/rigs/rigs/service/MqttListenerService.java b/src/main/java/com/rigs/rigs/service/MqttListenerService.java
+index 02ee792..a86ed34 100644
+--- a/src/main/java/com/rigs/rigs/service/MqttListenerService.java
++++ b/src/main/java/com/rigs/rigs/service/MqttListenerService.java
+@@ -1,7 +1,5 @@
+ package com.rigs.rigs.service;
+ 
+-import com.rigs.rigs.entity.Machine;
+-import com.rigs.rigs.repository.MachineRepository;
+ import com.fasterxml.jackson.databind.JsonNode;
+ import com.fasterxml.jackson.databind.ObjectMapper;
+ import jakarta.annotation.PostConstruct;
+@@ -12,8 +10,7 @@ import org.eclipse.paho.client.mqttv3.*;
+ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+ import org.springframework.beans.factory.annotation.Value;
+ import org.springframework.stereotype.Service;
+-
+-import java.util.Optional;
++import com.rigs.rigs.util.AppConstants;
+ 
+ @Service
+ @RequiredArgsConstructor
+@@ -34,7 +31,6 @@ public class MqttListenerService implements MqttCallbackExtended {
+ 
+     private MqttClient mqttClient;
+     private final MachineService machineService;
+-    private final MachineRepository machineRepository;
+     private final ObjectMapper objectMapper = new ObjectMapper();
+ 
+     @PostConstruct
+@@ -94,7 +90,7 @@ public class MqttListenerService implements MqttCallbackExtended {
+             Double temperature = data.has("temperature") ? data.get("temperature").asDouble() : null;
+             Double vibration = data.has("vibration") ? data.get("vibration").asDouble() : null;
+             Double currentDraw = data.has("current") ? data.get("current").asDouble() : null;
+-            String status = data.has("status") ? data.get("status").asText() : "RUNNING";
++            String status = data.has("status") ? data.get("status").asText() : AppConstants.STATUS_RUNNING;
+             Double rpm = data.has("rpm") ? data.get("rpm").asDouble() : null;
+             Double pressure = data.has("pressure") ? data.get("pressure").asDouble() : null;
+             Double powerConsumption = data.has("power") ? data.get("power").asDouble() : null;
+diff --git a/src/main/java/com/rigs/rigs/service/ProfileService.java b/src/main/java/com/rigs/rigs/service/ProfileService.java
+index bec5be9..94149ac 100644
+--- a/src/main/java/com/rigs/rigs/service/ProfileService.java
++++ b/src/main/java/com/rigs/rigs/service/ProfileService.java
+@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Value;
+ import org.springframework.security.crypto.password.PasswordEncoder;
+ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.context.annotation.Lazy;
+ import org.springframework.web.multipart.MultipartFile;
+ 
+ import java.io.IOException;
+@@ -41,6 +43,10 @@ public class ProfileService {
+     @Value("${rigs.upload.dir:./uploads}")
+     private String uploadDir;
+ 
++    @Autowired
++    @Lazy
++    private ProfileService self;
++
+     @Transactional(readOnly = true)
+     public User getProfile(String email) {
+         return userRepository.findByEmail(email)
+@@ -53,7 +59,7 @@ public class ProfileService {
+             throw new IllegalArgumentException("Name cannot be empty");
+         }
+ 
+-        User user = getProfile(email);
++        User user = self.getProfile(email);
+         user.setName(newName.trim());
+         userRepository.save(user);
+         log.info("User {} updated name to: {}", email, newName.trim());
+@@ -61,7 +67,7 @@ public class ProfileService {
+ 
+     @Transactional
+     public void changePassword(String email, String oldPassword, String newPassword) {
+-        User user = getProfile(email);
++        User user = self.getProfile(email);
+ 
+         if (user.getPassword() == null || !passwordEncoder.matches(oldPassword, user.getPassword())) {
+             throw new IllegalArgumentException("Current password is incorrect");
+@@ -112,7 +118,7 @@ public class ProfileService {
+         Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+ 
+         String imageUrl = "/uploads/profiles/" + filename;
+-        User user = getProfile(email);
++        User user = self.getProfile(email);
+         user.setProfileImageUrl(imageUrl);
+         userRepository.save(user);
+ 
+@@ -122,7 +128,7 @@ public class ProfileService {
+ 
+     @Transactional
+     public void toggleTwoFactor(String email) {
+-        User user = getProfile(email);
++        User user = self.getProfile(email);
+         boolean newState = !Boolean.TRUE.equals(user.getTwoFactorEnabled());
+         user.setTwoFactorEnabled(newState);
+         userRepository.save(user);
+@@ -131,13 +137,13 @@ public class ProfileService {
+ 
+     @Transactional(readOnly = true)
+     public List<LoginHistory> getLoginHistory(String email) {
+-        User user = getProfile(email);
++        User user = self.getProfile(email);
+         return loginHistoryRepository.findByUserOrderByLoginTimeDesc(user);
+     }
+ 
+     @Transactional(readOnly = true)
+     public List<UserSession> getActiveSessions(String email) {
+-        User user = getProfile(email);
++        User user = self.getProfile(email);
+         return userSessionRepository.findByUserAndActiveTrue(user);
+     }
+ 
+diff --git a/src/main/java/com/rigs/rigs/util/AppConstants.java b/src/main/java/com/rigs/rigs/util/AppConstants.java
+new file mode 100644
+index 0000000..f6ba830
+--- /dev/null
++++ b/src/main/java/com/rigs/rigs/util/AppConstants.java
+@@ -0,0 +1,29 @@
++package com.rigs.rigs.util;
++
++public final class AppConstants {
++
++    // Prevent instantiation
++    private AppConstants() {
++    }
++
++    // Role Constants
++    public static final String ROLE_ADMIN = "ADMIN";
++    public static final String ROLE_USER = "USER";
++    public static final String ROLE_WORKER = "WORKER";
++
++    // Status Constants
++    public static final String STATUS_RUNNING = "RUNNING";
++    public static final String STATUS_OFFLINE = "OFFLINE";
++    public static final String STATUS_STOPPED = "STOPPED";
++    public static final String STATUS_ERROR = "ERROR";
++
++    // Common Response Keys
++    public static final String KEY_MESSAGE = "message";
++    public static final String KEY_ERROR = "error";
++    public static final String KEY_SUCCESS = "success";
++    public static final String KEY_STATUS = "status";
++
++    // Operation Results
++    public static final String OP_SUCCESS_MSG = "Operation successful";
++    public static final String VALIDATION_ERROR_MSG = "Validation error";
++}
