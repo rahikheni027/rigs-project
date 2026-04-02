@@ -102,6 +102,7 @@ const Dashboard = () => {
         const avgEff = runningMachs.length ? runningMachs.reduce((s, m) => s + (m.efficiency || 0), 0) / runningMachs.length : 0;
 
         setChartData(prev => {
+            if (prev.length > 0 && prev[prev.length - 1].time === now) return prev;
             const next = [...prev, { time: now, temp: avgTemp, power: totalPower, eff: avgEff }];
             return next.length > 20 ? next.slice(-20) : next;
         });

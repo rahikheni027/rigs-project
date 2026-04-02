@@ -88,12 +88,15 @@ const MACHINE_SHAPES = {
 
 const DEFAULT_SHAPE = MACHINE_SHAPES.MOTOR;
 
-const ProcessFlowDiagram = ({ machines = [], dependencyGraph = { nodes: [], edges: [] }, cascadingFailure = null }) => {
+const ProcessFlowDiagram = ({ nodes: incomingNodes = [], machines: incomingMachines = [], dependencyGraph = { nodes: [], edges: [] }, cascadingFailure = null }) => {
     const [hoveredNode, setHoveredNode] = useState(null);
+    
+    // Resolve which data source to use (backwards compatibility with multiple dashboards)
+    const activeMachines = incomingMachines.length > 0 ? incomingMachines : (incomingNodes.length > 0 ? incomingNodes : []);
 
     // Filter dependency graph edges for only existing nodes (defense against stale data)
     let machineMap = new Map();
-    machines.forEach(m => machineMap.set(m.machineId, m));
+    activeMachines.forEach(m => machineMap.set(m.machineId, m));
 
     // Fallback: if no dependency graph provided/exists, build a simple linear one based on array order
     const edges = useMemo(() => {
@@ -101,20 +104,20 @@ const ProcessFlowDiagram = ({ machines = [], dependencyGraph = { nodes: [], edge
             return dependencyGraph.edges;
         }
         // Fallback linear layout
-        return machines.slice(0, -1).map((m, i) => ({
+        return activeMachines.slice(0, -1).map((m, i) => ({
             id: `fb-${i}`,
-            source: machines[i].machineId,
-            target: machines[i + 1].machineId,
+            source: activeMachines[i].machineId,
+            target: activeMachines[i + 1].machineId,
             type: 'PROCESS_FLOW',
             propagateStop: true
         }));
-    }, [dependencyGraph.edges, machines]);
+    }, [dependencyGraph.edges, activeMachines.length]); // Only recalc fallback if count changes
 
     const { nodes: layoutNodes, edges: layoutEdges, width, height } = useMemo(() => {
-        const count = machines.length || 1;
+        const count = activeMachines.length || 1;
         if (count === 0) return { nodes: [], edges: [], width: 900, height: 280 };
 
-        const nodeMap = new Map(machines.map(m => [m.machineId, { ...m, inDegree: 0, outDegree: 0, layer: 0 }]));
+        const nodeMap = new Map(activeMachines.map(m => [m.machineId, { ...m, inDegree: 0, outDegree: 0, layer: 0 }]));
         
         // Calculate in-degrees
         edges.forEach(e => {
@@ -171,7 +174,7 @@ const ProcessFlowDiagram = ({ machines = [], dependencyGraph = { nodes: [], edge
         });
 
         return { nodes: Array.from(nodeMap.values()), edges, width: reqWidth, height: reqHeight };
-    }, [machines, edges]);
+    }, [activeMachines.length, edges]); // CRITICAL: Static layout based on machine count/edges structure, not individual telemetry updates
 
     const nodePositions = new Map(layoutNodes.map(n => [n.machineId, { x: n.x, y: n.y }]));
 
@@ -227,7 +230,7 @@ const ProcessFlowDiagram = ({ machines = [], dependencyGraph = { nodes: [], edge
         return { up: upEdges, down: downEdges };
     }, [hoveredNode, layoutEdges]);
 
-    if (machines.length === 0) {
+    if (activeMachines.length === 0) {
         return (
             <div style={{ textAlign: 'center', padding: '40px 0', color: '#475569', fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
                 NO MACHINES REGISTERED — WAITING FOR TELEMETRY DATA

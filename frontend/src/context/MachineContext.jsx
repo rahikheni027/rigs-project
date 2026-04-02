@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 
 const MachineContext = createContext();
@@ -16,6 +16,10 @@ export const MachineProvider = ({ children }) => {
     const [liveAlerts, setLiveAlerts] = useState([]);
     const [cascadingFailure, setCascadingFailure] = useState(null);
     const [dependencyGraph, setDependencyGraph] = useState({ nodes: [], edges: [] });
+    
+    // Performance Optimization: Buffer incoming telemetry to prevent render-storms
+    const telemetryBuffer = useRef({});
+    const lastCommitRef = useRef(Date.now());
 
     // Dismiss cascading failure banner
     const dismissCascadingFailure = useCallback(() => setCascadingFailure(null), []);
@@ -62,17 +66,10 @@ export const MachineProvider = ({ children }) => {
         eventSource.addEventListener('telemetry', (event) => {
             if (!event.data) return;
             try {
-                const incomingTelemetry = JSON.parse(event.data);
-                setMachines(prevMachines => {
-                    const exists = prevMachines.some(m => m.machineId === incomingTelemetry.machineId);
-                    if (exists) {
-                        return prevMachines.map(m => m.machineId === incomingTelemetry.machineId ? incomingTelemetry : m);
-                    } else {
-                        return [...prevMachines, incomingTelemetry];
-                    }
-                });
+                const incoming = JSON.parse(event.data);
+                // Buffer the update instead of setting state immediately
+                telemetryBuffer.current[incoming.machineId] = incoming;
                 setDataPoints(p => p + 1);
-                setLastSync(new Date());
             } catch (e) {
                 console.error("██ Failed to parse telemetry", e);
             }
@@ -101,11 +98,36 @@ export const MachineProvider = ({ children }) => {
     useEffect(() => {
         if (!user) return;
         connectSSE();
+
+        // Throttled Committer: Flush the buffer every 250ms
+        const commitInterval = setInterval(() => {
+            const updates = Object.values(telemetryBuffer.current);
+            if (updates.length === 0) return;
+
+            setMachines(prev => {
+                const next = [...prev];
+                updates.forEach(upd => {
+                    const idx = next.findIndex(m => m.machineId === upd.machineId);
+                    if (idx !== -1) {
+                        next[idx] = upd;
+                    } else {
+                        next.push(upd);
+                    }
+                });
+                return next;
+            });
+
+            // Clear buffer and update sync time
+            telemetryBuffer.current = {};
+            setLastSync(new Date());
+        }, 250);
+
         return () => {
             if (esInstance) esInstance.close();
+            clearInterval(commitInterval);
             setIsOnline(false);
         };
-    }, [user]);
+    }, [user, connectSSE]); // Added connectSSE to deps for safety
 
     // Initial fetch to populate machines before SSE brings updates
     useEffect(() => {
@@ -135,12 +157,27 @@ export const MachineProvider = ({ children }) => {
         fetchInitialState();
     }, [user]);
 
+    const contextValue = useMemo(() => ({
+        machines, 
+        setMachines, 
+        isOnline, 
+        dataPoints, 
+        lastSync,
+        liveAlerts, 
+        cascadingFailure, 
+        dismissCascadingFailure, 
+        dismissAlert,
+        dependencyGraph, 
+        setDependencyGraph, 
+        reconnect: connectSSE
+    }), [
+        machines, isOnline, dataPoints, lastSync, liveAlerts, 
+        cascadingFailure, dismissCascadingFailure, dismissAlert, 
+        dependencyGraph, connectSSE
+    ]);
+
     return (
-        <MachineContext.Provider value={{
-            machines, setMachines, isOnline, dataPoints, lastSync,
-            liveAlerts, cascadingFailure, dismissCascadingFailure, dismissAlert,
-            dependencyGraph, setDependencyGraph, reconnect: connectSSE
-        }}>
+        <MachineContext.Provider value={contextValue}>
             {children}
         </MachineContext.Provider>
     );
