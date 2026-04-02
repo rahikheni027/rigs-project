@@ -92,14 +92,14 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (machines.length === 0) return;
+        if (!machines || machines?.length === 0) return;
         setLoading(false);
         const now = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
         
-        const runningMachs = machines.filter(m => m.status === 'RUNNING');
-        const avgTemp = machines.reduce((s, m) => s + (m.temperature || 0), 0) / machines.length;
-        const totalPower = machines.reduce((s, m) => s + (m.powerConsumption || 0), 0);
-        const avgEff = runningMachs.length ? runningMachs.reduce((s, m) => s + (m.efficiency || 0), 0) / runningMachs.length : 0;
+        const runningMachs = machines?.filter(m => m?.status === 'RUNNING') || [];
+        const avgTemp = machines.length > 0 ? (machines.reduce((s, m) => s + (m?.temperature || 0), 0) / machines.length) : 0;
+        const totalPower = machines.reduce((s, m) => s + (m?.powerConsumption || 0), 0);
+        const avgEff = runningMachs.length ? runningMachs.reduce((s, m) => s + (m?.efficiency || 0), 0) / runningMachs.length : 0;
 
         setChartData(prev => {
             if (prev.length > 0 && prev[prev.length - 1].time === now) return prev;
@@ -109,12 +109,12 @@ const Dashboard = () => {
     }, [machines]);
 
     const stats = useMemo(() => {
-        const runCount = machines.filter(m => m.status === 'RUNNING').length;
-        const alertCount = machines.filter(m => m.status === 'EMERGENCY' || m.maintenanceAlert).length;
-        const avgTemp = (machines.reduce((s, m) => s + (m.temperature || 0), 0) / (machines.length || 1)).toFixed(1);
-        const totalPower = machines.reduce((s, m) => s + (m.powerConsumption || 0), 0).toFixed(1);
-        const runningMachines = machines.filter(m => m.status === 'RUNNING');
-        const avgEff = runningMachines.length ? (runningMachines.reduce((s, m) => s + (m.efficiency || 0), 0) / runningMachines.length).toFixed(1) : '0';
+        const runCount = machines?.filter(m => m?.status === 'RUNNING')?.length || 0;
+        const alertCount = machines?.filter(m => m?.status === 'EMERGENCY' || m?.maintenanceAlert)?.length || 0;
+        const avgTemp = (machines?.reduce((s, m) => s + (m?.temperature || 0), 0) / (machines?.length || 1)).toFixed(1);
+        const totalPower = machines?.reduce((s, m) => s + (m?.powerConsumption || 0), 0).toFixed(1);
+        const runningMachines = machines?.filter(m => m?.status === 'RUNNING') || [];
+        const avgEff = runningMachines.length ? (runningMachines.reduce((s, m) => s + (m?.efficiency || 0), 0) / runningMachines.length).toFixed(1) : '0';
         
         return { runCount, alertCount, avgTemp, totalPower, avgEff };
     }, [machines]);
@@ -229,22 +229,22 @@ const Dashboard = () => {
                             <Link to="/app/machines" className="text-[9px] font-black text-sky-400 tracking-widest uppercase hover:underline">Full Control Panel »</Link>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                            {machines.slice(0, 12).map((m, i) => {
-                                const sc = STATUS_CONFIG[m.status] || STATUS_CONFIG.OFFLINE;
+                            {(machines || [])?.slice(0, 12).map((m, i) => {
+                                const sc = STATUS_CONFIG[m?.status] || STATUS_CONFIG.OFFLINE;
                                 return (
-                                    <Link key={m.machineId} to={`/app/machines/${m.machineId}`} className={`group flex items-center gap-4 p-3 bg-slate-900/40 border border-white/5 rounded-2xl hover:bg-slate-800/80 transition-all duration-300 ${sc.glow}`}>
+                                    <Link key={m?.machineId} to={`/app/machines/${m?.machineId}`} className={`group flex items-center gap-4 p-3 bg-slate-900/40 border border-white/5 rounded-2xl hover:bg-slate-800/80 transition-all duration-300 ${sc.glow}`}>
                                         <div className={`w-10 h-10 rounded-xl ${sc.bg} border ${sc.border} flex items-center justify-center group-hover:scale-110 transition-transform`}>
                                             <Cpu size={18} className={sc.color} />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between mb-0.5">
-                                                <h3 className="text-xs font-black text-slate-200 truncate pr-2 uppercase italic">{m.machineName}</h3>
+                                                <h3 className="text-xs font-black text-slate-200 truncate pr-2 uppercase italic">{m?.machineName || 'Unknown Node'}</h3>
                                                 <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${sc.bg} ${sc.color}`}>{sc.label}</span>
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <div className="flex items-center gap-1"><Thermometer size={10} className="text-slate-500" /><span className="text-[10px] font-mono text-slate-300">{m.temperature ? m.temperature.toFixed(0) : '--'}°</span></div>
-                                                <div className="flex items-center gap-1"><Zap size={10} className="text-slate-500" /><span className="text-[10px] font-mono text-slate-300">{m.powerConsumption ? m.powerConsumption.toFixed(1) : '--'}kW</span></div>
-                                                <div className="flex items-center gap-1"><BarChart3 size={10} className="text-slate-500" /><span className="text-[10px] font-mono text-slate-300">{m.efficiency ? m.efficiency.toFixed(0) : '--'}%</span></div>
+                                                <div className="flex items-center gap-1"><Thermometer size={10} className="text-slate-500" /><span className="text-[10px] font-mono text-slate-300">{m?.temperature ? m.temperature.toFixed(0) : '--'}°</span></div>
+                                                <div className="flex items-center gap-1"><Zap size={10} className="text-slate-500" /><span className="text-[10px] font-mono text-slate-300">{m?.powerConsumption ? m.powerConsumption.toFixed(1) : '--'}kW</span></div>
+                                                <div className="flex items-center gap-1"><BarChart3 size={10} className="text-slate-500" /><span className="text-[10px] font-mono text-slate-300">{m?.efficiency ? m.efficiency.toFixed(0) : '--'}%</span></div>
                                             </div>
                                         </div>
                                     </Link>

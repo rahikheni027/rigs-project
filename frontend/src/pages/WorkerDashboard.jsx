@@ -87,29 +87,30 @@ const WorkerDashboard = () => {
     }, []);
 
     useEffect(() => {
-        if (!machines || machines.length === 0) return;
+        if (!machines || machines?.length === 0) return;
         setChartData(prev => {
             const now = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
             if (prev.length > 0 && prev[prev.length - 1].time === now) return prev;
 
-            const avgTemp = machines.reduce((s, m) => s + (m.temperature || 0), 0) / machines.length;
-            const avgVib = machines.reduce((s, m) => s + (m.vibration || 0), 0) / machines.length;
-            const totalPower = machines.reduce((s, m) => s + (m.powerConsumption || 0), 0);
+            const safeMachines = machines?.filter(m => m) || [];
+            const avgTemp = safeMachines.length > 0 ? (safeMachines.reduce((s, m) => s + (m?.temperature || 0), 0) / safeMachines.length) : 0;
+            const avgVib = safeMachines.length > 0 ? (safeMachines.reduce((s, m) => s + (m?.vibration || 0), 0) / safeMachines.length) : 0;
+            const totalPower = safeMachines.reduce((s, m) => s + (m?.powerConsumption || 0), 0);
             
             const next = [...prev, { time: now, temp: avgTemp, vib: avgVib, power: totalPower }];
             return next.length > 30 ? next.slice(-30) : next;
         });
     }, [machines]);
 
-    const runCount = machines.filter(m => m.status === 'RUNNING').length;
-    const runningMachines = machines.filter(m => m.status === 'RUNNING');
-    const avgEfficiency = runningMachines.length ? (runningMachines.reduce((s, m) => s + (m.efficiency || 0), 0) / runningMachines.length) : 0;
-    const activeAlerts = alerts.filter(a => !a.acknowledged);
+    const runCount = machines?.filter(m => m?.status === 'RUNNING')?.length || 0;
+    const runningMachines = machines?.filter(m => m?.status === 'RUNNING') || [];
+    const avgEfficiency = runningMachines.length ? (runningMachines.reduce((s, m) => s + (m?.efficiency || 0), 0) / runningMachines.length) : 0;
+    const activeAlerts = (alerts || [])?.filter(a => !a?.acknowledged) || [];
 
     // OEE Calculation: Availability × Performance × Quality
-    const availability = machines.length > 0 ? (runCount / machines.length) * 100 : 0;
+    const availability = (machines?.length || 0) > 0 ? (runCount / machines.length) * 100 : 0;
     const performance = avgEfficiency; 
-    const quality = runningMachines.length > 0 ? 100 - (runningMachines.reduce((s, m) => s + (m.errorRate || 0), 0) / runningMachines.length) * 100 : 100;
+    const quality = runningMachines.length > 0 ? 100 - (runningMachines.reduce((s, m) => s + (m?.errorRate || 0), 0) / runningMachines.length) * 100 : 100;
     const oee = (availability * performance * quality) / 10000;
 
     if (loading) return (
@@ -212,18 +213,18 @@ const WorkerDashboard = () => {
                         <Signal size={12} className="text-sky-400" /> Live Telemetry
                     </h3>
                     <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
-                        {machines.slice(0, 10).map(m => (
-                            <div key={m.machineId} className="flex flex-col gap-1 p-2 bg-white/5 rounded-lg border border-white/5">
+                        {(machines || [])?.slice(0, 10).map(m => (
+                            <div key={m?.machineId} className="flex flex-col gap-1 p-2 bg-white/5 rounded-lg border border-white/5">
                                 <div className="flex justify-between items-center text-[10px]">
-                                    <span className="text-slate-300 font-bold truncate pr-2">{m.machineName}</span>
-                                    <span className="text-sky-400 font-mono text-[8px]">{m.status.slice(0,4)}</span>
+                                    <span className="text-slate-300 font-bold truncate pr-2">{m?.machineName || 'Unknown'}</span>
+                                    <span className="text-sky-400 font-mono text-[8px]">{(m?.status || 'OFF').slice(0,4)}</span>
                                 </div>
                                 <div className="flex gap-2">
                                     <div className="flex-1 h-0.5 bg-sky-500/20 rounded-full overflow-hidden">
-                                        <div className="h-full bg-sky-500" style={{ width: `${(m.temperature || 0) / 1.2}%` }}></div>
+                                        <div className="h-full bg-sky-500" style={{ width: `${(m?.temperature || 0) / 1.2}%` }}></div>
                                     </div>
                                     <div className="flex-1 h-0.5 bg-indigo-500/20 rounded-full overflow-hidden">
-                                        <div className="h-full bg-indigo-500" style={{ width: `${m.efficiency || 0}%` }}></div>
+                                        <div className="h-full bg-indigo-500" style={{ width: `${m?.efficiency || 0}%` }}></div>
                                     </div>
                                 </div>
                             </div>
@@ -325,18 +326,18 @@ const WorkerDashboard = () => {
                 </div>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-                    {machines.map(m => {
-                        const sc = STATUS_CONFIG[m.status] || STATUS_CONFIG.OFFLINE;
+                    {(machines || [])?.map(m => {
+                        const sc = STATUS_CONFIG[m?.status] || STATUS_CONFIG.OFFLINE;
                         return (
-                            <Link key={m.machineId} to={`/app/machines/${m.machineId}`} 
+                            <Link key={m?.machineId} to={`/app/machines/${m?.machineId}`} 
                                 className={`flex flex-col p-3 rounded-xl border transition-all duration-200 hover:scale-105 bg-slate-800/40 hover:bg-slate-800/80 ${sc.border} ${sc.glow}`}>
                                 <div className="flex justify-between items-start mb-2">
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${sc.bg} ${sc.border}`}>
                                         <Cog size={14} className={sc.color} />
                                     </div>
-                                    <span className={`w-2 h-2 rounded-full bg-current ${sc.color} ${m.status === 'RUNNING' ? 'animate-pulse' : ''}`}></span>
+                                    <span className={`w-2 h-2 rounded-full bg-current ${sc.color} ${m?.status === 'RUNNING' ? 'animate-pulse' : ''}`}></span>
                                 </div>
-                                <div className="text-xs font-bold text-white truncate">{m.machineName}</div>
+                                <div className="text-xs font-bold text-white truncate">{m?.machineName || 'Unknown Node'}</div>
                                 <div className="text-[9px] font-mono font-bold text-slate-500 mt-0.5">{sc.label}</div>
                             </Link>
                         );

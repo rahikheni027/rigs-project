@@ -84,11 +84,11 @@ const MachinesPage = () => {
     };
 
     const filters = ['all', 'RUNNING', 'STOPPED', 'EMERGENCY', 'MAINTENANCE', 'CALIBRATING'];
-    const filtered = filter === 'all' ? machines : machines.filter(m => m.status === filter);
-    const runCount = machines.filter(m => m.status === 'RUNNING').length;
-    const alertCount = machines.filter(m => m.status === 'EMERGENCY' || m.maintenanceAlert).length;
-    const avgTemp = machines.length ? (machines.reduce((s, m) => s + (m.temperature || 0), 0) / machines.length).toFixed(1) : '--';
-    const totalPower = machines.reduce((s, m) => s + (m.powerConsumption || 0), 0).toFixed(1);
+    const filtered = filter === 'all' ? (machines || []) : (machines || []).filter(m => m?.status === filter);
+    const runCount = (machines || [])?.filter(m => m?.status === 'RUNNING').length || 0;
+    const alertCount = (machines || [])?.filter(m => m?.status === 'EMERGENCY' || m?.maintenanceAlert).length || 0;
+    const avgTemp = (machines || [])?.length ? (machines.reduce((s, m) => s + (m?.temperature || 0), 0) / machines.length).toFixed(1) : '--';
+    const totalPower = (machines || [])?.reduce((s, m) => s + (m?.powerConsumption || 0), 0).toFixed(1) || '0.0';
 
     if (!machines || machines.length === 0) return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -155,12 +155,13 @@ const MachinesPage = () => {
 
             {/* Machine Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
-                {filtered.map(m => {
-                    const sc = STATUS_CONFIG[m.status] || STATUS_CONFIG.OFFLINE;
-                    const MIcon = MACHINE_ICONS[m.machineType] || Cpu;
+                {(filtered || [])?.map(m => {
+                    const status = m?.status || 'OFFLINE';
+                    const sc = STATUS_CONFIG[status] || STATUS_CONFIG.OFFLINE;
+                    const MIcon = MACHINE_ICONS[m?.machineType] || Cpu;
                     
                     return (
-                        <div key={m.machineId} className={`bg-slate-900/60 backdrop-blur-xl border ${sc.border} rounded-2xl overflow-hidden flex flex-col group transition-all hover:-translate-y-1 hover:shadow-2xl shadow-lg relative`}>
+                        <div key={m?.machineId} className={`bg-slate-900/60 backdrop-blur-xl border ${sc.border} rounded-2xl overflow-hidden flex flex-col group transition-all hover:-translate-y-1 hover:shadow-2xl shadow-lg relative`}>
                             
                             {/* Glowing Background gradient */}
                             <div className="absolute top-0 right-0 w-32 h-32 blur-[50px] opacity-20 group-hover:opacity-40 transition-opacity pointer-events-none" style={{ background: sc.color.replace('text-', '') }}></div>
@@ -176,18 +177,18 @@ const MachinesPage = () => {
                                             <MIcon size={18} className={sc.color} />
                                         </div>
                                         <div>
-                                            <h3 className="text-sm font-black text-white tracking-wide uppercase truncate w-32 sm:w-40">{m.machineName}</h3>
+                                            <h3 className="text-sm font-black text-white tracking-wide uppercase truncate w-32 sm:w-40">{m?.machineName || 'Unknown Node'}</h3>
                                             <div className="text-[9px] text-slate-400 font-mono tracking-widest uppercase mt-1">
-                                                {m.location} • {m.machineType}
+                                                {m?.location || 'Unassigned'} • {m?.machineType || 'Generic'}
                                             </div>
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-2">
                                         <div className={`text-[9px] font-bold px-2 py-1 flex items-center gap-1.5 rounded-md uppercase tracking-widest border ${sc.bg} ${sc.color} ${sc.border}`}>
-                                            {sc.pulse && <span className={`w-1.5 h-1.5 rounded-full bg-current ${m.status === 'EMERGENCY' ? 'animate-ping' : 'animate-pulse'}`} />}
+                                            {sc.pulse && <span className={`w-1.5 h-1.5 rounded-full bg-current ${status === 'EMERGENCY' ? 'animate-ping' : 'animate-pulse'}`} />}
                                             {sc.label}
                                         </div>
-                                        <Link to={`/app/machines/${m.machineId}`} className="text-[10px] text-sky-400 hover:text-sky-300 font-bold tracking-widest uppercase flex items-center gap-1 font-mono transition-colors">
+                                        <Link to={`/app/machines/${m?.machineId}`} className="text-[10px] text-sky-400 hover:text-sky-300 font-bold tracking-widest uppercase flex items-center gap-1 font-mono transition-colors">
                                             Telemetry <ChevronRight size={12} />
                                         </Link>
                                     </div>

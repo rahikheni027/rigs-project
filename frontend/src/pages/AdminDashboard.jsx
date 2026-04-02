@@ -4,8 +4,7 @@ import { useMachines } from '../context/MachineContext';
 import WorkerDashboard from './WorkerDashboard';
 import {
     Cpu, Shield, AlertTriangle, Users, UserCheck, Clock,
-    CheckCircle, XCircle, Trash2, Bell,
-    Activity
+    CheckCircle, XCircle, Trash2, Bell, Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -83,9 +82,9 @@ const AdminDashboard = () => {
         finally { setBtnLoading(p => ({ ...p, [`remove-${id}`]: false })); }
     };
 
-    const runCount = machines.filter(m => m.status === 'RUNNING').length;
-    const alertMachines = machines.filter(m => m.status === 'EMERGENCY' || m.maintenanceAlert).length;
-    const activeAlerts = alerts.filter(a => !a.acknowledged);
+    const runCount = machines?.filter(m => m?.status === 'RUNNING')?.length || 0;
+    const alertMachines = machines?.filter(m => m?.status === 'EMERGENCY' || m?.maintenanceAlert)?.length || 0;
+    const activeAlerts = (alerts || [])?.filter(a => !a?.acknowledged) || [];
 
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -147,11 +146,11 @@ const AdminDashboard = () => {
             {/* KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
                 {[
-                    { label: 'Total Ops', value: stats.totalWorkers || 0, icon: Users, cText: 'text-sky-400', cBg: 'bg-sky-400/10', cBorder: 'border-sky-400/20' },
-                    { label: 'Active', value: stats.activeWorkers || 0, icon: UserCheck, cText: 'text-green-400', cBg: 'bg-green-400/10', cBorder: 'border-green-400/20' },
-                    { label: 'Pending', value: stats.pendingApproval || 0, icon: Clock, cText: (stats.pendingApproval||0)>0?'text-amber-400':'text-slate-400', cBg: (stats.pendingApproval||0)>0?'bg-amber-400/10':'bg-slate-400/10', cBorder: (stats.pendingApproval||0)>0?'border-amber-400/20':'border-slate-400/20' },
-                    { label: 'Nodes', value: `${runCount}/${machines.length}`, icon: Cpu, cText: 'text-green-400', cBg: 'bg-green-400/10', cBorder: 'border-green-400/20' },
-                    { label: 'Alerts', value: activeAlerts.length, icon: AlertTriangle, cText: activeAlerts.length>0?'text-red-400':'text-slate-400', cBg: activeAlerts.length>0?'bg-red-400/10':'bg-slate-400/10', cBorder: activeAlerts.length>0?'border-red-400/20':'border-slate-400/20' },
+                    { label: 'Total Ops', value: stats?.totalWorkers || 0, icon: Users, cText: 'text-sky-400', cBg: 'bg-sky-400/10', cBorder: 'border-sky-400/20' },
+                    { label: 'Active', value: stats?.activeWorkers || 0, icon: UserCheck, cText: 'text-green-400', cBg: 'bg-green-400/10', cBorder: 'border-green-400/20' },
+                    { label: 'Pending', value: stats?.pendingApproval || 0, icon: Clock, cText: (stats?.pendingApproval||0)>0?'text-amber-400':'text-slate-400', cBg: (stats?.pendingApproval||0)>0?'bg-amber-400/10':'bg-slate-400/10', cBorder: (stats?.pendingApproval||0)>0?'border-amber-400/20':'border-slate-400/20' },
+                    { label: 'Nodes', value: `${runCount}/${machines?.length || 0}`, icon: Cpu, cText: 'text-green-400', cBg: 'bg-green-400/10', cBorder: 'border-green-400/20' },
+                    { label: 'Alerts', value: (activeAlerts?.length || 0), icon: AlertTriangle, cText: (activeAlerts?.length || 0)>0?'text-red-400':'text-slate-400', cBg: (activeAlerts?.length || 0)>0?'bg-red-400/10':'bg-slate-400/10', cBorder: (activeAlerts?.length || 0)>0?'border-red-400/20':'border-slate-400/20' },
                     { label: 'Health', value: alertMachines === 0 ? 'GOOD' : 'WARN', icon: Activity, cText: alertMachines===0?'text-green-400':'text-amber-400', cBg: alertMachines===0?'bg-green-400/10':'bg-amber-400/10', cBorder: alertMachines===0?'border-green-400/20':'border-amber-400/20' },
                 ].map(kpi => (
                     <div key={kpi.label} className="bg-slate-900/60 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex items-center gap-3 shadow-lg">
@@ -208,7 +207,7 @@ const AdminDashboard = () => {
                 {/* Approved Operators */}
                 <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl">
                     <div className="text-xs font-bold text-slate-400 tracking-widest uppercase font-mono mb-6">
-                        Registered Operators ({users.filter(u => u.enabled === 1).length})
+                        Registered Operators ({users?.filter(u => u?.enabled === 1)?.length || 0})
                     </div>
                     <div className="flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-2">
                         {users.filter(u => u.enabled === 1).length > 0 ? users.filter(u => u.enabled === 1).map(u => (
@@ -250,22 +249,22 @@ const AdminDashboard = () => {
                         <div className="text-[10px] text-sky-400/60 uppercase">{machines.length} Total Nodes</div>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-                        {machines.map(m => {
-                            const isRun = m.status === 'RUNNING';
-                            const isErr = m.status === 'EMERGENCY';
-                            const colorClass = isRun ? 'text-green-400' : isErr ? 'text-red-400' : m.status === 'MAINTENANCE' ? 'text-amber-400' : 'text-slate-400';
+                        {(machines || [])?.map(m => {
+                            const isRun = m?.status === 'RUNNING';
+                            const isErr = m?.status === 'EMERGENCY';
+                            const colorClass = isRun ? 'text-green-400' : isErr ? 'text-red-400' : m?.status === 'MAINTENANCE' ? 'text-amber-400' : 'text-slate-400';
                             const bgClass = isRun ? 'bg-green-500/5 border-green-500/10' : isErr ? 'bg-red-500/5 border-red-500/10' : 'bg-slate-800/20 border-white/5';
                             
                             return (
-                                <div key={m.machineId} className={`flex flex-col gap-1.5 ${bgClass} border rounded-lg p-2.5 hover:bg-slate-800 transition-all group`}>
+                                <div key={m?.machineId} className={`flex flex-col gap-1.5 ${bgClass} border rounded-lg p-2.5 hover:bg-slate-800 transition-all group`}>
                                     <div className="flex justify-between items-center">
                                         <div className={`w-1.5 h-1.5 rounded-full bg-current ${colorClass} ${isRun ? 'animate-pulse' : isErr ? 'animate-ping' : ''}`}></div>
-                                        <span className="text-[8px] font-bold text-slate-500 uppercase font-mono">#{m.machineId.slice(-4)}</span>
+                                        <span className="text-[8px] font-bold text-slate-500 uppercase font-mono">#{String(m?.machineId || '').slice(-4)}</span>
                                     </div>
-                                    <span className="text-[11px] font-bold text-white truncate leading-none mb-0.5">{m.machineName}</span>
+                                    <span className="text-[11px] font-bold text-white truncate leading-none mb-0.5">{m?.machineName}</span>
                                     <div className="flex items-center justify-between">
                                         <span className={`text-[9px] font-black uppercase font-mono tracking-tighter ${colorClass}`}>
-                                            {m.status}
+                                            {m?.status || 'UNKNOWN'}
                                         </span>
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <div className="w-1 h-3 bg-white/5 rounded-full"></div>
