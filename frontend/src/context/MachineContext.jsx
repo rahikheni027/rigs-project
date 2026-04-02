@@ -28,75 +28,82 @@ export const MachineProvider = ({ children }) => {
     useEffect(() => {
         if (!user) return;
 
-        const token = localStorage.getItem('token');
-        if (!token) return;
+        const connectSSE = () => {
+            const token = localStorage.getItem('token');
+            if (!token) return null;
 
-        const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api';
-        const eventSource = new EventSource(`${apiUrl}/machines/stream?token=${token}`);
+            const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+            const eventSource = new EventSource(`${apiUrl}/machines/stream?token=${token}`);
 
-        eventSource.onopen = () => {
-            console.log("SSE Connection Opened");
-            setIsOnline(true);
-        };
+            eventSource.onopen = () => {
+                console.log("██ SSE Connection Opened");
+                setIsOnline(true);
+            };
 
-        eventSource.onerror = (error) => {
-            console.error("SSE Connection Error", error);
-            setIsOnline(false);
-        };
-
-        eventSource.addEventListener('telemetry', (event) => {
-            if (!event.data) return;
-            try {
-                const incomingTelemetry = JSON.parse(event.data);
-                
-                setMachines(prevMachines => {
-                    // Check if machine already exists in state
-                    const exists = prevMachines.some(m => m.machineId === incomingTelemetry.machineId);
-                    
-                    if (exists) {
-                        return prevMachines.map(m => 
-                            m.machineId === incomingTelemetry.machineId ? incomingTelemetry : m
-                        );
-                    } else {
-                        // Brand new machine arrived
-                        return [...prevMachines, incomingTelemetry];
+            eventSource.onerror = (error) => {
+                console.error("██ SSE Connection Error", error);
+                setIsOnline(false);
+                eventSource.close();
+                // Retry after 5s
+                setTimeout(() => {
+                    if (user) {
+                        console.log("██ Attempting SSE Reconnect...");
+                        connectSSE();
                     }
-                });
-                
-                setDataPoints(p => p + 1);
-                setLastSync(new Date());
-            } catch (e) {
-                console.error("Failed to parse incoming telemetry SSE", e);
-            }
-        });
+                }, 5000);
+            };
 
-        // Phase 3: Listen for real-time alert events from the AlertEngine
-        eventSource.addEventListener('alert', (event) => {
-            if (!event.data) return;
-            try {
-                const alertData = JSON.parse(event.data);
-                console.log("🚨 SSE Alert received:", alertData);
+            eventSource.addEventListener('connect', (event) => {
+                console.log("██ SSE Link Verified:", event.data);
+                setIsOnline(true);
+            });
 
-                // Handle cascading failure specially — show dramatic banner
-                if (alertData.type === 'CASCADING_FAILURE') {
-                    setCascadingFailure(alertData);
-                    // Auto-dismiss after 30 seconds
-                    setTimeout(() => setCascadingFailure(null), 30000);
+            eventSource.addEventListener('telemetry', (event) => {
+                if (!event.data) return;
+                try {
+                    const incomingTelemetry = JSON.parse(event.data);
+                    setMachines(prevMachines => {
+                        const exists = prevMachines.some(m => m.machineId === incomingTelemetry.machineId);
+                        if (exists) {
+                            return prevMachines.map(m => m.machineId === incomingTelemetry.machineId ? incomingTelemetry : m);
+                        } else {
+                            return [...prevMachines, incomingTelemetry];
+                        }
+                    });
+                    setDataPoints(p => p + 1);
+                    setLastSync(new Date());
+                } catch (e) {
+                    console.error("██ Failed to parse telemetry", e);
                 }
+            });
 
-                // Add to live alerts (keep last 20)
-                setLiveAlerts(prev => {
-                    const next = [{ ...alertData, receivedAt: new Date().toISOString() }, ...prev];
-                    return next.slice(0, 20);
-                });
-            } catch (e) {
-                console.error("Failed to parse alert SSE", e);
-            }
-        });
+            eventSource.addEventListener('alert', (event) => {
+                if (!event.data) return;
+                try {
+                    const alertData = JSON.parse(event.data);
+                    if (alertData.type === 'CASCADING_FAILURE') {
+                        setCascadingFailure(alertData);
+                        setTimeout(() => setCascadingFailure(null), 30000);
+                    }
+                    setLiveAlerts(prev => {
+                        const next = [{ ...alertData, receivedAt: new Date().toISOString() }, ...prev];
+                        return next.slice(0, 20);
+                    });
+                } catch (e) {
+                    console.error("██ Failed to parse alert", e);
+                }
+            });
+
+            return eventSource;
+        };
+
+        const es = connectSSE();
 
         return () => {
-            console.log("Closing SSE Connection");
-            eventSource.close();
+            if (es) {
+                console.log("██ Closing SSE Connection");
+                es.close();
+            }
             setIsOnline(false);
         };
     }, [user]);

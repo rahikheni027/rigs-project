@@ -28,6 +28,15 @@ public class SseService {
         SseEmitter emitter = new SseEmitter(0L);
         emitters.add(emitter);
 
+        // Send heartbeat/connected event immediately to confirm link
+        try {
+            emitter.send(SseEmitter.event().name("connect").data("linked"));
+        } catch (IOException e) {
+            log.error("Failed to send initial connect event", e);
+            emitters.remove(emitter);
+            return emitter;
+        }
+
         emitter.onCompletion(() -> {
             log.debug("SSE Connection completed cleanly.");
             emitters.remove(emitter);
