@@ -170,7 +170,7 @@ const MachinesPage = () => {
             </div>
 
             {/* Machine cards grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
                 {filtered.map(m => {
                     const sc = STATUS_CONFIG[m.status] || STATUS_CONFIG.OFFLINE;
                     const MIcon = MACHINE_ICONS[m.machineType] || Cpu;

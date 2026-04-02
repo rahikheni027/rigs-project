@@ -117,7 +117,8 @@ const WorkerDashboard = () => {
     const alertMachines = machines.filter(m => m.status === 'EMERGENCY' || m.maintenanceAlert);
     const avgTemp = machines.length ? (machines.reduce((s, m) => s + (m.temperature || 0), 0) / machines.length) : 0;
     const totalPower = machines.reduce((s, m) => s + (m.powerConsumption || 0), 0);
-    const avgEfficiency = machines.length ? (machines.reduce((s, m) => s + (m.efficiency || 0), 0) / machines.length) : 0;
+    const runningMachines = machines.filter(m => m.status === 'RUNNING');
+    const avgEfficiency = runningMachines.length ? (runningMachines.reduce((s, m) => s + (m.efficiency || 0), 0) / runningMachines.length) : 0;
     const avgRpm = machines.length ? (machines.reduce((s, m) => s + (m.rpm || 0), 0) / machines.length) : 0;
     const activeAlerts = alerts.filter(a => !a.acknowledged);
     const criticalAlerts = activeAlerts.filter(a => a.severity === 'CRITICAL');
@@ -125,8 +126,8 @@ const WorkerDashboard = () => {
 
     // OEE Calculation: Availability × Performance × Quality
     const availability = machines.length > 0 ? (runCount / machines.length) * 100 : 0;
-    const performance = avgEfficiency;
-    const quality = 100 - (machines.reduce((s, m) => s + (m.errorRate || 0), 0) / Math.max(machines.length, 1)) * 100;
+    const performance = avgEfficiency; // Only efficiency of running machines
+    const quality = runningMachines.length > 0 ? 100 - (runningMachines.reduce((s, m) => s + (m.errorRate || 0), 0) / runningMachines.length) * 100 : 100;
     const oee = (availability * performance * quality) / 10000;
 
     if (loading) return (
@@ -229,7 +230,7 @@ const WorkerDashboard = () => {
             <div style={{ height: 12 }} />
 
             {/* Main Grid: Charts + OEE + Alarms */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 280px', gap: 12, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, marginBottom: 16 }}>
                 {/* Temperature & Power Chart */}
                 <div style={S.card}>
                     <div style={{ ...S.label, marginBottom: 10 }}>PROCESS TELEMETRY — LIVE</div>
@@ -315,9 +316,9 @@ const WorkerDashboard = () => {
             </div>
 
             {/* Alarm Panel + Machine Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
                 {/* Active Alarms */}
-                <div style={S.card}>
+                <div style={{ ...S.card, flex: '1 1 350px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                         <div style={S.label}>ALARM PANEL</div>
                         {activeAlerts.length > 0 && (
@@ -354,7 +355,7 @@ const WorkerDashboard = () => {
                 </div>
 
                 {/* Process Overview — Machine Status Grid */}
-                <div style={S.card}>
+                <div style={{ ...S.card, flex: '2 1 500px' }}>
                     <div style={{ ...S.label, marginBottom: 10 }}>PROCESS UNIT OVERVIEW</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 6 }}>
                         {machines.map(m => {

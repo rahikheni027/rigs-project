@@ -121,26 +121,7 @@ public class MachineService {
         Double eff = latestTelemetry != null ? latestTelemetry.getEfficiency() : null;
         Double err = latestTelemetry != null ? latestTelemetry.getErrorRate() : null;
 
-        // Override telemetry values based on machine status for physical accuracy
         String status = machine.getStatus();
-        if ("STOPPED".equals(status) || "EMERGENCY".equals(status) || "OFFLINE".equals(status)) {
-            rpm = 0.0;
-            power = status.equals("EMERGENCY") ? 0.1 : 0.0;
-            eff = 0.0;
-            err = 0.0;
-            vib = status.equals("EMERGENCY") ? 0.1 : 0.0;
-            if (temp != null && temp > 40) temp = Math.max(25.0, temp * 0.6); // cooling down
-        } else if ("MAINTENANCE".equals(status)) {
-            rpm = 0.0;
-            power = 0.5;
-            eff = 0.0;
-            err = 0.0;
-        } else if ("CALIBRATING".equals(status)) {
-            if (rpm != null) rpm = Math.min(rpm, 800.0);
-            power = 2.0;
-            eff = 95.0;
-            err = 0.0;
-        }
 
         List<Long> upstream = dependencyGraphService.getUpstreamEdges(machine).stream()
                 .map(d -> d.getParentMachine().getId())
