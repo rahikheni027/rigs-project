@@ -1,14 +1,5 @@
--- V3__add_database_indexes.sql
--- Optimizing queries for large telemetry ingestion and dashboard loads
-
--- 1. Index for fast telemetry queries (Dashboard charts querying by machine + time)
-CREATE INDEX idx_telemetry_machine_time ON machine_telemetry (machine_id, `timestamp` DESC);
-
--- 2. Index for quick machine status checks (Admin/Worker Dashboard KPI queries)
-CREATE INDEX idx_machine_status ON machines (status);
-
--- 3. Index for alert filtering (Finding unacknowledged critical alerts fast)
-CREATE INDEX idx_alerts_machine_severity ON alerts (machine_id, severity);
-
--- 4. Index for command lookups (Checking PENDING commands)
-CREATE INDEX idx_commands_machine_status ON commands (machine_id, status);
+-- V4__add_database_indexes.sql
+-- Indexes are applied via FlywayConfig.java using safe JDBC calls
+-- to avoid MySQL "Duplicate key name" errors on re-deploy.
+-- This migration is intentionally a no-op placeholder.
+SELECT 1;

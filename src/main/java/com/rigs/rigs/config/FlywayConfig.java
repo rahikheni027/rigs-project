@@ -28,6 +28,43 @@ public class FlywayConfig {
             // Repair standard checksums and trigger migration
             flyway.repair();
             flyway.migrate();
+
+            // Create indexes safely AFTER Flyway migration completes.
+            // Using try-catch per index so existing indexes don't crash the startup.
+            createIndexesSafely(dataSource);
         };
+    }
+
+    private void createIndexesSafely(DataSource dataSource) {
+        System.out.println("Creating database indexes (idempotent)...");
+        try (Connection c = dataSource.getConnection();
+             Statement s = c.createStatement()) {
+
+            safeCreateIndex(s, "idx_telemetry_machine_time",
+                    "CREATE INDEX idx_telemetry_machine_time ON machine_telemetry (machine_id, `timestamp` DESC)");
+
+            safeCreateIndex(s, "idx_machine_status",
+                    "CREATE INDEX idx_machine_status ON machines (status)");
+
+            safeCreateIndex(s, "idx_alerts_machine_severity",
+                    "CREATE INDEX idx_alerts_machine_severity ON alerts (machine_id, severity)");
+
+            safeCreateIndex(s, "idx_commands_machine_status",
+                    "CREATE INDEX idx_commands_machine_status ON commands (machine_id, status)");
+
+            System.out.println("Database indexes creation complete.");
+        } catch (Exception e) {
+            System.out.println("Error during index creation: " + e.getMessage());
+        }
+    }
+
+    private void safeCreateIndex(Statement s, String indexName, String sql) {
+        try {
+            s.execute(sql);
+            System.out.println("  Created index: " + indexName);
+        } catch (Exception e) {
+            // MySQL error 1061 = "Duplicate key name" (index already exists) — safe to ignore
+            System.out.println("  Index " + indexName + " already exists or skipped: " + e.getMessage());
+        }
     }
 }
