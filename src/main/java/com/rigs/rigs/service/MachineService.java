@@ -23,7 +23,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class MachineService {
 
@@ -41,7 +40,23 @@ public class MachineService {
     private final AlertService alertService;
     private final SseService sseService;
     private final AlertEngineService alertEngineService;
-    private final @Lazy DependencyGraphService dependencyGraphService;
+    private final DependencyGraphService dependencyGraphService;
+
+    public MachineService(MachineRepository machineRepository,
+                          MachineTelemetryRepository telemetryRepository,
+                          MachineSettingsRepository settingsRepository,
+                          AlertService alertService,
+                          SseService sseService,
+                          AlertEngineService alertEngineService,
+                          @Lazy DependencyGraphService dependencyGraphService) {
+        this.machineRepository = machineRepository;
+        this.telemetryRepository = telemetryRepository;
+        this.settingsRepository = settingsRepository;
+        this.alertService = alertService;
+        this.sseService = sseService;
+        this.alertEngineService = alertEngineService;
+        this.dependencyGraphService = dependencyGraphService;
+    }
 
     /** In-memory map tracking command lock timestamps per machine ID */
     private final Map<Long, LocalDateTime> commandLocks = new ConcurrentHashMap<>();

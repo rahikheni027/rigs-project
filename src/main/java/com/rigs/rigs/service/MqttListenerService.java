@@ -1,22 +1,16 @@
 package com.rigs.rigs.service;
 
-import com.rigs.rigs.entity.Machine;
-import com.rigs.rigs.repository.MachineRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class MqttListenerService implements MqttCallbackExtended {
 
@@ -34,8 +28,11 @@ public class MqttListenerService implements MqttCallbackExtended {
 
     private MqttClient mqttClient;
     private final MachineService machineService;
-    private final MachineRepository machineRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public MqttListenerService(@org.springframework.context.annotation.Lazy MachineService machineService) {
+        this.machineService = machineService;
+    }
 
     @PostConstruct
     public void init() {

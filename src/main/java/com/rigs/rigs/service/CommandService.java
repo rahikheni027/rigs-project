@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class CommandService {
 
@@ -24,8 +23,24 @@ public class CommandService {
     private final MqttListenerService mqttService;
     private final MachineService machineService;
     private final SseService sseService;
-    private final @Lazy DependencyGraphService dependencyGraphService;
-    private final @Lazy AlertEngineService alertEngineService;
+    private final DependencyGraphService dependencyGraphService;
+    private final AlertEngineService alertEngineService;
+
+    public CommandService(CommandRepository commandRepository,
+                          MachineRepository machineRepository,
+                          @Lazy MqttListenerService mqttService,
+                          @Lazy MachineService machineService,
+                          SseService sseService,
+                          @Lazy DependencyGraphService dependencyGraphService,
+                          @Lazy AlertEngineService alertEngineService) {
+        this.commandRepository = commandRepository;
+        this.machineRepository = machineRepository;
+        this.mqttService = mqttService;
+        this.machineService = machineService;
+        this.sseService = sseService;
+        this.dependencyGraphService = dependencyGraphService;
+        this.alertEngineService = alertEngineService;
+    }
 
     @Transactional
     public Command issueCommand(Long machineId, String type, String parameters, String issuedBy) {

@@ -7,7 +7,6 @@ import com.rigs.rigs.entity.Machine;
 import com.rigs.rigs.entity.MachineDependency;
 import com.rigs.rigs.repository.MachineDependencyRepository;
 import com.rigs.rigs.repository.MachineRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -17,15 +16,26 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class DependencyGraphService {
 
     private final MachineDependencyRepository dependencyRepository;
     private final MachineRepository machineRepository;
-    private final @Lazy CommandService commandService;
+    private final CommandService commandService;
     private final AlertEngineService alertEngineService;
-    private final @Lazy MachineService machineService;
+    private final MachineService machineService;
+
+    public DependencyGraphService(MachineDependencyRepository dependencyRepository,
+                                  MachineRepository machineRepository,
+                                  @Lazy CommandService commandService,
+                                  AlertEngineService alertEngineService,
+                                  @Lazy MachineService machineService) {
+        this.dependencyRepository = dependencyRepository;
+        this.machineRepository = machineRepository;
+        this.commandService = commandService;
+        this.alertEngineService = alertEngineService;
+        this.machineService = machineService;
+    }
 
     // ----- Graph Traversal & Validation -----
 
