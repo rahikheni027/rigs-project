@@ -1,33 +1,33 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 import { useMachines } from '../context/MachineContext';
 import {
     ArrowLeft, Thermometer, Activity, Zap, Gauge, Wind, BarChart3, AlertTriangle,
     Play, Square, OctagonX, RotateCcw, Wrench, SlidersHorizontal, Cpu,
-    Clock, TrendingUp, Download, Droplets, Fan, Cog, Radio
+    Download, Droplets, Fan, Cog, Radio
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
-    RUNNING: { color: '#22c55e', bg: 'rgba(34,197,94,0.06)', label: 'RUNNING' },
-    STOPPED: { color: '#64748b', bg: 'rgba(100,116,139,0.06)', label: 'STOPPED' },
-    EMERGENCY: { color: '#ef4444', bg: 'rgba(239,68,68,0.08)', label: 'EMERGENCY' },
-    MAINTENANCE: { color: '#f59e0b', bg: 'rgba(245,158,11,0.06)', label: 'MAINTENANCE' },
-    CALIBRATING: { color: '#3b82f6', bg: 'rgba(59,130,246,0.06)', label: 'CALIBRATING' },
-    OFFLINE: { color: '#475569', bg: 'rgba(71,85,105,0.06)', label: 'OFFLINE' },
+    RUNNING: { color: 'text-green-500', hex: '#22c55e', bg: 'bg-green-500/10', border: 'border-green-500/30', label: 'RUNNING' },
+    STOPPED: { color: 'text-slate-400', hex: '#64748b', bg: 'bg-slate-500/10', border: 'border-slate-500/30', label: 'STOPPED' },
+    EMERGENCY: { color: 'text-red-500', hex: '#ef4444', bg: 'bg-red-500/10', border: 'border-red-500/30', label: 'E-STOP' },
+    MAINTENANCE: { color: 'text-amber-500', hex: '#f59e0b', bg: 'bg-amber-500/10', border: 'border-amber-500/30', label: 'MAINTENANCE' },
+    CALIBRATING: { color: 'text-blue-500', hex: '#3b82f6', bg: 'bg-blue-500/10', border: 'border-blue-500/30', label: 'CALIBRATING' },
+    OFFLINE: { color: 'text-gray-500', hex: '#4b5563', bg: 'bg-gray-500/10', border: 'border-gray-500/30', label: 'OFFLINE' },
 };
 
 const MACHINE_ICONS = { PUMP: Droplets, MOTOR: Cog, COMPRESSOR: Fan, TURBINE: Activity, GENERATOR: Zap };
 
 const COMMANDS = [
-    { cmd: 'START', icon: Play, label: 'START', color: '#22c55e' },
-    { cmd: 'STOP', icon: Square, label: 'STOP', color: '#64748b' },
-    { cmd: 'EMERGENCY_STOP', icon: OctagonX, label: 'E-STOP', color: '#ef4444' },
-    { cmd: 'RESET', icon: RotateCcw, label: 'RESET', color: '#8b5cf6' },
-    { cmd: 'MAINTENANCE_MODE', icon: Wrench, label: 'MAINT', color: '#f59e0b' },
-    { cmd: 'CALIBRATION', icon: SlidersHorizontal, label: 'CAL', color: '#3b82f6' },
+    { cmd: 'START', icon: Play, label: 'START', border: 'border-green-500/30', hover: 'hover:bg-green-500/10 hover:border-green-500/50', text: 'text-green-500' },
+    { cmd: 'STOP', icon: Square, label: 'STOP', border: 'border-slate-500/30', hover: 'hover:bg-slate-500/10 hover:border-slate-500/50', text: 'text-slate-400' },
+    { cmd: 'EMERGENCY_STOP', icon: OctagonX, label: 'E-STOP', border: 'border-red-500/30', hover: 'hover:bg-red-500/10 hover:border-red-500/50', text: 'text-red-500' },
+    { cmd: 'RESET', icon: RotateCcw, label: 'RESET', border: 'border-purple-500/30', hover: 'hover:bg-purple-500/10 hover:border-purple-500/50', text: 'text-purple-400' },
+    { cmd: 'MAINTENANCE_MODE', icon: Wrench, label: 'MAINT', border: 'border-amber-500/30', hover: 'hover:bg-amber-500/10 hover:border-amber-500/50', text: 'text-amber-500' },
+    { cmd: 'CALIBRATION', icon: SlidersHorizontal, label: 'CALIB', border: 'border-blue-500/30', hover: 'hover:bg-blue-500/10 hover:border-blue-500/50', text: 'text-blue-400' },
 ];
 
 const SETPOINTS = {
@@ -41,51 +41,47 @@ const SETPOINTS = {
     errorRate: { min: 0, max: 0.05, unit: '', label: 'ERROR RATE' },
 };
 
-const S = {
-    card: { background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(14,165,233,0.08)', borderRadius: 10, padding: 16 },
-    label: { fontSize: 9, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace" },
-};
-
 const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
-        <div style={{ background: '#0f172a', border: '1px solid rgba(14,165,233,0.15)', borderRadius: 8, padding: '8px 12px', fontSize: 11 }}>
-            <div style={{ color: '#64748b', marginBottom: 4, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>{label}</div>
+        <div className="bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-2xl font-mono text-xs">
+            <div className="text-slate-400 font-bold mb-2 tracking-wider">{label}</div>
             {payload.map(p => (
-                <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 1 }}>
-                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: p.color }} />
-                    <span style={{ color: '#94a3b8', fontSize: 10 }}>{p.name}:</span>
-                    <span style={{ color: '#f1f5f9', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{p.value != null ? Number(p.value).toFixed(2) : '—'}</span>
+                <div key={p.name} className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 rounded-full" style={{ background: p.color }} />
+                    <span className="text-slate-300">{p.name}:</span>
+                    <span className="text-white font-bold">{p.value != null ? Number(p.value).toFixed(2) : '—'}</span>
                 </div>
             ))}
         </div>
     );
 };
 
-const MetricCard = ({ label, value, unit, icon: Icon, color, setpoint }) => {
+const MetricCard = ({ label, value, unit, icon: Icon, colorClass, hexColor, setpoint }) => {
     const isOverLimit = setpoint && value != null && value > setpoint.max;
-    const displayColor = isOverLimit ? '#ef4444' : color;
+    const dpColorText = isOverLimit ? 'text-red-400' : colorClass;
+    const dpColorHex = isOverLimit ? '#f87171' : hexColor;
 
     return (
-        <div style={{
-            background: 'rgba(15,23,42,0.7)', border: `1px solid ${displayColor}12`, borderRadius: 8, padding: '10px 12px',
-        }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <Icon size={12} color={displayColor} />
-                    <span style={{ ...S.label, marginBottom: 0 }}>{label}</span>
+        <div className={`bg-slate-900/60 backdrop-blur-md border ${isOverLimit ? 'border-red-500/50 bg-red-500/5' : 'border-white/5 bg-slate-800/40'} rounded-2xl p-4 transition-all`}>
+            <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-2 text-slate-400">
+                    <Icon size={14} className={dpColorText} />
+                    <span className="text-[10px] font-bold uppercase font-mono tracking-widest">{label}</span>
                 </div>
-                {isOverLimit && <AlertTriangle size={10} color="#ef4444" style={{ animation: 'alarm-flash 1s infinite' }} />}
+                {isOverLimit && <AlertTriangle size={12} className="text-red-400 animate-pulse" />}
             </div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: displayColor, fontFamily: "'JetBrains Mono', monospace", marginBottom: 4 }}>
-                {value != null ? (typeof value === 'number' ? value.toFixed(label === 'RPM' ? 0 : 2) : value) : '--'}
-                <span style={{ fontSize: 10, fontWeight: 400, color: '#64748b', marginLeft: 2 }}>{unit}</span>
+            <div className="flex items-baseline gap-1 mb-2">
+                <span className={`text-2xl font-black font-mono tracking-tighter ${dpColorText}`}>
+                    {value != null ? (typeof value === 'number' ? value.toFixed(label === 'RPM' ? 0 : 2) : value) : '--'}
+                </span>
+                <span className="text-[10px] text-slate-500 font-bold uppercase">{unit}</span>
             </div>
             {setpoint && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: '#475569', fontFamily: "'JetBrains Mono', monospace" }}>
-                    <span>SP: {setpoint.min}–{setpoint.max}{unit}</span>
+                <div className="flex justify-between items-center text-[9px] font-mono font-bold tracking-widest pt-3 border-t border-white/5">
+                    <span className="text-slate-500">SP: {setpoint.min}-{setpoint.max}{unit}</span>
                     {value != null && (
-                        <span style={{ color: isOverLimit ? '#ef4444' : '#22c55e' }}>{isOverLimit ? '▲ HIGH' : '✓ NORM'}</span>
+                        <span className={isOverLimit ? 'text-red-400 animate-pulse' : 'text-green-400'}>{isOverLimit ? '▲ HIGH' : '✓ NORM'}</span>
                     )}
                 </div>
             )}
@@ -93,56 +89,34 @@ const MetricCard = ({ label, value, unit, icon: Icon, color, setpoint }) => {
     );
 };
 
-const VirtualMachineVisualizer = ({ status, type }) => {
+const VirtualMachineVisualizer = ({ status, type, sc }) => {
     const isRunning = status === 'RUNNING';
     const isError = status === 'EMERGENCY';
-    const color = isError ? '#ef4444' : isRunning ? '#22c55e' : '#64748b';
-    const ringColor = isError ? 'rgba(239,68,68,0.2)' : isRunning ? 'rgba(34,197,94,0.2)' : 'rgba(100,116,139,0.1)';
 
     return (
-        <div style={{
-            background: 'rgba(15,23,42,0.6)', border: `1px solid ${color}40`,
-            borderRadius: 12, padding: 24, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', height: 180, position: 'relative',
-            overflow: 'hidden'
-        }}>
-            {/* Background glow */}
-            <motion.div
-                animate={{ opacity: isRunning ? [0.3, 0.6, 0.3] : isError ? [0.4, 0.8, 0.4] : 0.1 }}
-                transition={{ duration: isError ? 0.5 : 2, repeat: Infinity }}
-                style={{ position: 'absolute', width: 150, height: 150, background: color, filter: 'blur(60px)', borderRadius: '50%' }}
-            />
-
-            {/* Spinning Element */}
-            <motion.div
-                animate={{ rotate: isRunning ? 360 : 0 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                style={{
-                    width: 70, height: 70, border: `3px dashed ${color}`, borderRadius: '50%',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1,
-                    background: 'rgba(15,23,42,0.8)', boxShadow: `0 0 20px ${ringColor}`
-                }}
-            >
-                <Cog size={28} color={color} />
+        <div className={`bg-slate-900/40 border ${sc.border} rounded-3xl p-6 flex flex-col items-center justify-center min-h-[250px] relative overflow-hidden`}>
+            <motion.div animate={{ opacity: isRunning ? [0.2, 0.4, 0.2] : isError ? [0.3, 0.6, 0.3] : 0.1 }} transition={{ duration: isError ? 0.5 : 2, repeat: Infinity }} 
+                className={`absolute w-40 h-40 ${sc.bg} rounded-full blur-[40px]`}></motion.div>
+            
+            <motion.div animate={{ rotate: isRunning ? 360 : 0 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className={`relative z-10 w-24 h-24 border-[3px] border-dashed ${sc.border} rounded-full flex items-center justify-center bg-slate-900/80 shadow-[0_0_30px_rgba(0,0,0,0.5)]`}>
+                <Cog size={40} className={sc.color} />
             </motion.div>
-
-            <div style={{ marginTop: 16, zIndex: 1, color: '#f8fafc', fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", letterSpacing: 2 }}>
-                {type || 'MACHINE'}
+            
+            <div className="relative z-10 mt-6 text-center">
+                <h3 className="text-sm font-black text-white tracking-[0.2em] uppercase font-mono">{type || 'MACHINE'}</h3>
+                <motion.div animate={isError ? { opacity: [1, 0, 1] } : {}} transition={{ duration: 0.5, repeat: Infinity }}
+                    className={`text-[11px] font-bold tracking-[0.3em] font-mono mt-2 uppercase ${sc.color}`}>
+                    [{status}]
+                </motion.div>
             </div>
-            <motion.div
-                animate={isError ? { opacity: [1, 0, 1] } : {}}
-                transition={{ duration: 0.5, repeat: Infinity }}
-                style={{ zIndex: 1, color, fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", marginTop: 4 }}
-            >
-                {status}
-            </motion.div>
         </div>
     );
 };
 
 const MachineDetailPage = () => {
     const { machineId } = useParams();
-    const { machines, setMachines } = useMachines();
+    const { machines } = useMachines();
     const liveMachine = machines?.find(m => m.machineId === machineId);
     
     const [machine, setMachine] = useState(null);
@@ -152,7 +126,6 @@ const MachineDetailPage = () => {
     const [pendingCmd, setPendingCmd] = useState(null);
     const [forceOverride, setForceOverride] = useState(false);
 
-    // Fetch initial state and history only once
     useEffect(() => {
         const fetchInitialInfo = async () => {
             try {
@@ -164,9 +137,7 @@ const MachineDetailPage = () => {
                 
                 const histData = (histRes.data || []).slice(-40).map((d, i) => ({
                     time: d.timestamp ? new Date(d.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : `T${i}`,
-                    temp: d.temperature, vib: d.vibration, rpm: d.rpm,
-                    pres: d.pressure, power: d.powerConsumption, eff: d.efficiency,
-                    cur: d.currentDraw, err: d.errorRate,
+                    temp: d.temperature, vib: d.vibration, rpm: d.rpm, pres: d.pressure, power: d.powerConsumption, eff: d.efficiency, cur: d.currentDraw, err: d.errorRate,
                 }));
                 setHistory(histData);
             } catch (e) { console.error(e); } finally { setLoading(false); }
@@ -174,7 +145,6 @@ const MachineDetailPage = () => {
         fetchInitialInfo();
     }, [machineId]);
 
-    // Handle real-time SSE updates for the specific machine
     useEffect(() => {
         if (!liveMachine) return;
         setMachine(prev => ({ ...prev, ...liveMachine }));
@@ -183,12 +153,7 @@ const MachineDetailPage = () => {
             const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
             if (prev.length > 0 && prev[prev.length - 1].time === now) return prev;
             
-            const next = [...prev, {
-                time: now,
-                temp: liveMachine.temperature, vib: liveMachine.vibration, rpm: liveMachine.rpm,
-                pres: liveMachine.pressure, power: liveMachine.powerConsumption, eff: liveMachine.efficiency,
-                cur: liveMachine.currentDraw, err: liveMachine.errorRate,
-            }];
+            const next = [...prev, { time: now, temp: liveMachine.temperature, vib: liveMachine.vibration, rpm: liveMachine.rpm, pres: liveMachine.pressure, power: liveMachine.powerConsumption, eff: liveMachine.efficiency, cur: liveMachine.currentDraw, err: liveMachine.errorRate }];
             return next.length > 50 ? next.slice(-50) : next;
         });
     }, [liveMachine]);
@@ -196,35 +161,18 @@ const MachineDetailPage = () => {
     const handleCommandClick = (cmd) => {
         const isStop = ['STOP', 'EMERGENCY_STOP', 'MAINTENANCE_MODE'].includes(cmd);
         const hasDownstream = machine?.downstreamDependencies?.length > 0;
-        
-        if (isStop && hasDownstream) {
-            setPendingCmd(cmd);
-            return;
-        }
+        if (isStop && hasDownstream) { setPendingCmd(cmd); return; }
         executeCommand(cmd, forceOverride);
     };
 
     const executeCommand = async (cmd, force) => {
         setPendingCmd(null);
         setCmdLoading(p => ({ ...p, [cmd]: true }));
-        
-        // Optimistic UI update
-        const targetStatus = cmd === 'START' || cmd === 'RESET' ? 'RUNNING' :
-                             cmd === 'STOP' ? 'STOPPED' :
-                             cmd === 'EMERGENCY_STOP' ? 'EMERGENCY' :
-                             cmd === 'MAINTENANCE_MODE' ? 'MAINTENANCE' :
-                             cmd === 'CALIBRATION' ? 'CALIBRATING' : null;
-        if (targetStatus && machine) {
-            setMachine(prev => ({ ...prev, status: targetStatus }));
-        }
+        const tStat = cmd === 'START' || cmd === 'RESET' ? 'RUNNING' : cmd === 'STOP' ? 'STOPPED' : cmd === 'EMERGENCY_STOP' ? 'EMERGENCY' : cmd === 'MAINTENANCE_MODE' ? 'MAINTENANCE' : cmd === 'CALIBRATION' ? 'CALIBRATING' : null;
+        if (tStat && machine) setMachine(prev => ({ ...prev, status: tStat }));
 
-        try {
-            await api.post(`/machines/${machineId}/command?command=${cmd}&issuedBy=operator&force=${force}`);
-        } catch (e) {
-            console.error(e);
-            // Revert optimistic update if command fails
-            if (liveMachine) setMachine(prev => ({ ...prev, status: liveMachine.status }));
-        }
+        try { await api.post(`/machines/${machineId}/command?command=${cmd}&issuedBy=operator&force=${force}`); }
+        catch (e) { if (liveMachine) setMachine(prev => ({ ...prev, status: liveMachine.status })); }
         finally { setTimeout(() => setCmdLoading(p => ({ ...p, [cmd]: false })), 1200); }
     };
 
@@ -234,263 +182,198 @@ const MachineDetailPage = () => {
         const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `rigs_machine_${machineId}_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
-        URL.revokeObjectURL(url);
+        const a = document.createElement('a'); a.href = url; a.download = `rigs_node_${machineId}_log.csv`; a.click();
     };
 
     if (loading || !machine) return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: 14 }}>
-            <Gauge size={28} color="#0ea5e9" style={{ animation: 'pulse 1.5s infinite' }} />
-            <p style={{ color: '#64748b', fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>LOADING MACHINE TELEMETRY...</p>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+            <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
+                <Gauge size={22} className="text-sky-400 animate-spin-slow" />
+            </div>
+            <p className="text-slate-400 text-[10px] font-mono tracking-widest uppercase">Acquiring Node Telemetry...</p>
         </div>
     );
 
     const sc = STATUS_CONFIG[machine.status] || STATUS_CONFIG.OFFLINE;
     const MIcon = MACHINE_ICONS[machine.machineType] || Cpu;
-    const timeSinceUpdate = machine.lastHeartbeat ? Math.round((Date.now() - new Date(machine.lastHeartbeat).getTime()) / 1000) : null;
+    const tSince = machine.lastHeartbeat ? Math.round((Date.now() - new Date(machine.lastHeartbeat).getTime()) / 1000) : null;
 
     return (
-        <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#f1f5f9' }}>
+        <div className="pb-10 font-sans text-slate-50 min-h-screen">
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <Link to="/app/machines" style={{ color: '#64748b', display: 'flex', padding: 6, borderRadius: 6, border: '1px solid rgba(14,165,233,0.1)', background: 'rgba(14,165,233,0.04)' }}>
-                        <ArrowLeft size={16} />
+            <div className="flex flex-col md:flex-row justify-between md:items-end gap-6 mb-8 mt-2">
+                <div className="flex items-start md:items-center gap-4">
+                    <Link to="/app/machines" className="p-3 bg-slate-900/60 border border-white/5 hover:border-slate-500/50 hover:bg-slate-800 rounded-xl transition-all">
+                        <ArrowLeft size={18} className="text-slate-400" />
                     </Link>
                     <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                            <MIcon size={16} color={sc.color} />
-                            <h1 style={{ fontSize: 18, fontWeight: 900, margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>{machine.machineName}</h1>
-                            <span style={{
-                                fontSize: 8, fontWeight: 800, padding: '3px 8px', borderRadius: 3,
-                                background: sc.bg, color: sc.color, fontFamily: "'JetBrains Mono', monospace",
-                            }}>
-                                <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: sc.color, marginRight: 4, animation: machine.status === 'EMERGENCY' ? 'alarm-flash 0.8s infinite' : machine.status === 'RUNNING' ? 'pulse 2s infinite' : 'none' }} />
+                        <div className="flex items-center gap-3 mb-1">
+                            <MIcon size={20} className={sc.color} />
+                            <h1 className="text-2xl md:text-3xl font-black text-white uppercase font-mono tracking-tighter m-0">{machine.machineName}</h1>
+                            <span className={`text-[10px] font-bold px-2.5 py-1 flex items-center gap-1.5 rounded-lg uppercase tracking-widest border ${sc.bg} ${sc.color} ${sc.border} font-mono`}>
+                                {machine.status === 'RUNNING' && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>}
+                                {machine.status === 'EMERGENCY' && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>}
                                 {sc.label}
                             </span>
                         </div>
-                        <div style={{ fontSize: 10, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>
-                            {machine.location} · {machine.machineType || 'MOTOR'} · {machine.processUnit || 'Unit A'} · RUNTIME: {(machine.cumulativeRuntimeHours || 0).toFixed(1)}h
-                            {timeSinceUpdate !== null && (
-                                <span style={{ marginLeft: 8, color: timeSinceUpdate > 30 ? '#ef4444' : '#22c55e' }}>
-                                    · LAST UPDATE: {timeSinceUpdate}s AGO
-                                </span>
-                            )}
+                        <div className="text-xs text-slate-400 font-mono tracking-widest uppercase mt-2">
+                            {machine.location} • {machine.machineType} • Uptime {(machine.cumulativeRuntimeHours || 0).toFixed(1)}h
+                            {tSince !== null && <span className={`ml-2 px-1.5 py-0.5 rounded ${tSince > 30 ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'}`}>T-{tSince}s</span>}
                         </div>
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={exportCSV} style={{
-                        display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px',
-                        background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.15)',
-                        borderRadius: 6, color: '#38bdf8', fontSize: 10, fontWeight: 700, cursor: 'pointer',
-                        fontFamily: "'JetBrains Mono', monospace",
-                    }}>
-                        <Download size={11} /> EXPORT
-                    </button>
-                </div>
+                <button onClick={exportCSV} className="flex items-center justify-center gap-2 px-4 py-2 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 rounded-lg text-sky-400 text-xs font-bold font-mono tracking-widest uppercase transition-colors shrink-0">
+                    <Download size={14} /> Export Logs
+                </button>
             </div>
 
-            {/* Modal Overlay for Cascading Commands */}
-            {pendingCmd && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(4px)',
-                    zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{
-                        background: '#0f172a', border: '1px solid #ef4444', borderRadius: 12, padding: 24,
-                        maxWidth: 400, width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                            <AlertTriangle size={24} color="#ef4444" />
-                            <h2 style={{ fontSize: 16, margin: 0, color: '#f8fafc', fontWeight: 800, fontFamily: "'JetBrains Mono', monospace" }}>CASCADE WARNING</h2>
-                        </div>
-                        <p style={{ fontSize: 14, color: '#cbd5e1', marginBottom: 16, lineHeight: 1.5 }}>
-                            Issuing <strong style={{color: '#ef4444'}}>{pendingCmd}</strong> to this machine will automatically propagate to <strong>{machine?.downstreamDependencies?.length} downstream dependencies</strong>.
-                        </p>
-                        <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 24, background: 'rgba(239,68,68,0.1)', padding: 10, borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)' }}>
-                            Affected downstream machine IDs: {machine?.downstreamDependencies?.join(', ')}
-                        </p>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                            <button onClick={() => setPendingCmd(null)} style={{
-                                padding: '8px 16px', borderRadius: 6, border: '1px solid #475569', background: 'transparent',
-                                color: '#94a3b8', fontWeight: 700, cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace"
-                            }}>CANCEL</button>
-                            <button onClick={() => executeCommand(pendingCmd, forceOverride)} style={{
-                                padding: '8px 16px', borderRadius: 6, border: 'none', background: '#ef4444',
-                                color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace"
-                            }}>CONFIRM {pendingCmd}</button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
+            {/* Cascade Warning Modal */}
+            <AnimatePresence>
+                {pendingCmd && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} 
+                            className="bg-slate-900 border border-red-500/50 rounded-2xl p-6 md:p-8 max-w-lg w-full shadow-[0_0_50px_rgba(239,68,68,0.2)]">
+                            <div className="flex items-center gap-3 mb-4 text-red-500">
+                                <AlertTriangle size={28} className="animate-pulse" />
+                                <h2 className="text-xl font-black font-mono tracking-tighter uppercase">Dependency Override Warning</h2>
+                            </div>
+                            <p className="text-slate-300 font-medium mb-4 leading-relaxed">
+                                Issuing <span className="text-red-400 font-bold px-1.5 py-0.5 bg-red-500/10 rounded">{pendingCmd}</span> directly to this node will trigger a cascading lock down of 
+                                <span className="text-white font-black"> {machine?.downstreamDependencies?.length} downstream operational units</span>.
+                            </p>
+                            <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 mb-8">
+                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest font-mono mb-2">Affected Targets:</div>
+                                <div className="flex flex-wrap gap-2 text-sm text-red-400 font-mono font-bold">
+                                    {machine?.downstreamDependencies?.map(id => <span key={id} className="bg-red-500/10 px-2 py-1 rounded">M-{id}</span>)}
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-3 font-mono">
+                                <button onClick={() => setPendingCmd(null)} className="px-5 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-bold tracking-widest uppercase hover:bg-slate-700 transition">Abort</button>
+                                <button onClick={() => executeCommand(pendingCmd, forceOverride)} className="px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-black tracking-widest uppercase transition shadow-[0_0_15px_rgba(239,68,68,0.4)]">Enforce Lock</button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
-            {/* Virtual Machine + Command Panel */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 1fr) 2fr', gap: 16, marginBottom: 16, alignItems: 'stretch' }}>
-                <VirtualMachineVisualizer status={machine.status} type={machine.machineType} />
-
-                <div style={{ ...S.card, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div style={{ ...S.label, marginBottom: 16 }}>CONTROL PANEL</div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {/* Top Config Row: Visualizer & Command Center */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <VirtualMachineVisualizer status={machine.status} type={machine.machineType} sc={sc} />
+                
+                <div className="lg:col-span-2 bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 flex flex-col justify-center">
+                    <h2 className="text-xs text-slate-400 font-bold uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                        <SlidersHorizontal size={14} /> Master Operational Link
+                    </h2>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
                         {COMMANDS.map(c => {
                             const isActive = cmdLoading[c.cmd];
                             return (
                                 <button key={c.cmd} onClick={() => handleCommandClick(c.cmd)} disabled={isActive}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px',
-                                        borderRadius: 8, border: `1px solid ${c.color}30`, cursor: 'pointer',
-                                        background: isActive ? `${c.color}15` : 'rgba(15,23,42,0.9)',
-                                        color: c.color, fontSize: 12, fontWeight: 700,
-                                        fontFamily: "'JetBrains Mono', monospace",
-                                        transition: 'all 0.15s', opacity: isActive ? 0.6 : 1,
-                                    }}
-                                    onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = `${c.color}10`; e.currentTarget.style.borderColor = `${c.color}50`; } }}
-                                    onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(15,23,42,0.9)'; e.currentTarget.style.borderColor = `${c.color}30`; } }}
-                                >
-                                    <c.icon size={14} />
-                                    {c.label}
+                                    className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-300 bg-slate-900/80
+                                    ${isActive ? 'opacity-50 scale-95' : `hover:-translate-y-1 ${c.hover} cursor-pointer`} ${c.border}`}>
+                                    <div className={`mb-2 ${isActive ? 'opacity-50' : c.text}`}>
+                                        <c.icon size={20} />
+                                    </div>
+                                    <span className={`text-[10px] font-bold font-mono tracking-widest uppercase ${isActive ? 'text-slate-500' : c.text}`}>{c.label}</span>
                                 </button>
                             );
                         })}
                     </div>
                     
                     {/* Force Override Toggle */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, padding: '8px 12px', background: 'rgba(239,68,68,0.05)', borderRadius: 6, border: forceOverride ? '1px solid #ef4444' : '1px solid rgba(239,68,68,0.2)' }}>
-                        <input type="checkbox" id="forceOverride" checked={forceOverride} onChange={e => setForceOverride(e.target.checked)} style={{ cursor: 'pointer', accentColor: '#ef4444' }} />
-                        <label htmlFor="forceOverride" style={{ fontSize: 10, color: forceOverride ? '#ef4444' : '#64748b', cursor: 'pointer', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>
-                            FORCE OVERRIDE DEPENDENCY LOCKS
+                    <div className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${forceOverride ? 'bg-red-500/10 border-red-500/30' : 'bg-black/20 border-white/5'}`}>
+                        <input type="checkbox" id="override" checked={forceOverride} onChange={e => setForceOverride(e.target.checked)} className="w-4 h-4 cursor-pointer accent-red-500" />
+                        <label htmlFor="override" className={`text-[10px] font-bold font-mono uppercase tracking-widest cursor-pointer select-none transition-colors ${forceOverride ? 'text-red-400' : 'text-slate-500'}`}>
+                            Safety Restraint Override
                         </label>
                     </div>
                 </div>
             </div>
 
-            {/* Live Metrics Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 16 }}>
-                <MetricCard label="TEMPERATURE" value={machine.temperature} unit="°C" icon={Thermometer} color="#f59e0b" setpoint={SETPOINTS.temperature} />
-                <MetricCard label="RPM" value={machine.rpm} unit="" icon={Gauge} color="#3b82f6" setpoint={SETPOINTS.rpm} />
-                <MetricCard label="VIBRATION" value={machine.vibration} unit="g" icon={Activity} color="#8b5cf6" setpoint={SETPOINTS.vibration} />
-                <MetricCard label="PRESSURE" value={machine.pressure} unit="PSI" icon={Wind} color="#06b6d4" setpoint={SETPOINTS.pressure} />
-                <MetricCard label="POWER" value={machine.powerConsumption} unit="kW" icon={Zap} color="#a855f7" setpoint={SETPOINTS.powerConsumption} />
-                <MetricCard label="EFFICIENCY" value={machine.efficiency} unit="%" icon={BarChart3} color="#22c55e" setpoint={SETPOINTS.efficiency} />
-                <MetricCard label="CURRENT" value={machine.currentDraw} unit="A" icon={Radio} color="#ec4899" setpoint={SETPOINTS.currentDraw} />
-                <MetricCard label="ERROR RATE" value={machine.errorRate} unit="" icon={AlertTriangle} color="#ef4444" setpoint={SETPOINTS.errorRate} />
+            {/* Matrix Metrics */}
+            <h2 className="text-xs text-slate-400 font-bold uppercase tracking-[0.2em] mb-4">Core Telemetry</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 mb-8">
+                <MetricCard label="TEMP" value={machine.temperature} unit="°C" icon={Thermometer} colorClass="text-amber-500" hexColor="#f59e0b" setpoint={SETPOINTS.temperature} />
+                <MetricCard label="RPM" value={machine.rpm} unit="" icon={Gauge} colorClass="text-blue-500" hexColor="#3b82f6" setpoint={SETPOINTS.rpm} />
+                <MetricCard label="VIBE" value={machine.vibration} unit="g" icon={Activity} colorClass="text-purple-500" hexColor="#a855f7" setpoint={SETPOINTS.vibration} />
+                <MetricCard label="PRES" value={machine.pressure} unit="PSI" icon={Wind} colorClass="text-cyan-500" hexColor="#06b6d4" setpoint={SETPOINTS.pressure} />
+                <MetricCard label="LOAD" value={machine.powerConsumption} unit="kW" icon={Zap} colorClass="text-indigo-500" hexColor="#6366f1" setpoint={SETPOINTS.powerConsumption} />
+                <MetricCard label="RATE" value={machine.efficiency} unit="%" icon={BarChart3} colorClass="text-green-500" hexColor="#22c55e" setpoint={SETPOINTS.efficiency} />
+                <MetricCard label="AMP" value={machine.currentDraw} unit="A" icon={Radio} colorClass="text-pink-500" hexColor="#ec4899" setpoint={SETPOINTS.currentDraw} />
+                <MetricCard label="ERR" value={machine.errorRate} unit="%" icon={AlertTriangle} colorClass="text-red-500" hexColor="#ef4444" setpoint={SETPOINTS.errorRate} />
             </div>
 
-            {/* Historical Charts */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                {/* Temperature + Vibration */}
-                <div style={S.card}>
-                    <div style={{ ...S.label, marginBottom: 10 }}>TEMPERATURE & VIBRATION TREND</div>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={history}>
-                            <defs>
-                                <linearGradient id="tG" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2} />
-                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(14,165,233,0.05)" />
-                            <XAxis dataKey="time" tick={{ fontSize: 8, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
-                            <YAxis yAxisId="temp" tick={{ fontSize: 8, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
-                            <YAxis yAxisId="vib" orientation="right" tick={{ fontSize: 8, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area yAxisId="temp" type="monotone" dataKey="temp" stroke="#f59e0b" fill="url(#tG)" strokeWidth={1.5} name="Temp (°C)" dot={false} />
-                            <Line yAxisId="vib" type="monotone" dataKey="vib" stroke="#8b5cf6" strokeWidth={1.5} name="Vibration (g)" dot={false} strokeDasharray="4 2" />
-                        </AreaChart>
-                    </ResponsiveContainer>
+            {/* Historical Trending */}
+            <h2 className="text-xs text-slate-400 font-bold uppercase tracking-[0.2em] mb-4">Oscilloscope Diagnostics</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                
+                {/* Temp & Vibration Chart */}
+                <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 min-h-[300px] flex flex-col">
+                    <h3 className="text-[10px] text-slate-400 font-bold uppercase font-mono tracking-widest mb-4">Thermodynamic vs Kinematic</h3>
+                    <div className="flex-1 w-full relative">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={history} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4}/><stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/></linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#64748b', fontFamily: 'monospace' }} tickLine={false} axisLine={false} dy={10} />
+                                <YAxis yAxisId="temp" tick={{ fontSize: 9, fill: '#64748b', fontFamily: 'monospace' }} tickLine={false} axisLine={false} dx={-10} />
+                                <YAxis yAxisId="vib" orientation="right" tick={{ fontSize: 9, fill: '#64748b', fontFamily: 'monospace' }} tickLine={false} axisLine={false} dx={10} />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Area yAxisId="temp" type="monotone" dataKey="temp" stroke="#f59e0b" fill="url(#tg)" strokeWidth={3} name="Temp (°C)" dot={false} activeDot={{ r: 6, fill: '#f59e0b', stroke: '#0f172a', strokeWidth: 3 }} />
+                                <Line yAxisId="vib" type="monotone" dataKey="vib" stroke="#a855f7" strokeWidth={3} name="Vib (g)" dot={false} strokeDasharray="5 5" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
 
-                {/* RPM + Power */}
-                <div style={S.card}>
-                    <div style={{ ...S.label, marginBottom: 10 }}>RPM & POWER CONSUMPTION</div>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={history}>
-                            <defs>
-                                <linearGradient id="rpmG" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(14,165,233,0.05)" />
-                            <XAxis dataKey="time" tick={{ fontSize: 8, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
-                            <YAxis yAxisId="rpm" tick={{ fontSize: 8, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
-                            <YAxis yAxisId="power" orientation="right" tick={{ fontSize: 8, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area yAxisId="rpm" type="monotone" dataKey="rpm" stroke="#3b82f6" fill="url(#rpmG)" strokeWidth={1.5} name="RPM" dot={false} />
-                            <Line yAxisId="power" type="monotone" dataKey="power" stroke="#a855f7" strokeWidth={1.5} name="Power (kW)" dot={false} strokeDasharray="4 2" />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                {/* Electromechanical Chart */}
+                <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 min-h-[300px] flex flex-col">
+                    <h3 className="text-[10px] text-slate-400 font-bold uppercase font-mono tracking-widest mb-4">Electromechanical Stress</h3>
+                    <div className="flex-1 w-full relative">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={history} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="rg" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#64748b', fontFamily: 'monospace' }} tickLine={false} axisLine={false} dy={10} />
+                                <YAxis yAxisId="rpm" tick={{ fontSize: 9, fill: '#64748b', fontFamily: 'monospace' }} tickLine={false} axisLine={false} dx={-10} />
+                                <YAxis yAxisId="pwr" orientation="right" tick={{ fontSize: 9, fill: '#64748b', fontFamily: 'monospace' }} tickLine={false} axisLine={false} dx={10} />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Area yAxisId="rpm" type="monotone" dataKey="rpm" stroke="#3b82f6" fill="url(#rg)" strokeWidth={3} name="RPM" dot={false} activeDot={{ r: 6, fill: '#3b82f6', stroke: '#0f172a', strokeWidth: 3 }} />
+                                <Line yAxisId="pwr" type="monotone" dataKey="power" stroke="#6366f1" strokeWidth={3} name="Power (kW)" dot={false} strokeDasharray="5 5" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
+
             </div>
-
-            {/* Efficiency + Pressure + Current Charts */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                <div style={S.card}>
-                    <div style={{ ...S.label, marginBottom: 10 }}>EFFICIENCY TREND</div>
-                    <ResponsiveContainer width="100%" height={160}>
-                        <AreaChart data={history}>
-                            <defs>
-                                <linearGradient id="eG" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
-                                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(14,165,233,0.05)" />
-                            <XAxis dataKey="time" tick={{ fontSize: 7, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
-                            <YAxis tick={{ fontSize: 7, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} domain={[0, 100]} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area type="monotone" dataKey="eff" stroke="#22c55e" fill="url(#eG)" strokeWidth={1.5} name="Efficiency (%)" dot={false} />
-                        </AreaChart>
-                    </ResponsiveContainer>
+            
+            {/* Dependency Mapping */}
+            <h2 className="text-xs text-slate-400 font-bold uppercase tracking-[0.2em] mb-4">P&ID Topological Context</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">
+                <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6">
+                    <h3 className="text-[10px] text-slate-400 font-bold uppercase font-mono tracking-widest mb-4">Upstream Parents (Requisite)</h3>
+                    <div className="flex flex-wrap gap-3">
+                        {machine.upstreamDependencies?.length > 0 ? machine.upstreamDependencies.map(id => (
+                            <Link key={id} to={`/app/machines/${id}`} className="bg-slate-800 border border-slate-700 hover:border-sky-500 hover:text-sky-400 transition-colors text-slate-300 px-4 py-2 rounded-xl text-xs font-mono font-bold">M-{id}</Link>
+                        )) : <span className="text-slate-500 text-xs font-mono font-bold bg-black/20 px-4 py-2 rounded-xl border border-white/5">NONE (SOURCE NODE)</span>}
+                    </div>
                 </div>
-
-                <div style={S.card}>
-                    <div style={{ ...S.label, marginBottom: 10 }}>PRESSURE TREND</div>
-                    <ResponsiveContainer width="100%" height={160}>
-                        <AreaChart data={history}>
-                            <defs>
-                                <linearGradient id="pG" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.2} />
-                                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(14,165,233,0.05)" />
-                            <XAxis dataKey="time" tick={{ fontSize: 7, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
-                            <YAxis tick={{ fontSize: 7, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area type="monotone" dataKey="pres" stroke="#06b6d4" fill="url(#pG)" strokeWidth={1.5} name="Pressure (PSI)" dot={false} />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-
-                <div style={S.card}>
-                    <div style={{ ...S.label, marginBottom: 10 }}>UPSTREAM & DOWNSTREAM EXPERT INFO</div>
-                    <div style={{ padding: '8px 12px', background: 'rgba(15,23,42,0.5)', borderRadius: 6, border: '1px solid rgba(14,165,233,0.1)' }}>
-                        <div style={{ fontSize: 10, color: '#38bdf8', fontWeight: 700, marginBottom: 6, fontFamily: "'JetBrains Mono', monospace" }}>DEPENDENCY STATUS</div>
-                        <div style={{ marginBottom: 12 }}>
-                            <div style={{ fontSize: 9, color: '#64748b', marginBottom: 4 }}>UPSTREAM PARENTS (REQUIRED TO RUN)</div>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                {machine.upstreamDependencies?.length > 0 ? (
-                                    machine.upstreamDependencies.map(depId => (
-                                        <Link key={`up-${depId}`} to={`/app/machines/${depId}`} style={{ padding: '2px 8px', borderRadius: 4, background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', fontSize: 10, textDecoration: 'none', fontFamily: "'JetBrains Mono', monospace" }}>M-{depId}</Link>
-                                    ))
-                                ) : <span style={{ fontSize: 10, color: '#475569' }}>NONE (SOURCE)</span>}
-                            </div>
-                        </div>
-                        <div>
-                            <div style={{ fontSize: 9, color: '#64748b', marginBottom: 4 }}>DOWNSTREAM CHILDREN (AFFECTED BY STOPS)</div>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                {machine.downstreamDependencies?.length > 0 ? (
-                                    machine.downstreamDependencies.map(depId => (
-                                        <Link key={`down-${depId}`} to={`/app/machines/${depId}`} style={{ padding: '2px 8px', borderRadius: 4, background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', fontSize: 10, textDecoration: 'none', fontFamily: "'JetBrains Mono', monospace" }}>M-{depId}</Link>
-                                    ))
-                                ) : <span style={{ fontSize: 10, color: '#475569' }}>NONE (SINK)</span>}
-                            </div>
-                        </div>
+                
+                <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6">
+                    <h3 className="text-[10px] text-slate-400 font-bold uppercase font-mono tracking-widest mb-4">Downstream Children (Dependent)</h3>
+                    <div className="flex flex-wrap gap-3">
+                        {machine.downstreamDependencies?.length > 0 ? machine.downstreamDependencies.map(id => (
+                            <Link key={id} to={`/app/machines/${id}`} className="bg-slate-800 border border-slate-700 hover:border-red-500 hover:text-red-400 transition-colors text-slate-300 px-4 py-2 rounded-xl text-xs font-mono font-bold">M-{id}</Link>
+                        )) : <span className="text-slate-500 text-xs font-mono font-bold bg-black/20 px-4 py-2 rounded-xl border border-white/5">NONE (SINK NODE)</span>}
                     </div>
                 </div>
             </div>
+
         </div>
     );
 };

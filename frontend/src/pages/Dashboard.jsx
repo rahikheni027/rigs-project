@@ -9,37 +9,24 @@ import {
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
-    RUNNING: { color: '#22c55e', bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.3)', label: 'RUNNING' },
-    STOPPED: { color: '#64748b', bg: 'rgba(100,116,139,0.1)', border: 'rgba(100,116,139,0.3)', label: 'STOPPED' },
-    EMERGENCY: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)', label: 'FAULT/E-STOP' },
-    MAINTENANCE: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)', label: 'MAINTENANCE' },
-    CALIBRATING: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.3)', label: 'CALIBRATING' },
-    OFFLINE: { color: '#4b5563', bg: 'rgba(75,85,99,0.1)', border: 'rgba(75,85,99,0.3)', label: 'OFFLINE' },
-};
-
-const S = {
-    card: { 
-        background: 'rgba(17,24,39,0.7)', 
-        backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.08)', 
-        borderRadius: 20, 
-        padding: 24,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-        display: 'flex', flexDirection: 'column'
-    },
-    label: { fontSize: 11, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' },
+    RUNNING: { color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/30', glow: 'shadow-[0_0_15px_rgba(34,197,94,0.3)]', label: 'RUNNING' },
+    STOPPED: { color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/30', glow: '', label: 'STOPPED' },
+    EMERGENCY: { color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30', glow: 'shadow-[0_0_15px_rgba(239,68,68,0.4)]', label: 'E-STOP' },
+    MAINTENANCE: { color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/30', glow: '', label: 'MAINTENANCE' },
+    CALIBRATING: { color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/30', glow: '', label: 'CALIBRATING' },
+    OFFLINE: { color: 'text-gray-500', bg: 'bg-gray-500/10', border: 'border-gray-500/30', glow: '', label: 'OFFLINE' },
 };
 
 const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
-        <div style={{ background: 'rgba(17,24,39,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 16px', fontSize: 13, boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
-            <div style={{ color: '#9ca3af', marginBottom: 8, fontSize: 11, fontWeight: 600 }}>{label}</div>
+        <div className="bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl p-4 shadow-2xl">
+            <div className="text-slate-400 text-xs font-semibold mb-2">{label}</div>
             {payload.map(p => (
-                <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color }} />
-                    <span style={{ color: '#d1d5db' }}>{p.name}:</span>
-                    <span style={{ color: '#f9fafb', fontWeight: 700 }}>{p.value != null ? Number(p.value).toFixed(1) : '—'}</span>
+                <div key={p.name} className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 rounded-full" style={{ background: p.color }} />
+                    <span className="text-slate-300 text-sm">{p.name}:</span>
+                    <span className="text-white font-bold text-sm">{p.value != null ? Number(p.value).toFixed(1) : '—'}</span>
                 </div>
             ))}
         </div>
@@ -69,7 +56,6 @@ const Dashboard = () => {
 
                 setChartData(prev => {
                     const now = new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                    
                     if (prev.length > 0 && prev[prev.length - 1].time === now) return prev;
                     
                     const runningMachs = machRes.data.filter(m => m.status === 'RUNNING');
@@ -82,7 +68,6 @@ const Dashboard = () => {
                 });
             } catch (e) { 
                 if (!isMounted || e.name === 'CanceledError') return;
-                console.error(e); 
             } finally { 
                 if (isMounted) setLoading(false); 
             }
@@ -90,7 +75,6 @@ const Dashboard = () => {
 
         fetchData();
         const t = setInterval(fetchData, 10000);
-        
         return () => {
             isMounted = false;
             clearInterval(t);
@@ -103,129 +87,151 @@ const Dashboard = () => {
     const avgTemp = machines.length ? (machines.reduce((s, m) => s + (m.temperature || 0), 0) / machines.length).toFixed(1) : '—';
     const totalPower = machines.reduce((s, m) => s + (m.powerConsumption || 0), 0).toFixed(1);
     
-    // Efficiency based ONLY on running machines
     const runningMachines = machines.filter(m => m.status === 'RUNNING');
     const avgEff = runningMachines.length ? (runningMachines.reduce((s, m) => s + (m.efficiency || 0), 0) / runningMachines.length).toFixed(1) : '—';
 
     if (loading) return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', flexDirection: 'column', gap: 20 }}>
-            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'rgba(56,189,248,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Activity size={32} color="#38bdf8" style={{ animation: 'pulse 1.5s infinite' }} />
+        <div className="flex flex-col items-center justify-center min-h-[80vh] gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-sky-500/20 blur-xl animate-pulse"></div>
+                <Activity size={32} className="text-sky-400 animate-pulse relative z-10" />
             </div>
-            <p style={{ color: '#9ca3af', fontSize: 14, fontWeight: 500, letterSpacing: '0.05em' }}>Loading Plant Overview...</p>
+            <p className="text-slate-400 text-sm font-medium tracking-wider uppercase">Loading Workspace...</p>
         </div>
     );
 
     return (
-        <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#f9fafb', paddingBottom: 40 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
+        <div className="pb-10 font-sans text-slate-50 min-h-screen">
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 mt-2">
                 <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-                        <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, color: '#ffffff' }}>Admin Overview</h1>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 12, padding: '4px 12px' }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 10px #22c55e', animation: 'pulse 2s infinite' }} />
-                            <span style={{ fontSize: 12, fontWeight: 700, color: '#4ade80', letterSpacing: '0.05em' }}>LIVE SYNC</span>
+                    <div className="flex items-center gap-4 mb-2">
+                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white m-0">Admin Overview</h1>
+                        <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                            <span className="relative flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                            </span>
+                            <span className="text-[10px] font-bold text-emerald-400 tracking-widest uppercase">Live</span>
                         </div>
                     </div>
-                    <p style={{ fontSize: 14, color: '#9ca3af', margin: 0, fontWeight: 400 }}>R.I.G.S. SCADA — Supervisory Control & Data Acquisition</p>
+                    <p className="text-slate-400 font-medium text-sm md:text-base">SCADA Master Command & Data Acquisition</p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(17,24,39,0.5)', padding: '8px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <Wifi size={16} color="#34d399" />
-                    <span style={{ fontSize: 13, color: '#d1d5db', fontWeight: 500 }}>MQTT Connected</span>
+                <div className="flex items-center gap-3 bg-slate-900/60 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/5 shadow-inner">
+                    <Wifi size={16} className="text-emerald-400" />
+                    <span className="text-sm text-slate-300 font-medium">Broker Connected</span>
                 </div>
             </div>
 
-            {/* KPI Row */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
+            {/* KPIs Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                 {[
-                    { label: 'Fleet Status', value: `${runCount}/${machines.length}`, sub: 'Active Machines', icon: Cpu, color: '#34d399' },
-                    { label: 'Active Alerts', value: alertCount, sub: alertCount > 0 ? 'Requires Action' : 'All Clear', icon: AlertTriangle, color: alertCount > 0 ? '#f87171' : '#34d399' },
-                    { label: 'Avg Fleet Temp', value: `${avgTemp}°C`, sub: 'Overall Temperature', icon: Thermometer, color: '#fbbf24' },
-                    { label: 'Power Draw', value: `${totalPower} kW`, sub: 'Total Consumption', icon: Zap, color: '#a78bfa' },
-                    { label: 'OEE Performance', value: `${avgEff}%`, sub: 'Running Machines Avg', icon: BarChart3, color: '#38bdf8' },
+                    { label: 'Fleet Status', value: `${runCount}/${machines.length}`, sub: 'Active Output', icon: Cpu, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' },
+                    { label: 'Active Alerts', value: alertCount, sub: alertCount > 0 ? 'Requires Action' : 'All Clear', icon: AlertTriangle, color: alertCount > 0 ? 'text-red-400' : 'text-emerald-400', bg: alertCount > 0 ? 'bg-red-400/10' : 'bg-emerald-400/10', border: alertCount > 0 ? 'border-red-400/20' : 'border-emerald-400/20' },
+                    { label: 'System Temp', value: `${avgTemp}°C`, sub: 'Plant Average', icon: Thermometer, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' },
+                    { label: 'Power Draw', value: `${totalPower} kW`, sub: 'Total Base Load', icon: Zap, color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/20' },
+                    { label: 'OEE Rating', value: `${avgEff}%`, sub: 'Running Machines', icon: BarChart3, color: 'text-sky-400', bg: 'bg-sky-400/10', border: 'border-sky-400/20' },
                 ].map((kpi, i) => (
-                    <motion.div key={kpi.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} style={{
-                        background: 'rgba(17,24,39,0.6)', border: '1px solid rgba(255,255,255,0.06)',
-                        borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', flex: '1 1 200px',
-                        boxShadow: '0 4px 15px rgba(0,0,0,0.1)', backdropFilter: 'blur(8px)'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                            <span style={S.label}>{kpi.label}</span>
-                            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${kpi.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <kpi.icon size={18} color={kpi.color} />
+                    <motion.div key={kpi.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} 
+                        className="relative overflow-hidden bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-xl group hover:bg-slate-900/60 transition-colors">
+                        
+                        {/* Decorative background glow */}
+                        <div className={`absolute -right-4 -top-4 w-24 h-24 ${kpi.bg} rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity`}></div>
+                        
+                        <div className="flex justify-between items-center mb-4 relative z-10">
+                            <h3 className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{kpi.label}</h3>
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${kpi.bg} border ${kpi.border}`}>
+                                <kpi.icon size={16} className={kpi.color} />
                             </div>
                         </div>
-                        <div style={{ fontSize: 28, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em', marginBottom: 4 }}>{kpi.value}</div>
-                        <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>{kpi.sub}</div>
+                        <div className="relative z-10">
+                            <div className="text-3xl font-black text-white mb-1 tabular-nums tracking-tight">{kpi.value}</div>
+                            <div className="text-xs text-slate-500 font-medium">{kpi.sub}</div>
+                        </div>
                     </motion.div>
                 ))}
             </div>
 
-            {/* Main grid */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
-                {/* Chart Section */}
-                <div style={{ ...S.card, flex: '2 1 500px', minHeight: 340 }}>
-                    <div style={{ ...S.label, marginBottom: 24, fontSize: 12 }}>Fleet Telemetry Trends</div>
-                    <div style={{ flex: 1, minHeight: 250 }}>
+            {/* Main Content Area */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                
+                {/* Chart Segment - Spans 2 Columns on Desktop */}
+                <div className="lg:col-span-2 bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col min-h-[400px]">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-sm text-slate-300 font-bold uppercase tracking-widest">Fleet Telemetry Trends</h2>
+                        <div className="flex items-center gap-3 text-xs font-semibold text-slate-400">
+                            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-400"></div> Temp</span>
+                            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-indigo-400"></div> Power</span>
+                        </div>
+                    </div>
+                    
+                    <div className="flex-1 w-full relative">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="tColor" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.3} />
+                                        <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.4} />
                                         <stop offset="95%" stopColor="#fbbf24" stopOpacity={0} />
                                     </linearGradient>
                                     <linearGradient id="pColor" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#a78bfa" stopOpacity={0} />
+                                        <stop offset="5%" stopColor="#818cf8" stopOpacity={0.4} />
+                                        <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#6b7280' }} tickLine={false} axisLine={false} dy={10} />
-                                <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} tickLine={false} axisLine={false} dx={-10} />
+                                <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                                <XAxis dataKey="time" tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} axisLine={false} dy={10} />
+                                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} axisLine={false} dx={-10} />
                                 <Tooltip content={<CustomTooltip />} />
-                                <Area type="monotone" dataKey="temp" stroke="#fbbf24" fill="url(#tColor)" strokeWidth={3} name="Avg Temp (°C)" dot={false} activeDot={{ r: 6, fill: '#fbbf24', stroke: '#111827', strokeWidth: 2 }} />
-                                <Area type="monotone" dataKey="power" stroke="#a78bfa" fill="url(#pColor)" strokeWidth={3} name="Total Power (kW)" dot={false} activeDot={{ r: 6, fill: '#a78bfa', stroke: '#111827', strokeWidth: 2 }} />
+                                <Area type="monotone" dataKey="temp" stroke="#fbbf24" fill="url(#tColor)" strokeWidth={3} name="Avg Temp (°C)" dot={false} activeDot={{ r: 6, fill: '#fbbf24', stroke: '#0f172a', strokeWidth: 3 }} />
+                                <Area type="monotone" dataKey="power" stroke="#818cf8" fill="url(#pColor)" strokeWidth={3} name="Total Power (kW)" dot={false} activeDot={{ r: 6, fill: '#818cf8', stroke: '#0f172a', strokeWidth: 3 }} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* Alerts Section */}
-                <div style={{ ...S.card, flex: '1 1 320px', minHeight: 340 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                        <div style={{ ...S.label, fontSize: 12 }}>System Alerts</div>
-                        <Link to="/app/alerts" style={{ fontSize: 12, color: '#38bdf8', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, transition: 'opacity 0.2s' }} onMouseEnter={e => e.target.style.opacity = 0.8} onMouseLeave={e => e.target.style.opacity = 1}>
-                            View All <ChevronRight size={14} />
+                {/* Alerts Segment */}
+                <div className="bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col min-h-[400px]">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-sm text-slate-300 font-bold uppercase tracking-widest flex items-center gap-2">
+                            <Shield size={16} className="text-slate-400" />
+                            System Alerts
+                        </h2>
+                        <Link to="/app/alerts" className="text-xs text-sky-400 hover:text-sky-300 font-bold flex items-center gap-1 transition-colors">
+                            VIEW ALL <ChevronRight size={14} />
                         </Link>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', paddingRight: 4 }}>
+                    
+                    <div className="flex-1 overflow-y-auto pr-2 space-y-3">
                         <AnimatePresence>
                             {alerts.length > 0 ? alerts.slice(0, 6).map((a, i) => {
-                                const sevColors = { CRITICAL: '#ef4444', MEDIUM: '#f59e0b', LOW: '#38bdf8' };
-                                const color = sevColors[a.severity] || '#38bdf8';
+                                const isCrit = a.severity === 'CRITICAL';
+                                const colorClass = isCrit ? 'text-red-400 bg-red-400/10 border-red-500/30' : 
+                                                   a.severity === 'MEDIUM' ? 'text-amber-400 bg-amber-400/10 border-amber-500/30' : 
+                                                   'text-sky-400 bg-sky-400/10 border-sky-500/30';
+                                const iconColor = isCrit ? 'text-red-400' : a.severity === 'MEDIUM' ? 'text-amber-400' : 'text-sky-400';
+                                
                                 return (
-                                    <motion.div key={a.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} style={{
-                                        display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px',
-                                        background: 'rgba(31,41,55,0.4)', borderRadius: 12, border: `1px solid ${color}30`,
-                                        borderLeft: `4px solid ${color}`, opacity: a.acknowledged ? 0.6 : 1,
-                                    }}>
-                                        <div style={{ marginTop: 2 }}>
-                                            <AlertTriangle size={16} color={color} />
+                                    <motion.div key={a.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} 
+                                        className={`flex items-start gap-4 p-4 rounded-2xl border ${colorClass} ${a.acknowledged ? 'opacity-60 grayscale-[50%]' : ''} backdrop-blur-md`}>
+                                        <div className={`mt-0.5 ${iconColor}`}>
+                                            <AlertTriangle size={18} />
                                         </div>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontSize: 13, fontWeight: 600, color: '#f3f4f6', marginBottom: 4, lineHeight: 1.4 }}>{a.message}</div>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>{a.machineName}</div>
-                                                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: `${color}15`, color: color }}>{a.severity}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-semibold text-white mb-1.5 leading-snug">{a.message}</div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs text-slate-400 font-medium truncate pr-2">{a.machineName}</span>
+                                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-black/20 ${iconColor}`}>{a.severity}</span>
                                             </div>
                                         </div>
                                     </motion.div>
                                 );
                             }) : (
-                                <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                    <Shield size={36} style={{ marginBottom: 16, opacity: 0.3 }} />
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af' }}>No Active Alerts</div>
-                                    <div style={{ fontSize: 12, marginTop: 4 }}>All systems operating normally</div>
+                                <div className="h-full flex flex-col items-center justify-center text-slate-500">
+                                    <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center mb-4 border border-white/5">
+                                        <Shield size={28} className="text-emerald-500/50" />
+                                    </div>
+                                    <div className="text-sm font-semibold text-slate-400 mb-1">No Active Alerts</div>
+                                    <div className="text-xs">All systems nominal</div>
                                 </div>
                             )}
                         </AnimatePresence>
@@ -233,58 +239,64 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Machine fleet overview */}
-            <div style={{ ...S.card }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 10 }}>
-                    <div style={{ ...S.label, fontSize: 12 }}>Process Unit Status</div>
-                    <Link to="/app/machines" style={{ padding: '8px 16px', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 8, fontSize: 12, color: '#38bdf8', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s' }} onMouseEnter={e => e.target.style.background = 'rgba(56,189,248,0.15)'} onMouseLeave={e => e.target.style.background = 'rgba(56,189,248,0.1)'}>
-                        Control Center <ChevronRight size={14} />
+            {/* Fleet Status Grid */}
+            <div className="bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-sm text-slate-300 font-bold uppercase tracking-widest flex items-center gap-2">
+                        <Activity size={16} className="text-slate-400" />
+                        Process Unit Status
+                    </h2>
+                    <Link to="/app/machines" className="text-xs bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 text-sky-400 px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all">
+                        CONTROL CENTER <ChevronRight size={14} />
                     </Link>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {machines.map((m, i) => {
                         const sc = STATUS_CONFIG[m.status] || STATUS_CONFIG.OFFLINE;
                         return (
-                            <Link key={m.machineId} to={`/app/machines/${m.machineId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }} style={{ 
-                                    display: 'flex', flexDirection: 'column', padding: '16px', background: 'rgba(31,41,55,0.5)', 
-                                    borderRadius: 16, border: `1px solid ${sc.border}`, transition: 'all 0.2s', cursor: 'pointer',
-                                    position: 'relative', overflow: 'hidden'
-                                }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 6px 20px ${sc.color}20`; }} onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}>
+                            <Link key={m.machineId} to={`/app/machines/${m.machineId}`} className="block group">
+                                <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }} 
+                                    className={`relative flex flex-col p-5 bg-slate-800/40 hover:bg-slate-800/70 border ${sc.border} rounded-2xl transition-all duration-300 overflow-hidden ${sc.glow} group-hover:-translate-y-1`}>
                                     
-                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 3, background: `linear-gradient(90deg, ${sc.color}, transparent)` }} />
+                                    {/* Top Accent Line */}
+                                    <div className={`absolute top-0 left-0 w-full h-1 ${sc.bg} opacity-50`}></div>
                                     
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <div style={{ width: 36, height: 36, borderRadius: 10, background: sc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                {m.status === 'OFFLINE' || m.status === 'STOPPED' ? <ZapOff size={18} color={sc.color} /> : <Cpu size={18} color={sc.color} />}
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-xl ${sc.bg} flex items-center justify-center border ${sc.border}`}>
+                                                {m.status === 'OFFLINE' || m.status === 'STOPPED' ? <ZapOff size={18} className={sc.color} /> : <Cpu size={18} className={sc.color} />}
                                             </div>
                                             <div>
-                                                <div style={{ fontSize: 15, fontWeight: 700, color: '#f3f4f6', marginBottom: 2 }}>{m.machineName}</div>
-                                                <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>{m.location || 'Unknown'}</div>
+                                                <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wide truncate max-w-[140px]">{m.machineName}</h3>
+                                                <p className="text-xs text-slate-500 font-medium mt-0.5">{m.location || 'Unknown'}</p>
                                             </div>
                                         </div>
                                     </div>
                                     
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: 10, marginBottom: 12 }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                            <span style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, marginBottom: 4 }}>TEMP</span>
-                                            <span style={{ fontSize: 14, fontWeight: 700, color: m.temperature > 80 ? '#fbbf24' : '#e5e7eb' }}>{m.temperature != null ? `${m.temperature.toFixed(1)}°C` : '—'}</span>
+                                    <div className="flex items-center justify-between p-3 bg-black/20 rounded-xl mb-4 border border-white/5">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Temp</span>
+                                            <span className={`text-base font-black tabular-nums transition-colors ${m.temperature > 85 ? 'text-amber-400' : 'text-slate-200'}`}>
+                                                {m.temperature != null ? `${m.temperature.toFixed(0)}°` : '—'}
+                                            </span>
                                         </div>
-                                        <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)' }} />
-                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                            <span style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, marginBottom: 4 }}>POWER</span>
-                                            <span style={{ fontSize: 14, fontWeight: 700, color: '#e5e7eb' }}>{m.powerConsumption != null ? `${m.powerConsumption.toFixed(1)}kW` : '—'}</span>
+                                        <div className="w-px h-8 bg-white/10" />
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Power</span>
+                                            <span className="text-base font-black text-slate-200 tabular-nums">
+                                                {m.powerConsumption != null ? `${m.powerConsumption.toFixed(1)} kW` : '—'}
+                                            </span>
                                         </div>
                                     </div>
                                     
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
-                                        <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 8, background: sc.bg, color: sc.color, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            {m.status === 'RUNNING' && <motion.div animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 1.5, repeat: Infinity }} style={{ width: 6, height: 6, borderRadius: '50%', background: sc.color }} />}
-                                            {m.status === 'EMERGENCY' && <motion.div animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.5, repeat: Infinity }} style={{ width: 6, height: 6, borderRadius: '50%', background: sc.color }} />}
+                                    <div className="flex items-center justify-between mt-auto">
+                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${sc.bg} ${sc.color} flex items-center gap-2 uppercase tracking-wider`}>
+                                            {m.status === 'RUNNING' && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>}
+                                            {m.status === 'EMERGENCY' && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>}
                                             {sc.label}
                                         </span>
-                                        <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600 }}>{m.machineType}</div>
+                                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{m.machineType}</span>
                                     </div>
                                 </motion.div>
                             </Link>

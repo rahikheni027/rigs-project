@@ -1,53 +1,53 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useMachines } from '../context/MachineContext';
 import {
-    Thermometer, Activity, Zap, Gauge, Wind, BarChart3, AlertTriangle,
+    Thermometer, Activity, Zap, Gauge, Wind, AlertTriangle,
     Play, Square, OctagonX, RotateCcw, Wrench, SlidersHorizontal,
-    Cpu, ChevronRight, Signal, CircleDot, Droplets, Fan, Cog, Download
+    Cpu, ChevronRight, Signal, Droplets, Fan, Cog, Download
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
-    RUNNING: { color: '#22c55e', bg: 'rgba(34,197,94,0.06)', border: 'rgba(34,197,94,0.15)', label: 'RUNNING', pulse: true },
-    STOPPED: { color: '#64748b', bg: 'rgba(100,116,139,0.06)', border: 'rgba(100,116,139,0.15)', label: 'STOPPED', pulse: false },
-    EMERGENCY: { color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.2)', label: 'EMERGENCY', pulse: true },
-    MAINTENANCE: { color: '#f59e0b', bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.15)', label: 'MAINTENANCE', pulse: false },
-    CALIBRATING: { color: '#3b82f6', bg: 'rgba(59,130,246,0.06)', border: 'rgba(59,130,246,0.15)', label: 'CALIBRATING', pulse: true },
-    OFFLINE: { color: '#475569', bg: 'rgba(71,85,105,0.06)', border: 'rgba(71,85,105,0.15)', label: 'OFFLINE', pulse: false },
+    RUNNING: { color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/30', label: 'RUNNING', pulse: true },
+    STOPPED: { color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/30', label: 'STOPPED', pulse: false },
+    EMERGENCY: { color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30', label: 'EMERGENCY', pulse: true },
+    MAINTENANCE: { color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/30', label: 'MAINTENANCE', pulse: false },
+    CALIBRATING: { color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/30', label: 'CALIBRATING', pulse: true },
+    OFFLINE: { color: 'text-gray-500', bg: 'bg-gray-500/10', border: 'border-gray-500/30', label: 'OFFLINE', pulse: false },
 };
 
-const MACHINE_ICONS = {
-    PUMP: Droplets, MOTOR: Cog, COMPRESSOR: Fan, TURBINE: Activity, GENERATOR: Zap,
-};
+const MACHINE_ICONS = { PUMP: Droplets, MOTOR: Cog, COMPRESSOR: Fan, TURBINE: Activity, GENERATOR: Zap };
 
 const COMMANDS = [
-    { cmd: 'START', icon: Play, label: 'Start', color: '#22c55e', bg: 'rgba(34,197,94,0.06)' },
-    { cmd: 'STOP', icon: Square, label: 'Stop', color: '#64748b', bg: 'rgba(100,116,139,0.06)' },
-    { cmd: 'EMERGENCY_STOP', icon: OctagonX, label: 'E-Stop', color: '#ef4444', bg: 'rgba(239,68,68,0.06)' },
-    { cmd: 'RESET', icon: RotateCcw, label: 'Reset', color: '#8b5cf6', bg: 'rgba(139,92,246,0.06)' },
-    { cmd: 'MAINTENANCE_MODE', icon: Wrench, label: 'Maint.', color: '#f59e0b', bg: 'rgba(245,158,11,0.06)' },
-    { cmd: 'CALIBRATION', icon: SlidersHorizontal, label: 'Cal', color: '#3b82f6', bg: 'rgba(59,130,246,0.06)' },
+    { cmd: 'START', icon: Play, label: 'Start', cStr: 'text-green-500 border-green-500/20 hover:bg-green-500/10 hover:border-green-500/40' },
+    { cmd: 'STOP', icon: Square, label: 'Stop', cStr: 'text-slate-400 border-slate-500/20 hover:bg-slate-500/10 hover:border-slate-500/40' },
+    { cmd: 'EMERGENCY_STOP', icon: OctagonX, label: 'E-Stop', cStr: 'text-red-500 border-red-500/20 hover:bg-red-500/10 hover:border-red-500/40' },
+    { cmd: 'RESET', icon: RotateCcw, label: 'Reset', cStr: 'text-purple-400 border-purple-500/20 hover:bg-purple-500/10 hover:border-purple-500/40' },
+    { cmd: 'MAINTENANCE_MODE', icon: Wrench, label: 'Maint.', cStr: 'text-amber-500 border-amber-500/20 hover:bg-amber-500/10 hover:border-amber-500/40' },
+    { cmd: 'CALIBRATION', icon: SlidersHorizontal, label: 'Calibrate', cStr: 'text-blue-400 border-blue-500/20 hover:bg-blue-500/10 hover:border-blue-500/40' },
 ];
 
-const GaugeBar = ({ value, max, color, label, unit, warn }) => {
+const GaugeBar = ({ value, max, colorClass, barColor, label, unit, warn }) => {
     const pct = Math.min(((value || 0) / max) * 100, 100);
     const isWarn = warn && (value || 0) > warn;
+    const finalColor = isWarn ? 'text-red-400' : colorClass;
+    
     return (
-        <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, alignItems: 'baseline' }}>
-                <span style={{ fontSize: 8, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'JetBrains Mono', monospace" }}>{label}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: isWarn ? '#f87171' : color, fontFamily: "'JetBrains Mono', monospace" }}>
-                    {value != null ? (typeof value === 'number' ? value.toFixed(1) : value) : '--'}{unit && <span style={{ fontSize: 8, fontWeight: 400, color: '#64748b', marginLeft: 1 }}>{unit}</span>}
+        <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-baseline mb-1">
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest font-mono">{label}</span>
+                <span className={`text-xs font-bold font-mono ${finalColor}`}>
+                    {value != null ? (typeof value === 'number' ? value.toFixed(1) : value) : '--'}
+                    {unit && <span className="text-[8px] font-normal text-slate-500 ml-0.5">{unit}</span>}
                 </span>
             </div>
-            <div style={{ height: 4, background: 'rgba(14,165,233,0.04)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{
-                    height: '100%', borderRadius: 2, transition: 'width 0.8s cubic-bezier(0.4,0,0.2,1)',
-                    width: `${pct}%`,
-                    background: isWarn ? 'linear-gradient(90deg, #f59e0b, #ef4444)' : `linear-gradient(90deg, ${color}88, ${color})`,
-                }} />
+            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                <div 
+                    className={`h-full rounded-full transition-all duration-700 ease-out ${isWarn ? 'bg-gradient-to-r from-amber-500 to-red-500' : barColor}`} 
+                    style={{ width: `${pct}%` }} 
+                />
             </div>
         </div>
     );
@@ -58,22 +58,14 @@ const MachinesPage = () => {
     const [filter, setFilter] = useState('all');
     const [cmdLoading, setCmdLoading] = useState({});
     const { user } = useAuth();
+
     const handleCommand = async (id, cmd) => {
         setCmdLoading(p => ({ ...p, [`${id}-${cmd}`]: true }));
-        
-        // Optimistic UI update
-        const targetStatus = cmd === 'START' || cmd === 'RESET' ? 'RUNNING' :
-                             cmd === 'STOP' ? 'STOPPED' :
-                             cmd === 'EMERGENCY_STOP' ? 'EMERGENCY' :
-                             cmd === 'MAINTENANCE_MODE' ? 'MAINTENANCE' :
-                             cmd === 'CALIBRATION' ? 'CALIBRATING' : null;
-        if (targetStatus) {
-            setMachines(prev => prev.map(m => m.machineId === id ? { ...m, status: targetStatus } : m));
-        }
+        const tStat = cmd === 'START' || cmd === 'RESET' ? 'RUNNING' : cmd === 'STOP' ? 'STOPPED' : cmd === 'EMERGENCY_STOP' ? 'EMERGENCY' : cmd === 'MAINTENANCE_MODE' ? 'MAINTENANCE' : cmd === 'CALIBRATION' ? 'CALIBRATING' : null;
+        if (tStat) setMachines(prev => prev.map(m => m.machineId === id ? { ...m, status: tStat } : m));
 
         try {
             await api.post(`/machines/${id}/command?command=${cmd}&issuedBy=${user?.name || 'operator'}`);
-            // Instant broadcast will be triggered by SSE from the backend
         } catch (e) {
             console.error('Command failed:', e);
         } finally {
@@ -99,151 +91,133 @@ const MachinesPage = () => {
     const totalPower = machines.reduce((s, m) => s + (m.powerConsumption || 0), 0).toFixed(1);
 
     if (!machines || machines.length === 0) return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: 14 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 10, background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Cpu size={22} color="#0ea5e9" style={{ animation: 'pulse 1.5s infinite' }} />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+            <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
+                <Cpu size={22} className="text-sky-400 animate-pulse" />
             </div>
-            <p style={{ color: '#64748b', fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>INITIALIZING MACHINE CONTROL OR WAITING FOR DATA...</p>
+            <p className="text-slate-400 text-xs font-mono uppercase tracking-widest">WAKING UP PROCESS NODES...</p>
         </div>
     );
 
     return (
-        <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#f1f5f9' }}>
+        <div className="pb-10 font-sans text-slate-50 min-h-screen">
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+            <div className="flex flex-col md:flex-row justify-between md:items-end gap-6 mb-6">
                 <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
-                        <h1 style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.5px', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>MACHINE CONTROL CENTER</h1>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 4, padding: '3px 8px' }}>
-                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px rgba(34,197,94,0.5)', animation: 'pulse 2s infinite' }} />
-                            <span style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', fontFamily: "'JetBrains Mono', monospace" }}>LIVE</span>
+                    <div className="flex items-center gap-3 mb-1">
+                        <h1 className="text-2xl md:text-3xl font-black tracking-tight font-mono uppercase text-white m-0">Fleet Command Center</h1>
+                        <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 rounded-md px-2 py-0.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" />
+                            <span className="text-[10px] font-bold text-green-400 font-mono tracking-widest">LIVE BROADCAST</span>
                         </div>
                     </div>
-                    <p style={{ fontSize: 11, color: '#64748b', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>SCADA SUPERVISORY CONTROL & DATA ACQUISITION</p>
+                    <p className="text-xs text-slate-400 font-mono tracking-widest uppercase">Direct process node intervention and oversight</p>
                 </div>
-                <button onClick={exportCSV} style={{
-                    display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
-                    background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.15)',
-                    borderRadius: 6, color: '#38bdf8', fontSize: 10, fontWeight: 700, cursor: 'pointer',
-                    fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase',
-                }}>
-                    <Download size={12} /> EXPORT CSV
+                <button onClick={exportCSV} className="flex items-center justify-center gap-2 px-4 py-2 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 rounded-lg text-sky-400 text-xs font-bold font-mono tracking-widest uppercase transition-colors shrink-0">
+                    <Download size={14} /> Export CSV
                 </button>
             </div>
 
             {/* KPI Bar */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 14 }}>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
                 {[
-                    { label: 'Total Machines', value: machines.length, icon: Cpu, color: '#0ea5e9' },
-                    { label: 'Running', value: runCount, icon: Signal, color: '#22c55e' },
-                    { label: 'Alerts', value: alertCount, icon: AlertTriangle, color: alertCount > 0 ? '#ef4444' : '#64748b' },
-                    { label: 'Avg Temp', value: `${avgTemp}°C`, icon: Thermometer, color: '#f59e0b' },
-                    { label: 'Total Power', value: `${totalPower} kW`, icon: Zap, color: '#a855f7' },
+                    { label: 'Total Nodes', value: machines.length, icon: Cpu, cText: 'text-sky-400', cBg: 'bg-sky-400/10', cBorder: 'border-sky-400/20' },
+                    { label: 'Running', value: runCount, icon: Signal, cText: 'text-green-400', cBg: 'bg-green-400/10', cBorder: 'border-green-400/20' },
+                    { label: 'Alerts', value: alertCount, icon: AlertTriangle, cText: alertCount > 0 ? 'text-red-400' : 'text-slate-400', cBg: alertCount > 0 ? 'bg-red-400/10' : 'bg-slate-400/10', cBorder: alertCount > 0 ? 'border-red-400/20' : 'border-slate-400/20' },
+                    { label: 'Avg Temp', value: `${avgTemp}°C`, icon: Thermometer, cText: 'text-amber-400', cBg: 'bg-amber-400/10', cBorder: 'border-amber-400/20' },
+                    { label: 'Fleet Load', value: `${totalPower} kW`, icon: Zap, cText: 'text-purple-400', cBg: 'bg-purple-400/10', cBorder: 'border-purple-400/20' },
                 ].map(kpi => (
-                    <div key={kpi.label} style={{
-                        background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(14,165,233,0.06)',
-                        borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10,
-                    }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 7, background: `${kpi.color}10`, border: `1px solid ${kpi.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <kpi.icon size={14} color={kpi.color} />
+                    <div key={kpi.label} className="bg-slate-900/60 backdrop-blur-md border border-white/5 rounded-xl p-3 flex items-center gap-3 shadow-lg">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${kpi.cBg} border ${kpi.cBorder}`}>
+                            <kpi.icon size={18} className={kpi.cText} />
                         </div>
                         <div>
-                            <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'JetBrains Mono', monospace" }}>{kpi.label}</div>
-                            <div style={{ fontSize: 16, fontWeight: 800, color: kpi.color, fontFamily: "'JetBrains Mono', monospace" }}>{kpi.value}</div>
+                            <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest font-mono mb-0.5">{kpi.label}</div>
+                            <div className={`text-lg font-black font-mono tracking-tight ${kpi.cText}`}>{kpi.value}</div>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Filter tabs */}
-            <div style={{ display: 'flex', gap: 2, background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(14,165,233,0.06)', borderRadius: 6, padding: 3, marginBottom: 14, overflowX: 'auto' }}>
-                {filters.map(f => (
-                    <button key={f} onClick={() => setFilter(f)} style={{
-                        padding: '5px 12px', borderRadius: 4, fontSize: 10, fontWeight: 700, cursor: 'pointer',
-                        border: 'none', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.04em',
-                        transition: 'all 0.2s', whiteSpace: 'nowrap',
-                        ...(filter === f
-                            ? { background: 'linear-gradient(135deg,#0ea5e9,#2563eb)', color: 'white' }
-                            : { background: 'transparent', color: '#64748b' }),
-                    }}>{f === 'all' ? `ALL (${machines.length})` : `${f} (${machines.filter(m => m.status === f).length})`}</button>
-                ))}
+            {/* Filter Tabs */}
+            <div className="flex gap-2 overflow-x-auto pb-4 mb-2 scrollbar-hide">
+                {filters.map(f => {
+                    const count = f === 'all' ? machines.length : machines.filter(m => m.status === f).length;
+                    const isActive = filter === f;
+                    return (
+                        <button key={f} onClick={() => setFilter(f)} 
+                            className={`px-4 py-2 rounded-lg text-[10px] font-bold font-mono tracking-widest uppercase whitespace-nowrap transition-all border ${isActive ? 'bg-sky-500/20 border-sky-500/40 text-sky-300 shadow-[0_0_15px_rgba(14,165,233,0.15)]' : 'bg-slate-900/40 border-slate-700 hover:bg-slate-800 text-slate-400'}`}>
+                            {f === 'all' ? 'FULL FLEET' : f} <span className="ml-1 opacity-60">({count})</span>
+                        </button>
+                    );
+                })}
             </div>
 
-            {/* Machine cards grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+            {/* Machine Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
                 {filtered.map(m => {
                     const sc = STATUS_CONFIG[m.status] || STATUS_CONFIG.OFFLINE;
                     const MIcon = MACHINE_ICONS[m.machineType] || Cpu;
+                    
                     return (
-                        <div key={m.machineId} style={{
-                            background: 'rgba(15,23,42,0.9)', border: `1px solid ${sc.border}`,
-                            borderRadius: 10, overflow: 'hidden', transition: 'all 0.3s',
-                        }}>
-                            {/* Status stripe */}
-                            <div style={{ height: 2, background: `linear-gradient(90deg, ${sc.color}, ${sc.color}44)` }} />
-
-                            <div style={{ padding: '12px 16px' }}>
-                                {/* Machine header */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <div style={{ width: 30, height: 30, borderRadius: 7, background: sc.bg, border: `1px solid ${sc.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <MIcon size={14} color={sc.color} />
+                        <div key={m.machineId} className={`bg-slate-900/60 backdrop-blur-xl border ${sc.border} rounded-2xl overflow-hidden flex flex-col group transition-all hover:-translate-y-1 hover:shadow-2xl shadow-lg relative`}>
+                            
+                            {/* Glowing Background gradient */}
+                            <div className="absolute top-0 right-0 w-32 h-32 blur-[50px] opacity-20 group-hover:opacity-40 transition-opacity pointer-events-none" style={{ background: sc.color.replace('text-', '') }}></div>
+                            
+                            {/* Top Status Strip */}
+                            <div className={`h-1 w-full ${sc.bg} opacity-50`}></div>
+                            
+                            <div className="p-5 flex-1 flex flex-col">
+                                {/* Header */}
+                                <div className="flex justify-between items-start mb-5 pb-4 border-b border-white/5 relative z-10">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${sc.bg} ${sc.border} shadow-inner`}>
+                                            <MIcon size={18} className={sc.color} />
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '-0.3px' }}>{m.machineName}</div>
-                                            <div style={{ fontSize: 9, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>
-                                                {m.location} · {m.machineType || 'MOTOR'} · {m.processUnit || 'Unit A'} · {(m.cumulativeRuntimeHours || 0).toFixed(0)}h
+                                            <h3 className="text-sm font-black text-white tracking-wide uppercase truncate w-32 sm:w-40">{m.machineName}</h3>
+                                            <div className="text-[9px] text-slate-400 font-mono tracking-widest uppercase mt-1">
+                                                {m.location} • {m.machineType}
                                             </div>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <span style={{
-                                            fontSize: 8, fontWeight: 800, padding: '3px 8px', borderRadius: 3,
-                                            background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`,
-                                            fontFamily: "'JetBrains Mono', monospace",
-                                        }}>
-                                            {sc.pulse && <span style={{ display: 'inline-block', width: 4, height: 4, borderRadius: '50%', background: sc.color, marginRight: 4, animation: m.status === 'EMERGENCY' ? 'alarm-flash 0.8s infinite' : 'pulse 1.5s infinite' }} />}
+                                    <div className="flex flex-col items-end gap-2">
+                                        <div className={`text-[9px] font-bold px-2 py-1 flex items-center gap-1.5 rounded-md uppercase tracking-widest border ${sc.bg} ${sc.color} ${sc.border}`}>
+                                            {sc.pulse && <span className={`w-1.5 h-1.5 rounded-full bg-current ${m.status === 'EMERGENCY' ? 'animate-ping' : 'animate-pulse'}`} />}
                                             {sc.label}
-                                        </span>
-                                        <Link to={`/app/machines/${m.machineId}`} style={{ color: '#64748b', display: 'flex' }} title="Analytics">
-                                            <ChevronRight size={14} />
+                                        </div>
+                                        <Link to={`/app/machines/${m.machineId}`} className="text-[10px] text-sky-400 hover:text-sky-300 font-bold tracking-widest uppercase flex items-center gap-1 font-mono transition-colors">
+                                            Telemetry <ChevronRight size={12} />
                                         </Link>
                                     </div>
                                 </div>
 
-                                {/* Telemetry gauges */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
-                                    <GaugeBar value={m.temperature} max={120} color="#f59e0b" label="Temp" unit="°C" warn={85} />
-                                    <GaugeBar value={m.rpm} max={4000} color="#3b82f6" label="RPM" unit="" />
-                                    <GaugeBar value={m.vibration} max={10} color="#8b5cf6" label="Vibration" unit="g" warn={5} />
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
-                                    <GaugeBar value={m.pressure} max={150} color="#06b6d4" label="Pressure" unit="PSI" warn={100} />
-                                    <GaugeBar value={m.powerConsumption} max={30} color="#a855f7" label="Power" unit="kW" />
-                                    <GaugeBar value={m.efficiency} max={100} color="#22c55e" label="Efficiency" unit="%" />
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
-                                    <GaugeBar value={m.currentDraw} max={20} color="#ec4899" label="Current" unit="A" />
-                                    <GaugeBar value={m.errorRate != null ? m.errorRate * 100 : null} max={15} color="#ef4444" label="Error Rate" unit="%" warn={5} />
+                                {/* Gauges */}
+                                <div className="space-y-4 mb-6 flex-1 relative z-10">
+                                    <div className="flex gap-4">
+                                        <GaugeBar value={m.temperature} max={120} colorClass="text-amber-400" barColor="bg-gradient-to-r from-amber-500/50 to-amber-400" label="Temp" unit="°C" warn={85} />
+                                        <GaugeBar value={m.rpm} max={4000} colorClass="text-blue-400" barColor="bg-gradient-to-r from-blue-600/50 to-blue-400" label="RPM" />
+                                        <GaugeBar value={m.vibration} max={10} colorClass="text-purple-400" barColor="bg-gradient-to-r from-purple-600/50 to-purple-400" label="Vibration" unit="g" warn={5} />
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <GaugeBar value={m.pressure} max={150} colorClass="text-cyan-400" barColor="bg-gradient-to-r from-cyan-600/50 to-cyan-400" label="Pressure" unit="PSI" warn={100} />
+                                        <GaugeBar value={m.powerConsumption} max={30} colorClass="text-indigo-400" barColor="bg-gradient-to-r from-indigo-500/50 to-indigo-400" label="Power" unit="kW" />
+                                        <GaugeBar value={m.efficiency} max={100} colorClass="text-green-400" barColor="bg-gradient-to-r from-green-600/50 to-green-400" label="Safety / OEE" unit="%" />
+                                    </div>
                                 </div>
 
-                                {/* Command buttons */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 3 }}>
+                                {/* Control Deck */}
+                                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-auto relative z-10">
                                     {COMMANDS.map(c => {
-                                        const isActive = cmdLoading[`${m.machineId}-${c.cmd}`];
+                                        const loadingKey = `${m.machineId}-${c.cmd}`;
+                                        const isActive = cmdLoading[loadingKey];
                                         return (
                                             <button key={c.cmd} onClick={() => handleCommand(m.machineId, c.cmd)} disabled={isActive}
-                                                style={{
-                                                    padding: '6px 2px', borderRadius: 5, border: `1px solid ${c.color}20`, cursor: 'pointer',
-                                                    background: isActive ? c.bg : 'transparent', color: c.color, fontSize: 8, fontWeight: 700,
-                                                    fontFamily: "'JetBrains Mono', monospace", display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-                                                    transition: 'all 0.15s', opacity: isActive ? 0.6 : 1, textTransform: 'uppercase',
-                                                }}
-                                                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = c.bg; e.currentTarget.style.borderColor = `${c.color}40`; } }}
-                                                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = `${c.color}20`; } }}
-                                            >
-                                                <c.icon size={11} />
-                                                {c.label}
+                                                className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all duration-200 
+                                                ${isActive ? 'opacity-50 scale-95' : 'hover:-translate-y-0.5 shadow-sm'} ${c.cStr}`}>
+                                                <c.icon size={12} className="mb-1" />
+                                                <span className="text-[8px] font-bold font-mono tracking-widest uppercase truncate w-full text-center">{c.label}</span>
                                             </button>
                                         );
                                     })}
@@ -253,13 +227,6 @@ const MachinesPage = () => {
                     );
                 })}
             </div>
-
-            {filtered.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b' }}>
-                    <Cpu size={36} style={{ marginBottom: 12, opacity: 0.3 }} />
-                    <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>NO MACHINES MATCHING FILTER</div>
-                </div>
-            )}
         </div>
     );
 };
