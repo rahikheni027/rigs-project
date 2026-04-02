@@ -8,7 +8,7 @@ import ProcessFlowDiagram from '../components/ProcessFlowDiagram';
 import {
     Cpu, Thermometer, Activity, Zap, Shield, Signal, 
     AlertTriangle, BarChart3, Wifi, Droplets, Fan, Cog, 
-    ArrowUpRight, ArrowDownRight, Wind, ZapOff, Clock
+    ArrowUpRight, ArrowDownRight, Wind, ZapOff, Clock, TrendingUp
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
