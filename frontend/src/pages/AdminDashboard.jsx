@@ -3,16 +3,11 @@ import api from '../api/axios';
 import { useMachines } from '../context/MachineContext';
 import WorkerDashboard from './WorkerDashboard';
 import {
-    Cpu, Shield, AlertTriangle, Users, UserCheck, UserX, Clock,
-    CheckCircle, XCircle, Trash2, Bell, BarChart3, TrendingUp,
-    Signal, Server, Database, Activity, Zap
+    Cpu, Shield, AlertTriangle, Users, UserCheck, Clock,
+    CheckCircle, XCircle, Trash2, Bell,
+    Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const S = {
-    card: { background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(14,165,233,0.08)', borderRadius: 10, padding: 16 },
-    label: { fontSize: 9, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace" },
-};
 
 const AdminDashboard = () => {
     const { machines } = useMachines();
@@ -93,25 +88,20 @@ const AdminDashboard = () => {
     const activeAlerts = alerts.filter(a => !a.acknowledged);
 
     if (loading) return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: 14 }}>
-            <Shield size={28} color="#0ea5e9" style={{ animation: 'pulse 1.5s infinite' }} />
-            <p style={{ color: '#64748b', fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>LOADING ADMIN CONSOLE...</p>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+            <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
+                <Shield size={22} className="text-sky-400 animate-pulse" />
+            </div>
+            <p className="text-slate-400 text-[10px] font-mono tracking-widest uppercase">Fetching Admin Credentials...</p>
         </div>
     );
 
     if (viewMode === 'OPERATOR') {
         return (
-            <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#f1f5f9' }}>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-                    <button 
-                        onClick={() => setViewMode('ADMIN')}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
-                            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-                            borderRadius: 6, color: '#f87171', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                            fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', transition: 'all 0.2s'
-                        }}
-                    >
+            <div className="font-sans text-slate-50 min-h-screen">
+                <div className="flex justify-end mb-4">
+                    <button onClick={() => setViewMode('ADMIN')}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-xs font-bold font-mono uppercase transition-colors">
                         <Shield size={14} /> Exit Telemetry View
                     </button>
                 </div>
@@ -121,122 +111,92 @@ const AdminDashboard = () => {
     }
 
     return (
-        <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#f1f5f9', position: 'relative' }}>
+        <div className="pb-10 font-sans text-slate-50 min-h-screen relative">
+            
             {/* Pending Approval Banner */}
-            {pendingUsers.length > 0 && (
-                <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px',
-                        background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)',
-                        borderRadius: 6, marginBottom: 14,
-                    }}
-                >
-                    <Bell size={14} color="#f59e0b" />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', fontFamily: "'JetBrains Mono', monospace" }}>
-                        ⚠ {pendingUsers.length} OPERATOR{pendingUsers.length > 1 ? 'S' : ''} AWAITING ACCESS APPROVAL
-                    </span>
-                </motion.div>
-            )}
+            <AnimatePresence>
+                {pendingUsers.length > 0 && (
+                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-6 shadow-[0_0_15px_rgba(245,158,11,0.15)]">
+                        <Bell size={16} className="text-amber-500 animate-bounce" />
+                        <span className="text-xs font-bold text-amber-400 font-mono tracking-widest uppercase">
+                            ⚠ {pendingUsers.length} OPERATOR{pendingUsers.length > 1 ? 'S' : ''} AWAITING ACCESS APPROVAL
+                        </span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+            <div className="flex flex-col md:flex-row justify-between md:items-end gap-6 mb-8 mt-2">
                 <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
-                        <h1 style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.5px', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>ADMIN CONSOLE</h1>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.12)', borderRadius: 4, padding: '3px 8px' }}>
-                            <Shield size={10} color="#0ea5e9" />
-                            <span style={{ fontSize: 9, fontWeight: 700, color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>ADMIN</span>
+                    <div className="flex items-center gap-3 mb-1">
+                        <h1 className="text-2xl md:text-3xl font-black tracking-tight font-mono uppercase text-white m-0">Admin Console</h1>
+                        <div className="flex items-center gap-1.5 bg-sky-500/10 border border-sky-500/20 rounded-md px-2 py-0.5 shadow-[0_0_8px_rgba(14,165,233,0.3)]">
+                            <Shield size={10} className="text-sky-400" />
+                            <span className="text-[10px] font-bold text-sky-400 font-mono tracking-widest">MASTER</span>
                         </div>
                     </div>
-                    <p style={{ fontSize: 11, color: '#64748b', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>SYSTEM ADMINISTRATION & ACCESS MANAGEMENT</p>
+                    <p className="text-xs text-slate-400 font-mono tracking-widest uppercase">System Administration & Access Management</p>
                 </div>
-                
-                <button 
-                    onClick={() => setViewMode('OPERATOR')}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
-                        background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.3)',
-                        borderRadius: 6, color: '#38bdf8', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                        fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', transition: 'all 0.2s'
-                    }}
-                >
+                <button onClick={() => setViewMode('OPERATOR')} 
+                    className="flex items-center gap-2 px-4 py-2 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 rounded-lg text-sky-400 text-xs font-bold font-mono tracking-widest uppercase transition-colors">
                     <Activity size={14} /> View Telemetry
                 </button>
             </div>
 
             {/* KPIs */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 16 }}>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
                 {[
-                    { label: 'Total Operators', value: stats.totalWorkers || 0, icon: Users, color: '#0ea5e9' },
-                    { label: 'Active', value: stats.activeWorkers || 0, icon: UserCheck, color: '#22c55e' },
-                    { label: 'Pending', value: stats.pendingApproval || 0, icon: Clock, color: (stats.pendingApproval || 0) > 0 ? '#f59e0b' : '#64748b' },
-                    { label: 'Machines', value: `${runCount}/${machines.length}`, icon: Cpu, color: '#22c55e' },
-                    { label: 'Alerts', value: activeAlerts.length, icon: AlertTriangle, color: activeAlerts.length > 0 ? '#ef4444' : '#64748b' },
-                    { label: 'System Health', value: alertMachines === 0 ? 'GOOD' : 'WARN', icon: Activity, color: alertMachines === 0 ? '#22c55e' : '#f59e0b' },
+                    { label: 'Total Ops', value: stats.totalWorkers || 0, icon: Users, cText: 'text-sky-400', cBg: 'bg-sky-400/10', cBorder: 'border-sky-400/20' },
+                    { label: 'Active', value: stats.activeWorkers || 0, icon: UserCheck, cText: 'text-green-400', cBg: 'bg-green-400/10', cBorder: 'border-green-400/20' },
+                    { label: 'Pending', value: stats.pendingApproval || 0, icon: Clock, cText: (stats.pendingApproval||0)>0?'text-amber-400':'text-slate-400', cBg: (stats.pendingApproval||0)>0?'bg-amber-400/10':'bg-slate-400/10', cBorder: (stats.pendingApproval||0)>0?'border-amber-400/20':'border-slate-400/20' },
+                    { label: 'Nodes', value: `${runCount}/${machines.length}`, icon: Cpu, cText: 'text-green-400', cBg: 'bg-green-400/10', cBorder: 'border-green-400/20' },
+                    { label: 'Alerts', value: activeAlerts.length, icon: AlertTriangle, cText: activeAlerts.length>0?'text-red-400':'text-slate-400', cBg: activeAlerts.length>0?'bg-red-400/10':'bg-slate-400/10', cBorder: activeAlerts.length>0?'border-red-400/20':'border-slate-400/20' },
+                    { label: 'Health', value: alertMachines === 0 ? 'GOOD' : 'WARN', icon: Activity, cText: alertMachines===0?'text-green-400':'text-amber-400', cBg: alertMachines===0?'bg-green-400/10':'bg-amber-400/10', cBorder: alertMachines===0?'border-green-400/20':'border-amber-400/20' },
                 ].map(kpi => (
-                    <div key={kpi.label} style={{
-                        ...S.card, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10,
-                    }}>
-                        <div style={{ width: 30, height: 30, borderRadius: 7, background: `${kpi.color}10`, border: `1px solid ${kpi.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <kpi.icon size={13} color={kpi.color} />
+                    <div key={kpi.label} className="bg-slate-900/60 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex items-center gap-3 shadow-lg">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${kpi.cBg} ${kpi.cBorder}`}>
+                            <kpi.icon size={16} className={kpi.cText} />
                         </div>
                         <div>
-                            <div style={{ ...S.label, marginBottom: 2 }}>{kpi.label}</div>
-                            <div style={{ fontSize: 16, fontWeight: 800, color: kpi.color, fontFamily: "'JetBrains Mono', monospace" }}>{kpi.value}</div>
+                            <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest font-mono mb-0.5">{kpi.label}</div>
+                            <div className={`text-lg font-black font-mono tracking-tight ${kpi.cText}`}>{kpi.value}</div>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Pending Users + Approved Users */}
-            <div style={{ display: 'grid', gridTemplateColumns: pendingUsers.length > 0 ? '1fr 1fr' : '1fr', gap: 12, marginBottom: 16 }}>
-                {/* Pending Approval */}
+            {/* Access Management Area */}
+            <div className={`grid grid-cols-1 ${pendingUsers.length > 0 ? 'lg:grid-cols-2' : ''} gap-6 mb-8`}>
+                
+                {/* Pending Approvals */}
                 {pendingUsers.length > 0 && (
-                    <div style={S.card}>
-                        <div style={{ ...S.label, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', animation: 'alarm-flash 1.5s infinite' }} />
-                            PENDING ACCESS REQUESTS ({pendingUsers.length})
+                    <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl">
+                        <div className="text-xs font-bold text-slate-400 tracking-widest uppercase font-mono mb-6 flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></div>
+                            Pending Access Requests ({pendingUsers.length})
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
+                        <div className="flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-2">
                             {pendingUsers.map(u => (
                                 <motion.div key={u.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                                        background: 'rgba(15,23,42,0.5)', borderRadius: 8,
-                                        borderLeft: '3px solid #f59e0b',
-                                    }}>
-                                    <div style={{
-                                        width: 30, height: 30, borderRadius: 7,
-                                        background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: 'white', fontSize: 11, fontWeight: 900, fontFamily: "'JetBrains Mono', monospace",
-                                    }}>
-                                        {u.name?.charAt(0)?.toUpperCase() || '?'}
+                                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-slate-800/40 border border-white/5 hover:border-amber-500/30 border-l-4 border-l-amber-500 rounded-xl transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-black font-mono shadow-inner shadow-white/20 text-sm">
+                                            {u.name?.charAt(0)?.toUpperCase() || '?'}
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-bold text-white mb-0.5">{u.name}</div>
+                                            <div className="text-[10px] text-slate-400 font-mono tracking-widest">{u.email}</div>
+                                        </div>
                                     </div>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 1 }}>{u.name}</div>
-                                        <div style={{ fontSize: 10, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>{u.email}</div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 4 }}>
+                                    <div className="flex gap-2 w-full sm:w-auto">
                                         <button onClick={() => handleApprove(u.id)} disabled={btnLoading[`approve-${u.id}`]}
-                                            style={{
-                                                padding: '5px 10px', borderRadius: 5, border: '1px solid rgba(34,197,94,0.2)',
-                                                background: 'rgba(34,197,94,0.06)', color: '#4ade80', fontSize: 9, fontWeight: 700,
-                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
-                                                fontFamily: "'JetBrains Mono', monospace", opacity: btnLoading[`approve-${u.id}`] ? 0.5 : 1,
-                                            }}>
-                                            <CheckCircle size={11} />APPROVE
+                                            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 text-green-400 rounded-lg text-[10px] font-bold tracking-widest uppercase disabled:opacity-50 transition-colors">
+                                            <CheckCircle size={12} /> Approve
                                         </button>
                                         <button onClick={() => handleReject(u.id)} disabled={btnLoading[`reject-${u.id}`]}
-                                            style={{
-                                                padding: '5px 10px', borderRadius: 5, border: '1px solid rgba(239,68,68,0.2)',
-                                                background: 'rgba(239,68,68,0.06)', color: '#f87171', fontSize: 9, fontWeight: 700,
-                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
-                                                fontFamily: "'JetBrains Mono', monospace", opacity: btnLoading[`reject-${u.id}`] ? 0.5 : 1,
-                                            }}>
-                                            <XCircle size={11} />DENY
+                                            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg text-[10px] font-bold tracking-widest uppercase disabled:opacity-50 transition-colors">
+                                            <XCircle size={12} /> Deny
                                         </button>
                                     </div>
                                 </motion.div>
@@ -245,122 +205,107 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* Active Operators */}
-                <div style={S.card}>
-                    <div style={{ ...S.label, marginBottom: 12 }}>REGISTERED OPERATORS ({users.filter(u => u.enabled === 1).length})</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 300, overflowY: 'auto' }}>
+                {/* Approved Operators */}
+                <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl">
+                    <div className="text-xs font-bold text-slate-400 tracking-widest uppercase font-mono mb-6">
+                        Registered Operators ({users.filter(u => u.enabled === 1).length})
+                    </div>
+                    <div className="flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-2">
                         {users.filter(u => u.enabled === 1).length > 0 ? users.filter(u => u.enabled === 1).map(u => (
-                            <div key={u.id} style={{
-                                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-                                background: 'rgba(15,23,42,0.5)', borderRadius: 6,
-                                borderLeft: '2px solid #22c55e',
-                            }}>
-                                <div style={{
-                                    width: 26, height: 26, borderRadius: 6,
-                                    background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    color: 'white', fontSize: 10, fontWeight: 900, fontFamily: "'JetBrains Mono', monospace",
-                                }}>
-                                    {u.name?.charAt(0)?.toUpperCase() || '?'}
+                            <div key={u.id} className="flex items-center justify-between gap-4 p-4 bg-slate-800/40 border border-white/5 hover:border-sky-500/20 border-l-4 border-l-green-500 rounded-xl transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white font-black font-mono shadow-inner shadow-white/20 text-sm">
+                                        {u.name?.charAt(0)?.toUpperCase() || '?'}
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-bold text-white mb-0.5">{u.name}</div>
+                                        <div className="text-[10px] text-slate-400 font-mono tracking-widest">{u.email} • {u.role}</div>
+                                    </div>
                                 </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: 12, fontWeight: 600 }}>{u.name}</div>
-                                    <div style={{ fontSize: 9, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>{u.email} · {u.role}</div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(34,197,94,0.06)', color: '#4ade80', fontFamily: "'JetBrains Mono', monospace" }}>ACTIVE</span>
+                                <div className="flex items-center gap-3">
+                                    <span className="hidden sm:inline-flex text-[9px] font-bold px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded font-mono">ACTIVE</span>
                                     <button onClick={() => handleRemoveUser(u.id)} disabled={btnLoading[`remove-${u.id}`]}
-                                        style={{
-                                            padding: 4, borderRadius: 4, border: '1px solid rgba(239,68,68,0.1)',
-                                            background: 'transparent', color: '#475569', cursor: 'pointer',
-                                            display: 'flex', transition: 'all 0.2s',
-                                            opacity: btnLoading[`remove-${u.id}`] ? 0.5 : 1,
-                                        }}
-                                        onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(239,68,68,0.06)'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.background = 'transparent'; }}
-                                    >
-                                        <Trash2 size={11} />
+                                        className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 border border-transparent hover:border-red-500/20">
+                                        <Trash2 size={14} />
                                     </button>
                                 </div>
                             </div>
                         )) : (
-                            <div style={{ textAlign: 'center', padding: '30px 0', color: '#64748b' }}>
-                                <Users size={20} style={{ marginBottom: 6, opacity: 0.4 }} />
-                                <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>NO OPERATORS REGISTERED</div>
+                            <div className="flex flex-col items-center justify-center min-h-[200px] text-slate-500">
+                                <Users size={32} className="mb-4 opacity-50" />
+                                <span className="text-[10px] font-bold tracking-widest uppercase font-mono">No Operators Registered</span>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Machine Status + Recent Alerts */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                {/* Machine Status */}
-                <div style={S.card}>
-                    <div style={{ ...S.label, marginBottom: 12 }}>MACHINE STATUS</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
+            {/* System Status & Alarms Log */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
+                
+                {/* Node Roster */}
+                <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl">
+                    <div className="text-xs font-bold text-slate-400 tracking-widest uppercase font-mono mb-6 flex items-center gap-2">
+                        <Cpu size={14} /> Node Fleet Status
+                    </div>
+                    <div className="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-2">
                         {machines.map(m => {
-                            const c = m.status === 'RUNNING' ? '#22c55e' : m.status === 'EMERGENCY' ? '#ef4444' : m.status === 'MAINTENANCE' ? '#f59e0b' : '#64748b';
+                            const isRun = m.status === 'RUNNING';
+                            const isErr = m.status === 'EMERGENCY';
+                            const colorClass = isRun ? 'text-green-400' : isErr ? 'text-red-400' : m.status === 'MAINTENANCE' ? 'text-amber-400' : 'text-slate-400';
                             return (
-                                <div key={m.machineId} style={{
-                                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                    background: 'rgba(15,23,42,0.5)', borderRadius: 6,
-                                }}>
-                                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: c, animation: m.status === 'RUNNING' ? 'pulse 2s infinite' : m.status === 'EMERGENCY' ? 'alarm-flash 0.8s infinite' : 'none' }} />
-                                    <span style={{ fontSize: 11, fontWeight: 600, flex: 1 }}>{m.machineName}</span>
-                                    <span style={{ fontSize: 8, fontWeight: 700, color: c, fontFamily: "'JetBrains Mono', monospace" }}>{m.status}</span>
+                                <div key={m.machineId} className="flex justify-between items-center bg-slate-800/40 border border-white/5 rounded-lg p-3 hover:bg-slate-800 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-2 h-2 rounded-full bg-current ${colorClass} ${isRun ? 'animate-pulse' : isErr ? 'animate-ping' : ''}`}></div>
+                                        <span className="text-xs font-bold text-white">{m.machineName}</span>
+                                    </div>
+                                    <span className={`text-[10px] font-bold uppercase font-mono tracking-widest ${colorClass}`}>
+                                        {m.status}
+                                    </span>
                                 </div>
                             );
                         })}
                     </div>
                 </div>
 
-                {/* Recent Alerts */}
-                <div style={S.card}>
-                    <div style={{ ...S.label, marginBottom: 12 }}>RECENT ALERTS</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
-                        {activeAlerts.length > 0 ? activeAlerts.slice(0, 6).map(a => {
-                            const c = a.severity === 'CRITICAL' ? '#ef4444' : a.severity === 'MEDIUM' ? '#f59e0b' : '#0ea5e9';
+                {/* Alarm Log */}
+                <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl">
+                    <div className="text-xs font-bold text-slate-400 tracking-widest uppercase font-mono mb-6 flex items-center gap-2">
+                        <AlertTriangle size={14} /> Recent Incidents
+                    </div>
+                    <div className="flex flex-col gap-3 max-h-[250px] overflow-y-auto pr-2">
+                        {activeAlerts.length > 0 ? activeAlerts.slice(0,6).map(a => {
+                            const isCrit = a.severity === 'CRITICAL';
+                            const cClass = isCrit ? 'text-red-400 bg-red-500/10 border-red-500/30 border-l-red-500' : 
+                                         a.severity === 'MEDIUM' ? 'text-amber-400 bg-amber-500/10 border-amber-500/30 border-l-amber-500' : 
+                                         'text-sky-400 bg-sky-500/10 border-sky-500/30 border-l-sky-500';
                             return (
-                                <div key={a.id} style={{
-                                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                    background: 'rgba(15,23,42,0.5)', borderRadius: 6,
-                                    borderLeft: `2px solid ${c}`,
-                                }}>
-                                    <AlertTriangle size={11} color={c} />
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.message}</div>
-                                        <div style={{ fontSize: 9, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>{a.machineName} · {a.severity}</div>
+                                <div key={a.id} className={`flex items-start gap-3 p-3 rounded-xl border border-l-4 ${cClass}`}>
+                                    <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                                    <div>
+                                        <div className="text-xs font-bold text-white mb-0.5">{a.message}</div>
+                                        <div className="text-[10px] opacity-80 font-mono">{a.machineName} • {a.severity}</div>
                                     </div>
                                 </div>
                             );
                         }) : (
-                            <div style={{ textAlign: 'center', padding: '30px 0', color: '#64748b' }}>
-                                <Shield size={18} style={{ marginBottom: 6, opacity: 0.4 }} />
-                                <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>NO ACTIVE ALERTS</div>
+                            <div className="flex flex-col items-center justify-center min-h-[150px] text-slate-500">
+                                <Shield size={24} className="mb-3 opacity-50" />
+                                <span className="text-[10px] font-bold tracking-widest uppercase font-mono">No Active Alerts</span>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Toast */}
+            {/* Toast Overlays */}
             <AnimatePresence>
                 {toast && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 30 }}
-                        style={{
-                            position: 'fixed', bottom: 24, right: 24,
-                            background: toast.type === 'success' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                            border: `1px solid ${toast.type === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                            borderRadius: 8, padding: '10px 16px',
-                            display: 'flex', alignItems: 'center', gap: 8,
-                            backdropFilter: 'blur(12px)', zIndex: 100,
-                        }}>
-                        {toast.type === 'success' ? <CheckCircle size={14} color="#4ade80" /> : <XCircle size={14} color="#f87171" />}
-                        <span style={{ fontSize: 12, fontWeight: 600, color: toast.type === 'success' ? '#4ade80' : '#f87171', fontFamily: "'JetBrains Mono', monospace" }}>{toast.msg}</span>
+                    <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
+                        className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl border backdrop-blur-xl shadow-2xl
+                        ${toast.type === 'success' ? 'bg-green-900/80 border-green-500/40 text-green-400' : 'bg-red-900/80 border-red-500/40 text-red-400'}`}>
+                        {toast.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                        <span className="text-xs font-bold font-mono tracking-widest uppercase">{toast.msg}</span>
                     </motion.div>
                 )}
             </AnimatePresence>
