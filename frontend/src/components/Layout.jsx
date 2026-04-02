@@ -3,11 +3,11 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useMachines } from '../context/MachineContext';
 import Navbar from '../components/Navbar';
-import { Zap, Wifi, WifiOff, Clock, Radio, Database, Server, Shield } from 'lucide-react';
+import { Zap, Wifi, WifiOff, Clock, Radio, Database, Server, Shield, RefreshCw } from 'lucide-react';
 
 const Layout = () => {
     const { user, loading } = useAuth();
-    const { isOnline, dataPoints, lastSync } = useMachines();
+    const { isOnline, dataPoints, lastSync, reconnect } = useMachines();
     const [uptime, setUptime] = useState(0);
 
     useEffect(() => {
@@ -83,6 +83,25 @@ const Layout = () => {
                                 }} />
                                 <WifiOff size={10} color="#ef4444" />
                                 <span style={{ color: '#f87171' }}>DISCONNECTED</span>
+                                <button 
+                                    onClick={reconnect}
+                                    style={{
+                                        background: 'rgba(239, 68, 68, 0.1)',
+                                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                                        borderRadius: 4,
+                                        padding: '2px 6px',
+                                        marginLeft: 8,
+                                        cursor: 'pointer',
+                                        color: '#f87171',
+                                        fontSize: 9,
+                                        fontWeight: 700,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 4
+                                    }}
+                                >
+                                    <RefreshCw size={8} /> RECONNECT
+                                </button>
                             </>
                         )}
                     </div>

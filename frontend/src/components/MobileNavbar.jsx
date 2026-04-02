@@ -2,11 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useMachines } from '../context/MachineContext';
-import { Zap, Wifi, WifiOff, Menu, X } from 'lucide-react';
+import { Zap, Wifi, WifiOff, Menu, X, RefreshCw } from 'lucide-react';
 
 const MobileNavbar = ({ onMenuToggle, menuOpen }) => {
     const { user } = useAuth();
-    const { isOnline } = useMachines();
+    const { isOnline, reconnect } = useMachines();
 
     if (!user) return null;
 
@@ -29,6 +29,11 @@ const MobileNavbar = ({ onMenuToggle, menuOpen }) => {
                     <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${isOnline ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
                         <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
                         <span className="text-[10px] font-black uppercase tracking-tighter">{isOnline ? 'ON' : 'OFF'}</span>
+                        {!isOnline && (
+                            <button onClick={reconnect} className="ml-2 pl-2 border-l border-white/10 active:scale-90 transition-transform">
+                                <RefreshCw size={12} className="text-rose-400" />
+                            </button>
+                        )}
                     </div>
 
                     <button 

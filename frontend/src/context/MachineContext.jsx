@@ -25,85 +25,84 @@ export const MachineProvider = ({ children }) => {
         setLiveAlerts(prev => prev.filter((_, i) => i !== index));
     }, []);
 
-    useEffect(() => {
+    // Reconnection logic
+    const [esInstance, setEsInstance] = useState(null);
+
+    const connectSSE = useCallback(() => {
         if (!user) return;
+        
+        // Close existing if any
+        if (esInstance) {
+            esInstance.close();
+        }
 
-        const connectSSE = () => {
-            const token = localStorage.getItem('token');
-            if (!token) return null;
+        const token = localStorage.getItem('token');
+        if (!token) return;
 
-            const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api';
-            const eventSource = new EventSource(`${apiUrl}/machines/stream?token=${token}`);
+        const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+        const eventSource = new EventSource(`${apiUrl}/machines/stream?token=${token}`);
 
-            eventSource.onopen = () => {
-                console.log("██ SSE Connection Opened");
-                setIsOnline(true);
-            };
-
-            eventSource.onerror = (error) => {
-                console.error("██ SSE Connection Error", error);
-                setIsOnline(false);
-                eventSource.close();
-                // Retry after 5s
-                setTimeout(() => {
-                    if (user) {
-                        console.log("██ Attempting SSE Reconnect...");
-                        connectSSE();
-                    }
-                }, 5000);
-            };
-
-            eventSource.addEventListener('connect', (event) => {
-                console.log("██ SSE Link Verified:", event.data);
-                setIsOnline(true);
-            });
-
-            eventSource.addEventListener('telemetry', (event) => {
-                if (!event.data) return;
-                try {
-                    const incomingTelemetry = JSON.parse(event.data);
-                    setMachines(prevMachines => {
-                        const exists = prevMachines.some(m => m.machineId === incomingTelemetry.machineId);
-                        if (exists) {
-                            return prevMachines.map(m => m.machineId === incomingTelemetry.machineId ? incomingTelemetry : m);
-                        } else {
-                            return [...prevMachines, incomingTelemetry];
-                        }
-                    });
-                    setDataPoints(p => p + 1);
-                    setLastSync(new Date());
-                } catch (e) {
-                    console.error("██ Failed to parse telemetry", e);
-                }
-            });
-
-            eventSource.addEventListener('alert', (event) => {
-                if (!event.data) return;
-                try {
-                    const alertData = JSON.parse(event.data);
-                    if (alertData.type === 'CASCADING_FAILURE') {
-                        setCascadingFailure(alertData);
-                        setTimeout(() => setCascadingFailure(null), 30000);
-                    }
-                    setLiveAlerts(prev => {
-                        const next = [{ ...alertData, receivedAt: new Date().toISOString() }, ...prev];
-                        return next.slice(0, 20);
-                    });
-                } catch (e) {
-                    console.error("██ Failed to parse alert", e);
-                }
-            });
-
-            return eventSource;
+        eventSource.onopen = () => {
+            console.log("██ SSE Connection Opened");
+            setIsOnline(true);
         };
 
-        const es = connectSSE();
+        eventSource.onerror = (error) => {
+            console.error("██ SSE Connection Error", error);
+            setIsOnline(false);
+            eventSource.close();
+            // Auto-retry handled by useEffect or manual trigger
+        };
 
-        return () => {
-            if (es) {
-                console.log("██ Closing SSE Connection");
-                es.close();
+        eventSource.addEventListener('connect', (event) => {
+            console.log("██ SSE Link Verified:", event.data);
+            setIsOnline(true);
+        });
+
+        eventSource.addEventListener('telemetry', (event) => {
+            if (!event.data) return;
+            try {
+                const incomingTelemetry = JSON.parse(event.data);
+                setMachines(prevMachines => {
+                    const exists = prevMachines.some(m => m.machineId === incomingTelemetry.machineId);
+                    if (exists) {
+                        return prevMachines.map(m => m.machineId === incomingTelemetry.machineId ? incomingTelemetry : m);
+                    } else {
+                        return [...prevMachines, incomingTelemetry];
+                    }
+                });
+                setDataPoints(p => p + 1);
+                setLastSync(new Date());
+            } catch (e) {
+                console.error("██ Failed to parse telemetry", e);
             }
+        });
+
+        eventSource.addEventListener('alert', (event) => {
+            if (!event.data) return;
+            try {
+                const alertData = JSON.parse(event.data);
+                if (alertData.type === 'CASCADING_FAILURE') {
+                    setCascadingFailure(alertData);
+                    setTimeout(() => setCascadingFailure(null), 30000);
+                }
+                setLiveAlerts(prev => {
+                    const next = [{ ...alertData, receivedAt: new Date().toISOString() }, ...prev];
+                    return next.slice(0, 20);
+                });
+            } catch (e) {
+                console.error("██ Failed to parse alert", e);
+            }
+        });
+
+        setEsInstance(eventSource);
+    }, [user, esInstance]);
+
+    useEffect(() => {
+        if (!user) return;
+        connectSSE();
+        return () => {
+            if (esInstance) esInstance.close();
             setIsOnline(false);
         };
     }, [user]);
@@ -140,7 +139,7 @@ export const MachineProvider = ({ children }) => {
         <MachineContext.Provider value={{
             machines, setMachines, isOnline, dataPoints, lastSync,
             liveAlerts, cascadingFailure, dismissCascadingFailure, dismissAlert,
-            dependencyGraph, setDependencyGraph
+            dependencyGraph, setDependencyGraph, reconnect: connectSSE
         }}>
             {children}
         </MachineContext.Provider>

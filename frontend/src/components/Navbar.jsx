@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
 import { useMachines } from '../context/MachineContext';
-import { LayoutDashboard, Shield, AlertTriangle, User, LogOut, Cpu, Zap, Radio, Clock, Sun, Moon, Settings } from 'lucide-react';
+import { LayoutDashboard, Shield, AlertTriangle, User, LogOut, Cpu, Zap, Radio, Clock, Sun, Moon, Settings, RefreshCw } from 'lucide-react';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -12,7 +12,7 @@ const Navbar = () => {
     const location = useLocation();
     const { showToast } = useToast();
     const { theme, toggleTheme } = useTheme();
-    const { isOnline } = useMachines();
+    const { isOnline, reconnect } = useMachines();
     const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
@@ -112,6 +112,19 @@ const Navbar = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: isOnline ? 'rgba(34, 197, 94, 0.06)' : 'rgba(239, 68, 68, 0.06)', border: `1px solid ${isOnline ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'}`, borderRadius: 6 }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: isOnline ? '#22c55e' : '#ef4444', boxShadow: isOnline ? '0 0 8px rgba(34,197,94,0.5)' : '0 0 8px rgba(239,68,68,0.5)', animation: isOnline ? 'pulse 2s infinite' : 'alarm-flash 1s infinite' }} />
                         <span style={{ fontSize: 10, fontWeight: 700, color: isOnline ? '#4ade80' : '#f87171', fontFamily: "'JetBrains Mono', monospace" }}>{isOnline ? 'STREAMING' : 'OFFLINE'}</span>
+                        {!isOnline && (
+                            <button 
+                                onClick={reconnect}
+                                title="Force Reconnect"
+                                style={{
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', color: '#f87171',
+                                    padding: '0 0 0 4px', marginLeft: 4, borderLeft: '1px solid rgba(239,68,68,0.2)'
+                                }}
+                            >
+                                <RefreshCw size={10} className="animate-spin-slow" />
+                            </button>
+                        )}
                     </div>
 
                     {/* Clock */}
