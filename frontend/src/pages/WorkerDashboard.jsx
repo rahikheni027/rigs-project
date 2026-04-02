@@ -147,7 +147,7 @@ const WorkerDashboard = () => {
             </div>
 
             {/* Top Grid Area: OEE Gauge + Flow Diagram */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
                 <div className="lg:col-span-1 flex flex-col gap-6">
                     <OEEGauge value={oee} />
                     
@@ -190,15 +190,44 @@ const WorkerDashboard = () => {
                     </div>
                 </div>
                 
-                <div className="lg:col-span-3 bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl min-h-[400px] flex flex-col">
-                    <div className="flex justify-between items-center mb-6">
+                <div className="lg:col-span-3 bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl min-h-[400px] flex flex-col relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-20 pointer-events-none text-sky-500"><Wind size={80} /></div>
+                    <div className="flex justify-between items-center mb-6 relative z-10">
                         <h2 className="text-sm text-slate-300 font-bold uppercase tracking-widest flex items-center gap-2">
                             <Activity size={16} className="text-slate-400" />
-                            Live P&ID Flow
+                            Dynamic Process flow
                         </h2>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">AUTOSYNC: ACTIVE</span>
+                        </div>
                     </div>
-                    <div className="flex-1 bg-black/20 rounded-2xl border border-white/5 overflow-hidden">
+                    <div className="flex-1 bg-black/20 rounded-2xl border border-white/5 overflow-hidden relative z-10">
                         {dependencyGraph && <ProcessFlowDiagram nodes={dependencyGraph.nodes} edges={dependencyGraph.edges} />}
+                    </div>
+                </div>
+
+                {/* Desktop Specific: Live Event Ticker */}
+                <div className="hidden lg:flex lg:col-span-1 flex-col bg-slate-950/40 border border-white/5 rounded-3xl p-5 shadow-inner">
+                    <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Signal size={12} className="text-sky-400" /> Live Telemetry
+                    </h3>
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+                        {machines.slice(0, 10).map(m => (
+                            <div key={m.machineId} className="flex flex-col gap-1 p-2 bg-white/5 rounded-lg border border-white/5">
+                                <div className="flex justify-between items-center text-[10px]">
+                                    <span className="text-slate-300 font-bold truncate pr-2">{m.machineName}</span>
+                                    <span className="text-sky-400 font-mono text-[8px]">{m.status.slice(0,4)}</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <div className="flex-1 h-0.5 bg-sky-500/20 rounded-full overflow-hidden">
+                                        <div className="h-full bg-sky-500" style={{ width: `${(m.temperature || 0) / 1.2}%` }}></div>
+                                    </div>
+                                    <div className="flex-1 h-0.5 bg-indigo-500/20 rounded-full overflow-hidden">
+                                        <div className="h-full bg-indigo-500" style={{ width: `${m.efficiency || 0}%` }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

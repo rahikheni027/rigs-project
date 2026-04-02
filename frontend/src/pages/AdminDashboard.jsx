@@ -243,25 +243,35 @@ const AdminDashboard = () => {
             {/* System Status & Alarms Log */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
                 
-                {/* Node Roster */}
+                {/* Node Roster - Enhanced Matrix */}
                 <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl">
-                    <div className="text-xs font-bold text-slate-400 tracking-widest uppercase font-mono mb-6 flex items-center gap-2">
-                        <Cpu size={14} /> Node Fleet Status
+                    <div className="text-xs font-bold text-slate-400 tracking-widest uppercase font-mono mb-6 flex justify-between items-center">
+                        <div className="flex items-center gap-2"><Cpu size={14} /> Global Node Matrix</div>
+                        <div className="text-[10px] text-sky-400/60 uppercase">{machines.length} Total Nodes</div>
                     </div>
-                    <div className="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                         {machines.map(m => {
                             const isRun = m.status === 'RUNNING';
                             const isErr = m.status === 'EMERGENCY';
                             const colorClass = isRun ? 'text-green-400' : isErr ? 'text-red-400' : m.status === 'MAINTENANCE' ? 'text-amber-400' : 'text-slate-400';
+                            const bgClass = isRun ? 'bg-green-500/5 border-green-500/10' : isErr ? 'bg-red-500/5 border-red-500/10' : 'bg-slate-800/20 border-white/5';
+                            
                             return (
-                                <div key={m.machineId} className="flex justify-between items-center bg-slate-800/40 border border-white/5 rounded-lg p-3 hover:bg-slate-800 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-2 h-2 rounded-full bg-current ${colorClass} ${isRun ? 'animate-pulse' : isErr ? 'animate-ping' : ''}`}></div>
-                                        <span className="text-xs font-bold text-white">{m.machineName}</span>
+                                <div key={m.machineId} className={`flex flex-col gap-1.5 ${bgClass} border rounded-lg p-2.5 hover:bg-slate-800 transition-all group`}>
+                                    <div className="flex justify-between items-center">
+                                        <div className={`w-1.5 h-1.5 rounded-full bg-current ${colorClass} ${isRun ? 'animate-pulse' : isErr ? 'animate-ping' : ''}`}></div>
+                                        <span className="text-[8px] font-bold text-slate-500 uppercase font-mono">#{m.machineId.slice(-4)}</span>
                                     </div>
-                                    <span className={`text-[10px] font-bold uppercase font-mono tracking-widest ${colorClass}`}>
-                                        {m.status}
-                                    </span>
+                                    <span className="text-[11px] font-bold text-white truncate leading-none mb-0.5">{m.machineName}</span>
+                                    <div className="flex items-center justify-between">
+                                        <span className={`text-[9px] font-black uppercase font-mono tracking-tighter ${colorClass}`}>
+                                            {m.status}
+                                        </span>
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="w-1 h-3 bg-white/5 rounded-full"></div>
+                                            <div className="w-1 h-3 bg-white/5 rounded-full"></div>
+                                        </div>
+                                    </div>
                                 </div>
                             );
                         })}
