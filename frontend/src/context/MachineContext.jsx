@@ -2,9 +2,14 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useAuth } from './AuthContext';
 
 const MachineContext = createContext();
+const MachineStatsContext = createContext();
 
 export const useMachines = () => {
     return useContext(MachineContext);
+};
+
+export const useMachineStats = () => {
+    return useContext(MachineStatsContext);
 };
 
 export const MachineProvider = ({ children }) => {
@@ -19,7 +24,7 @@ export const MachineProvider = ({ children }) => {
     
     // Performance Optimization: Buffer incoming telemetry to prevent render-storms
     const telemetryBuffer = useRef({});
-    const lastCommitRef = useRef(Date.now());
+    const esRef = useRef(null);
 
     // Dismiss cascading failure banner
     const dismissCascadingFailure = useCallback(() => setCascadingFailure(null), []);
@@ -30,14 +35,13 @@ export const MachineProvider = ({ children }) => {
     }, []);
 
     // Reconnection logic
-    const [esInstance, setEsInstance] = useState(null);
-
     const connectSSE = useCallback(() => {
         if (!user) return;
         
         // Close existing if any
-        if (esInstance) {
-            esInstance.close();
+        if (esRef.current) {
+            esRef.current.close();
+            esRef.current = null;
         }
 
         const token = localStorage.getItem('token');
@@ -92,8 +96,8 @@ export const MachineProvider = ({ children }) => {
             }
         });
 
-        setEsInstance(eventSource);
-    }, [user, esInstance]);
+        esRef.current = eventSource;
+    }, [user]); // Breaking the esInstance loop dependency
 
     useEffect(() => {
         if (!user) return;
@@ -123,11 +127,11 @@ export const MachineProvider = ({ children }) => {
         }, 250);
 
         return () => {
-            if (esInstance) esInstance.close();
+            if (esRef.current) esRef.current.close();
             clearInterval(commitInterval);
             setIsOnline(false);
         };
-    }, [user, connectSSE]); // Added connectSSE to deps for safety
+    }, [user, connectSSE]);
 
     // Initial fetch to populate machines before SSE brings updates
     useEffect(() => {
@@ -161,8 +165,6 @@ export const MachineProvider = ({ children }) => {
         machines, 
         setMachines, 
         isOnline, 
-        dataPoints, 
-        lastSync,
         liveAlerts, 
         cascadingFailure, 
         dismissCascadingFailure, 
@@ -171,14 +173,21 @@ export const MachineProvider = ({ children }) => {
         setDependencyGraph, 
         reconnect: connectSSE
     }), [
-        machines, isOnline, dataPoints, lastSync, liveAlerts, 
+        machines, isOnline, liveAlerts, 
         cascadingFailure, dismissCascadingFailure, dismissAlert, 
         dependencyGraph, connectSSE
     ]);
 
+    const statsValue = useMemo(() => ({
+        dataPoints,
+        lastSync
+    }), [dataPoints, lastSync]);
+
     return (
         <MachineContext.Provider value={contextValue}>
-            {children}
+            <MachineStatsContext.Provider value={statsValue}>
+                {children}
+            </MachineStatsContext.Provider>
         </MachineContext.Provider>
     );
 };

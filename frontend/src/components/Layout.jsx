@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useMachines } from '../context/MachineContext';
+import { useMachines, useMachineStats } from '../context/MachineContext';
 import Navbar from '../components/Navbar';
 import { Zap, Wifi, WifiOff, Clock, Radio, Database, Server, Shield, RefreshCw } from 'lucide-react';
 
 const Layout = () => {
     const { user, loading } = useAuth();
-    const { isOnline, dataPoints, lastSync, reconnect } = useMachines();
+    const { isOnline, reconnect } = useMachines();
+    const { dataPoints, lastSync } = useMachineStats();
     const [uptime, setUptime] = useState(0);
 
     useEffect(() => {
@@ -46,7 +47,8 @@ const Layout = () => {
     if (!user) return <Navigate to="/login" replace />;
 
     return (
-        <div className="scada-scanline scada-grid-bg" style={{ minHeight: '100vh', background: '#020617', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, sans-serif' }}>
+        <div className="scada-grid-bg" style={{ minHeight: '100vh', background: '#020617', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, sans-serif', position: 'relative' }}>
+            <div className="scada-scanline-overlay" />
             <Navbar />
             <main style={{ flex: 1, maxWidth: 1400, width: '100%', margin: '0 auto', padding: '24px 20px' }}>
                 <Outlet />

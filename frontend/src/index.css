@@ -227,9 +227,8 @@ body {
   animation: float 4s ease-in-out infinite;
 }
 
-/* SCADA scanline overlay */
-.scada-scanline::after {
-  content: '';
+/* SCADA scanline overlay - separate div for interaction safety */
+.scada-scanline-overlay {
   position: fixed;
   inset: 0;
   background: repeating-linear-gradient(0deg,
