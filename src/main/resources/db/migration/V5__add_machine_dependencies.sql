@@ -14,10 +14,6 @@ CREATE TABLE IF NOT EXISTS machine_dependencies (
     CONSTRAINT fk_dep_child FOREIGN KEY (child_machine_id) REFERENCES machines(id) ON DELETE CASCADE
 );
 
--- Add machine_type and process_unit columns if they don't exist yet
--- (they may have been added by the simulator auto-create but not via migration)
-ALTER TABLE machines ADD COLUMN IF NOT EXISTS machine_type VARCHAR(50) DEFAULT 'MOTOR';
-ALTER TABLE machines ADD COLUMN IF NOT EXISTS process_unit VARCHAR(50) DEFAULT 'Unit A';
 
 -- Seed default process flow dependencies within same process units
 -- Unit A chain: Machine 1 → Machine 4 → Machine 7
