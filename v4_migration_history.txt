@@ -1,0 +1,61 @@
+diff --git a/src/main/java/com/rigs/rigs/config/FlywayConfig.java b/src/main/java/com/rigs/rigs/config/FlywayConfig.java
+new file mode 100644
+index 0000000..8813ebd
+--- /dev/null
++++ b/src/main/java/com/rigs/rigs/config/FlywayConfig.java
+@@ -0,0 +1,33 @@
++package com.rigs.rigs.config;
++
++import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.Configuration;
++
++import javax.sql.DataSource;
++import java.sql.Connection;
++import java.sql.Statement;
++
++@Configuration
++public class FlywayConfig {
++
++    @Bean
++    public FlywayMigrationStrategy cleanFailedMigrationsStrategy(DataSource dataSource) {
++        return flyway -> {
++            try (Connection c = dataSource.getConnection();
++                 Statement s = c.createStatement()) {
++                System.out.println("Executing explicit Flyway cleanup on MySQL...");
++                // MySQL doesn't support transactional DDL, so Flyway refuses to repair failed migrations automatically.
++                // We manually delete any failed history rows to unblock the Deployment.
++                s.execute("DELETE FROM flyway_schema_history WHERE success = 0");
++                System.out.println("Failed migrations purged successfully.");
++            } catch (Exception e) {
++                System.out.println("Could not clean flyway_schema_history (table might not exist yet): " + e.getMessage());
++            }
++            
++            // Repair standard checksums and trigger migration
++            flyway.repair();
++            flyway.migrate();
++        };
++    }
++}
+diff --git a/src/main/resources/db/migration/V4__add_database_indexes.sql b/src/main/resources/db/migration/V4__add_database_indexes.sql
+index 7931576..7579039 100644
+--- a/src/main/resources/db/migration/V4__add_database_indexes.sql
++++ b/src/main/resources/db/migration/V4__add_database_indexes.sql
+@@ -2,13 +2,13 @@
+ -- Optimizing queries for large telemetry ingestion and dashboard loads
+ 
+ -- 1. Index for fast telemetry queries (Dashboard charts querying by machine + time)
+-CREATE INDEX IF NOT EXISTS idx_telemetry_machine_time ON machine_telemetry (machine_id, timestamp DESC);
++CREATE INDEX idx_telemetry_machine_time ON machine_telemetry (machine_id, `timestamp` DESC);
+ 
+ -- 2. Index for quick machine status checks (Admin/Worker Dashboard KPI queries)
+-CREATE INDEX IF NOT EXISTS idx_machine_status ON machines (status);
++CREATE INDEX idx_machine_status ON machines (status);
+ 
+ -- 3. Index for alert filtering (Finding unacknowledged critical alerts fast)
+-CREATE INDEX IF NOT EXISTS idx_alerts_machine_severity ON alerts (machine_id, severity);
++CREATE INDEX idx_alerts_machine_severity ON alerts (machine_id, severity);
+ 
+ -- 4. Index for command lookups (Checking PENDING commands)
+-CREATE INDEX IF NOT EXISTS idx_commands_machine_status ON commands (machine_id, status);
++CREATE INDEX idx_commands_machine_status ON commands (machine_id, status);

@@ -75,7 +75,7 @@ const OEEGauge = ({ value }) => {
 };
 
 const WorkerDashboard = () => {
-    const { machines } = useMachines();
+    const { machines, dependencyGraph, cascadingFailure } = useMachines();
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [chartData, setChartData] = useState([]);
@@ -223,7 +223,7 @@ const WorkerDashboard = () => {
 
             {/* P&ID Process Flow Diagram */}
             <div style={S.card}>
-                <ProcessFlowDiagram machines={machines} />
+                <ProcessFlowDiagram machines={machines} dependencyGraph={dependencyGraph} cascadingFailure={cascadingFailure} />
             </div>
 
             <div style={{ height: 12 }} />

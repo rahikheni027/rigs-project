@@ -50,9 +50,10 @@ public class MachineController {
 
     @PostMapping("/{machineId}/command")
     public ResponseEntity<?> sendCommand(@PathVariable Long machineId, @RequestParam String command,
-            @RequestParam(required = false) String issuedBy) {
-        log.info("Sending command '{}' to machine {}", command, machineId);
-        commandService.issueCommand(machineId, command.toUpperCase(), null, issuedBy != null ? issuedBy : "ADMIN");
-        return ResponseEntity.ok(Map.of("status", "sent", "command", command.toUpperCase()));
+            @RequestParam(required = false) String issuedBy,
+            @RequestParam(required = false, defaultValue = "false") boolean force) {
+        log.info("Sending command '{}' to machine {} (force={})", command, machineId, force);
+        Object cmdResponse = commandService.issueCommand(machineId, command.toUpperCase(), null, issuedBy != null ? issuedBy : "ADMIN", force);
+        return ResponseEntity.ok(Map.of("status", "sent", "command", command.toUpperCase(), "detail", cmdResponse));
     }
 }

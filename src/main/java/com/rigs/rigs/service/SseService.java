@@ -75,4 +75,31 @@ public class SseService {
 
         emitters.removeAll(deadEmitters);
     }
+
+    /**
+     * Blasts a new alert event to all connected frontends instantly.
+     */
+    public void broadcastAlert(Object alertData) {
+        String payload;
+        try {
+            payload = objectMapper.writeValueAsString(alertData);
+        } catch (Exception e) {
+            log.error("Failed to serialize alert for SSE: {}", e.getMessage());
+            return;
+        }
+
+        List<SseEmitter> deadEmitters = new CopyOnWriteArrayList<>();
+
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.send(SseEmitter.event()
+                        .name("alert")
+                        .data(payload));
+            } catch (IOException e) {
+                deadEmitters.add(emitter);
+            }
+        }
+
+        emitters.removeAll(deadEmitters);
+    }
 }

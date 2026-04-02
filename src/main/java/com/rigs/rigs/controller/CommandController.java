@@ -26,7 +26,7 @@ public class CommandController {
 
         String issuedBy = userDetails.getUsername();
         Command cmd = commandService.issueCommand(request.getMachineId(), request.getCommandType(),
-                request.getParameters(), issuedBy);
+                request.getParameters(), issuedBy, request.isForce());
 
         return ResponseEntity.ok(CommandResponse.builder()
                 .id(cmd.getId())

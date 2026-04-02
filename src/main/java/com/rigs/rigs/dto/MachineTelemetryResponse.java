@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -30,4 +31,7 @@ public class MachineTelemetryResponse {
     private boolean maintenanceAlert;
     private Double cumulativeRuntimeHours;
     private LocalDateTime timestamp;
+    private List<Long> upstreamDependencies;
+    private List<Long> downstreamDependencies;
+    private String stoppedByDependency;
 }

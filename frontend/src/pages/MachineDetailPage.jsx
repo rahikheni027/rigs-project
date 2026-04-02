@@ -149,6 +149,8 @@ const MachineDetailPage = () => {
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [cmdLoading, setCmdLoading] = useState({});
+    const [pendingCmd, setPendingCmd] = useState(null);
+    const [forceOverride, setForceOverride] = useState(false);
 
     // Fetch initial state and history only once
     useEffect(() => {
@@ -191,7 +193,19 @@ const MachineDetailPage = () => {
         });
     }, [liveMachine]);
 
-    const handleCommand = async (cmd) => {
+    const handleCommandClick = (cmd) => {
+        const isStop = ['STOP', 'EMERGENCY_STOP', 'MAINTENANCE_MODE'].includes(cmd);
+        const hasDownstream = machine?.downstreamDependencies?.length > 0;
+        
+        if (isStop && hasDownstream) {
+            setPendingCmd(cmd);
+            return;
+        }
+        executeCommand(cmd, forceOverride);
+    };
+
+    const executeCommand = async (cmd, force) => {
+        setPendingCmd(null);
         setCmdLoading(p => ({ ...p, [cmd]: true }));
         
         // Optimistic UI update
@@ -205,9 +219,12 @@ const MachineDetailPage = () => {
         }
 
         try {
-            await api.post(`/machines/${machineId}/command?command=${cmd}&issuedBy=operator`);
-            // Global context is instantly broadcasted via SSE
-        } catch (e) { console.error(e); }
+            await api.post(`/machines/${machineId}/command?command=${cmd}&issuedBy=operator&force=${force}`);
+        } catch (e) {
+            console.error(e);
+            // Revert optimistic update if command fails
+            if (liveMachine) setMachine(prev => ({ ...prev, status: liveMachine.status }));
+        }
         finally { setTimeout(() => setCmdLoading(p => ({ ...p, [cmd]: false })), 1200); }
     };
 
@@ -274,6 +291,41 @@ const MachineDetailPage = () => {
                 </div>
             </div>
 
+            {/* Modal Overlay for Cascading Commands */}
+            {pendingCmd && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(4px)',
+                    zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{
+                        background: '#0f172a', border: '1px solid #ef4444', borderRadius: 12, padding: 24,
+                        maxWidth: 400, width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                            <AlertTriangle size={24} color="#ef4444" />
+                            <h2 style={{ fontSize: 16, margin: 0, color: '#f8fafc', fontWeight: 800, fontFamily: "'JetBrains Mono', monospace" }}>CASCADE WARNING</h2>
+                        </div>
+                        <p style={{ fontSize: 14, color: '#cbd5e1', marginBottom: 16, lineHeight: 1.5 }}>
+                            Issuing <strong style={{color: '#ef4444'}}>{pendingCmd}</strong> to this machine will automatically propagate to <strong>{machine?.downstreamDependencies?.length} downstream dependencies</strong>.
+                        </p>
+                        <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 24, background: 'rgba(239,68,68,0.1)', padding: 10, borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)' }}>
+                            Affected downstream machine IDs: {machine?.downstreamDependencies?.join(', ')}
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                            <button onClick={() => setPendingCmd(null)} style={{
+                                padding: '8px 16px', borderRadius: 6, border: '1px solid #475569', background: 'transparent',
+                                color: '#94a3b8', fontWeight: 700, cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace"
+                            }}>CANCEL</button>
+                            <button onClick={() => executeCommand(pendingCmd, forceOverride)} style={{
+                                padding: '8px 16px', borderRadius: 6, border: 'none', background: '#ef4444',
+                                color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace"
+                            }}>CONFIRM {pendingCmd}</button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+
             {/* Virtual Machine + Command Panel */}
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 1fr) 2fr', gap: 16, marginBottom: 16, alignItems: 'stretch' }}>
                 <VirtualMachineVisualizer status={machine.status} type={machine.machineType} />
@@ -284,7 +336,7 @@ const MachineDetailPage = () => {
                         {COMMANDS.map(c => {
                             const isActive = cmdLoading[c.cmd];
                             return (
-                                <button key={c.cmd} onClick={() => handleCommand(c.cmd)} disabled={isActive}
+                                <button key={c.cmd} onClick={() => handleCommandClick(c.cmd)} disabled={isActive}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px',
                                         borderRadius: 8, border: `1px solid ${c.color}30`, cursor: 'pointer',
@@ -301,6 +353,14 @@ const MachineDetailPage = () => {
                                 </button>
                             );
                         })}
+                    </div>
+                    
+                    {/* Force Override Toggle */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, padding: '8px 12px', background: 'rgba(239,68,68,0.05)', borderRadius: 6, border: forceOverride ? '1px solid #ef4444' : '1px solid rgba(239,68,68,0.2)' }}>
+                        <input type="checkbox" id="forceOverride" checked={forceOverride} onChange={e => setForceOverride(e.target.checked)} style={{ cursor: 'pointer', accentColor: '#ef4444' }} />
+                        <label htmlFor="forceOverride" style={{ fontSize: 10, color: forceOverride ? '#ef4444' : '#64748b', cursor: 'pointer', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>
+                            FORCE OVERRIDE DEPENDENCY LOCKS
+                        </label>
                     </div>
                 </div>
             </div>
@@ -405,22 +465,30 @@ const MachineDetailPage = () => {
                 </div>
 
                 <div style={S.card}>
-                    <div style={{ ...S.label, marginBottom: 10 }}>CURRENT DRAW TREND</div>
-                    <ResponsiveContainer width="100%" height={160}>
-                        <AreaChart data={history}>
-                            <defs>
-                                <linearGradient id="cG" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#ec4899" stopOpacity={0.2} />
-                                    <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(14,165,233,0.05)" />
-                            <XAxis dataKey="time" tick={{ fontSize: 7, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
-                            <YAxis tick={{ fontSize: 7, fill: '#475569', fontFamily: "'JetBrains Mono'" }} tickLine={false} axisLine={false} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area type="monotone" dataKey="cur" stroke="#ec4899" fill="url(#cG)" strokeWidth={1.5} name="Current (A)" dot={false} />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                    <div style={{ ...S.label, marginBottom: 10 }}>UPSTREAM & DOWNSTREAM EXPERT INFO</div>
+                    <div style={{ padding: '8px 12px', background: 'rgba(15,23,42,0.5)', borderRadius: 6, border: '1px solid rgba(14,165,233,0.1)' }}>
+                        <div style={{ fontSize: 10, color: '#38bdf8', fontWeight: 700, marginBottom: 6, fontFamily: "'JetBrains Mono', monospace" }}>DEPENDENCY STATUS</div>
+                        <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 9, color: '#64748b', marginBottom: 4 }}>UPSTREAM PARENTS (REQUIRED TO RUN)</div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                {machine.upstreamDependencies?.length > 0 ? (
+                                    machine.upstreamDependencies.map(depId => (
+                                        <Link key={`up-${depId}`} to={`/app/machines/${depId}`} style={{ padding: '2px 8px', borderRadius: 4, background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', fontSize: 10, textDecoration: 'none', fontFamily: "'JetBrains Mono', monospace" }}>M-{depId}</Link>
+                                    ))
+                                ) : <span style={{ fontSize: 10, color: '#475569' }}>NONE (SOURCE)</span>}
+                            </div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 9, color: '#64748b', marginBottom: 4 }}>DOWNSTREAM CHILDREN (AFFECTED BY STOPS)</div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                {machine.downstreamDependencies?.length > 0 ? (
+                                    machine.downstreamDependencies.map(depId => (
+                                        <Link key={`down-${depId}`} to={`/app/machines/${depId}`} style={{ padding: '2px 8px', borderRadius: 4, background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', fontSize: 10, textDecoration: 'none', fontFamily: "'JetBrains Mono', monospace" }}>M-{depId}</Link>
+                                    ))
+                                ) : <span style={{ fontSize: 10, color: '#475569' }}>NONE (SINK)</span>}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

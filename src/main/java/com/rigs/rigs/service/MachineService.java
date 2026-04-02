@@ -10,6 +10,7 @@ import com.rigs.rigs.repository.MachineSettingsRepository;
 import com.rigs.rigs.repository.MachineTelemetryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,13 +30,49 @@ public class MachineService {
     private static final long DEFAULT_HEARTBEAT_TIMEOUT = 120;
     private static final double DEFAULT_VIBRATION_THRESHOLD = 2.5;
     private static final double DEFAULT_RUNTIME_THRESHOLD = 5000.0;
-    private static final double DEFAULT_TEMP_THRESHOLD = 85.0; // Overheat threshold
+    private static final double DEFAULT_TEMP_THRESHOLD = 85.0;
+
+    /** Duration in seconds for which a commanded status is locked from telemetry overwrite */
+    private static final long COMMAND_LOCK_DURATION_SECONDS = 15;
 
     private final MachineRepository machineRepository;
     private final MachineTelemetryRepository telemetryRepository;
     private final MachineSettingsRepository settingsRepository;
     private final AlertService alertService;
     private final SseService sseService;
+    private final AlertEngineService alertEngineService;
+    private final @Lazy DependencyGraphService dependencyGraphService;
+
+    /** In-memory map tracking command lock timestamps per machine ID */
+    private final Map<Long, LocalDateTime> commandLocks = new ConcurrentHashMap<>();
+
+    // ===== COMMAND LOCK MANAGEMENT =====
+
+    /**
+     * Registers a command lock for a machine. While active, incoming telemetry
+     * will NOT overwrite the machine's commanded status.
+     */
+    public void registerCommandLock(Long machineId) {
+        commandLocks.put(machineId, LocalDateTime.now());
+        log.info("Command lock registered for machine {} ({}s)", machineId, COMMAND_LOCK_DURATION_SECONDS);
+    }
+
+    /**
+     * Checks if a machine has an active command lock.
+     */
+    private boolean hasActiveCommandLock(Long machineId) {
+        LocalDateTime lockTime = commandLocks.get(machineId);
+        if (lockTime == null) return false;
+
+        long elapsed = ChronoUnit.SECONDS.between(lockTime, LocalDateTime.now());
+        if (elapsed > COMMAND_LOCK_DURATION_SECONDS) {
+            commandLocks.remove(machineId);
+            return false;
+        }
+        return true;
+    }
+
+    // ===== TELEMETRY QUERIES =====
 
     @Transactional(readOnly = true)
     public List<MachineTelemetryResponse> getAllMachinesWithLatestTelemetry() {
@@ -55,29 +94,69 @@ public class MachineService {
                 .orElse(null);
 
         MachineSettings settings = settingsRepository.findByMachine(machine).orElse(null);
-
         boolean isOnline = checkMachineOnline(machine, settings);
+
+        // Get raw telemetry values
+        Double temp = latestTelemetry != null ? latestTelemetry.getTemperature() : null;
+        Double vib = latestTelemetry != null ? latestTelemetry.getVibration() : null;
+        Double cur = latestTelemetry != null ? latestTelemetry.getCurrentDraw() : null;
+        Double rpm = latestTelemetry != null ? latestTelemetry.getRpm() : null;
+        Double pres = latestTelemetry != null ? latestTelemetry.getPressure() : null;
+        Double power = latestTelemetry != null ? latestTelemetry.getPowerConsumption() : null;
+        Double eff = latestTelemetry != null ? latestTelemetry.getEfficiency() : null;
+        Double err = latestTelemetry != null ? latestTelemetry.getErrorRate() : null;
+
+        // Override telemetry values based on machine status for physical accuracy
+        String status = machine.getStatus();
+        if ("STOPPED".equals(status) || "EMERGENCY".equals(status) || "OFFLINE".equals(status)) {
+            rpm = 0.0;
+            power = status.equals("EMERGENCY") ? 0.1 : 0.0;
+            eff = 0.0;
+            err = 0.0;
+            vib = status.equals("EMERGENCY") ? 0.1 : 0.0;
+            if (temp != null && temp > 40) temp = Math.max(25.0, temp * 0.6); // cooling down
+        } else if ("MAINTENANCE".equals(status)) {
+            rpm = 0.0;
+            power = 0.5;
+            eff = 0.0;
+            err = 0.0;
+        } else if ("CALIBRATING".equals(status)) {
+            if (rpm != null) rpm = Math.min(rpm, 800.0);
+            power = 2.0;
+            eff = 95.0;
+            err = 0.0;
+        }
+
+        List<Long> upstream = dependencyGraphService.getUpstreamEdges(machine).stream()
+                .map(d -> d.getParentMachine().getId())
+                .collect(Collectors.toList());
+                
+        List<Long> downstream = dependencyGraphService.getDownstreamEdges(machine).stream()
+                .map(d -> d.getChildMachine().getId())
+                .collect(Collectors.toList());
 
         return MachineTelemetryResponse.builder()
                 .machineId(machine.getId())
                 .machineName(machine.getName())
                 .location(machine.getLocation())
-                .status(machine.getStatus())
+                .status(status)
                 .machineType(machine.getMachineType())
                 .processUnit(machine.getProcessUnit())
-                .temperature(latestTelemetry != null ? latestTelemetry.getTemperature() : null)
-                .vibration(latestTelemetry != null ? latestTelemetry.getVibration() : null)
-                .currentDraw(latestTelemetry != null ? latestTelemetry.getCurrentDraw() : null)
-                .rpm(latestTelemetry != null ? latestTelemetry.getRpm() : null)
-                .pressure(latestTelemetry != null ? latestTelemetry.getPressure() : null)
-                .powerConsumption(latestTelemetry != null ? latestTelemetry.getPowerConsumption() : null)
-                .efficiency(latestTelemetry != null ? latestTelemetry.getEfficiency() : null)
-                .errorRate(latestTelemetry != null ? latestTelemetry.getErrorRate() : null)
+                .temperature(temp)
+                .vibration(vib)
+                .currentDraw(cur)
+                .rpm(rpm)
+                .pressure(pres)
+                .powerConsumption(power)
+                .efficiency(eff)
+                .errorRate(err)
                 .lastHeartbeat(machine.getLastHeartbeat())
                 .isOnline(isOnline)
                 .maintenanceAlert(machine.getMaintenanceAlert())
                 .cumulativeRuntimeHours(machine.getCumulativeRuntimeHours())
                 .timestamp(latestTelemetry != null ? latestTelemetry.getTimestamp() : null)
+                .upstreamDependencies(upstream)
+                .downstreamDependencies(downstream)
                 .build();
     }
 
@@ -92,13 +171,14 @@ public class MachineService {
         return ChronoUnit.SECONDS.between(machine.getLastHeartbeat(), LocalDateTime.now()) <= timeout;
     }
 
+    // ===== TELEMETRY INGESTION =====
+
     @Transactional
     public void saveTelemetry(Long machineId, Double temperature, Double vibration,
             Double currentDraw, String machineStatus,
             Double rpm, Double pressure, Double powerConsumption,
             Double efficiency, Double errorRate) {
-        // Auto-create machine if it doesn't exist (simulator sends telemetry for new
-        // machines)
+        // Auto-create machine if it doesn't exist
         String[] MACHINE_TYPES = { "MOTOR", "PUMP", "COMPRESSOR", "TURBINE", "GENERATOR" };
         String[] MACHINE_NAMES = { "Hydraulic Press", "Centrifugal Pump", "Air Compressor", "Steam Turbine",
                 "Diesel Generator", "CNC Mill", "Ball Mill", "Cooling Tower" };
@@ -135,8 +215,15 @@ public class MachineService {
 
         telemetryRepository.save(telemetry);
 
-        // Update machine
-        machine.setStatus(machineStatus);
+        // COMMAND LOCK: Only overwrite status if there's no active command lock
+        if (hasActiveCommandLock(machineId)) {
+            log.debug("Machine {} status locked by command — keeping '{}', ignoring incoming '{}'",
+                    machineId, machine.getStatus(), machineStatus);
+            // Keep the commanded status, don't overwrite
+        } else {
+            machine.setStatus(machineStatus);
+        }
+
         machine.setLastHeartbeat(LocalDateTime.now());
 
         // Threshold Checks
@@ -144,6 +231,9 @@ public class MachineService {
         checkAlerts(machine, telemetry, settings);
 
         machineRepository.save(machine);
+
+        // Phase 3: Feed telemetry into the Alert Engine for pattern analysis
+        alertEngineService.analyzeTelemetry(machine, telemetry);
 
         // INSTANT SSE PUSH
         MachineTelemetryResponse response = buildTelemetryResponse(machine);
@@ -176,27 +266,24 @@ public class MachineService {
         double runtimeLimit = settings != null ? settings.getRuntimeLimitHours() : DEFAULT_RUNTIME_THRESHOLD;
         double vibLimit = settings != null ? settings.getVibrationThreshold() : DEFAULT_VIBRATION_THRESHOLD;
 
-        // Maintenance Alert
         if (machine.getCumulativeRuntimeHours() > runtimeLimit) {
             machine.setMaintenanceAlert(true);
             alertService.createAlert(machine, Alert.AlertType.MAINTENANCE, Alert.AlertSeverity.MEDIUM,
                     "Machine has exceeded runtime limit of " + runtimeLimit + " hours.");
         }
 
-        // Overheat Alert
         if (telemetry.getTemperature() > DEFAULT_TEMP_THRESHOLD) {
             alertService.createAlert(machine, Alert.AlertType.OVERHEAT, Alert.AlertSeverity.CRITICAL,
                     "Critical temperature detected: " + telemetry.getTemperature() + "°C");
         }
 
-        // High Vibration logic could also trigger alerts
         if (telemetry.getVibration() > vibLimit) {
             alertService.createAlert(machine, Alert.AlertType.MAINTENANCE, Alert.AlertSeverity.CRITICAL,
                     "High vibration detected: " + telemetry.getVibration() + "g");
         }
     }
 
-    @Scheduled(fixedRate = 30000) // Check every 30 seconds
+    @Scheduled(fixedRate = 30000)
     @Transactional
     public void monitorHeartbeats() {
         List<Machine> machines = machineRepository.findAll();
@@ -211,5 +298,8 @@ public class MachineService {
                 }
             }
         }
+
+        // Phase 3: Run plant-wide power analysis periodically
+        alertEngineService.analyzePlantPower(machines);
     }
 }

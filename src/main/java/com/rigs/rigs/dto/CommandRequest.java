@@ -13,4 +13,5 @@ public class CommandRequest {
     private Long machineId;
     private String commandType;
     private String parameters;
+    private boolean force;
 }
